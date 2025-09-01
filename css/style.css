@@ -54,9 +54,15 @@ body {
 }
 
 .logo h1 {
-    color: var(--primary-color);
-    font-size: 1.5rem;
-    font-weight: 700;
+    /*color: var(--primary-color);*/
+    /*#font-size: 1.5rem;#*/
+    /*#font-weight: 700;#*/
+    .logo img[src="images/LogoOTDSP.png"] {
+    width: 150px;
+    height: auto;
+    display: block;
+}
+
 }
 
 .nav-menu {
