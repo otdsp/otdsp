@@ -1,160 +1,382 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <!-- Configurações básicas do documento -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Observatório de Transformação Digital do Estado de São Paulo">
-    
-    <title>OTDSP</title>
-    
-    <!-- Link para o CSS -->
+    <title>Bem vindo ao OTDSP</title>
     <link rel="stylesheet" href="css/style.css">
-    
-    <!-- Fonte do Google Fonts (opcional) -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <!-- Header com navegação -->
+    <!-- Header -->
     <header class="header">
-        <nav class="navbar">
-            <div class="container">
-                <!-- Logo ou nome do projeto -->
+        <nav class="nav">
+            <div class="nav-container">
                 <div class="logo">
-                    <img src="images/LogoOTDSP.png" alt="Logo do OTDSP">
-                    <h1>Observatório de Transforação Digital do Estado de São Paulo</h1>
+                    <img src="images/LogoOTDSP.png" alt="Observatório de Transformação Digital do Estado de São Paulo" class="logo-img">
                 </div>
-                
-                <!-- Menu de navegação -->
                 <ul class="nav-menu">
                     <li><a href="#home" class="nav-link">Início</a></li>
-                    <li><a href="#about" class="nav-link">Sobre</a></li>
-                    <li><a href="#features" class="nav-link">Recursos</a></li>
-                    <li><a href="#contact" class="nav-link">Contato</a></li>
+                    <li><a href="#mission" class="nav-link">Missão</a></li>
+                    <li><a href="#helice" class="nav-link">Quíntupla Hélice</a></li>
+                    <li><a href="#eixos" class="nav-link">Eixos</a></li>
+                    <li><a href="#convenios" class="nav-link">Convênios</a></li>
+                    <li><a href="#timeline" class="nav-link">Linha do Tempo</a></li>
+                    <li><a href="#agendamento-contato" class="nav-link">Contato</a></li>
                 </ul>
-                
-                <!-- Botão do menu mobile (hamburger) -->
                 <div class="hamburger">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
                 </div>
             </div>
         </nav>
     </header>
 
-    <!-- Seção Hero (primeira impressão) -->
+    <!-- Hero Section -->
     <section id="home" class="hero">
+        <div class="hero-background">
+            <img src="images/fundo.png" alt="Background" class="hero-bg-img">
+        </div>
         <div class="container">
             <div class="hero-content">
-                <h1 class="hero-title">Conectando Ciência e Transformação Digital para o Estado de São Paulo</h1>
-                <p class="hero-description">
-                    Uma iniciativa contínua, com o potencial de se tornar política pública, que conecta governo, 
-                    academia, setor produtivo, sociedade civil e agências de fomento para acelerar a transformação digital.
-                </p>
-                <!-- Botões de call-to-action -->
-                <div class="hero-buttons">
-                    <a href="#about" class="btn btn-primary">Saiba Mais</a>
-                    <a href="#contact" class="btn btn-secondary">Entre em Contato</a>
-                </div>
+                <h1 class="hero-title">
+                    Observatório de Transformação Digital
+                    <span class="hero-subtitle">do Estado de São Paulo</span>
+                </h1>
+                <p class="hero-tagline">"Conectando Ciência e Transformação Digital para o Estado de São Paulo"</p>
             </div>
+        </div>
+        <div class="scroll-indicator">
+            <i class="fas fa-chevron-down"></i>
         </div>
     </section>
 
-    <!-- Seção Sobre o Projeto -->
-    <section id="about" class="about">
+    <!-- Mission Section -->
+    <section id="mission" class="mission">
         <div class="container">
-            <h2 class="section-title">Sobre o Projeto</h2>
-            <div class="about-content">
-                <div class="about-text">
-                    <p>
-                        Observatório adota a Quíntupla Hélice, incorporando sociedade civil e agências 
-                        de fomento. Essa evolução amplia a legitimidade social, sustentabilidade financeira 
-                        e fortalece a missão de transformar ciência em impacto real.
+            <div class="mission-grid">
+                <div class="mission-text">
+                    <h2 class="section-title">Nossa Missão</h2>
+                    <p class="mission-description">
+                        Transformar o conhecimento da universidade em soluções inovadoras que promovam 
+                        inclusão digital, desenvolvimento sustentável e melhoria dos serviços públicos em todo o estado.
                     </p>
-                    <p>
-                        Eixos estratégicos de atuação
+                    <p class="mission-vision">
+                        Somos uma iniciativa contínua, 
+                        com o potencial de se tornar política pública, que conecta governo, academia, setor produtivo, 
+                        sociedade civil e agências de fomento para acelerar a transformação digital.
                     </p>
-                    <ul class="about-list">
-                        <li>Indicadores e Diagnósticos: Desenvolvimento de metodologias padronizadas para coleta, 
-                            análise e interpretação de dados de transformação digital em âmbito municipal e setorial.</li>
-                        <li>Políticas Públicas e Inclusão: Formulação de recomendações técnicas baseadas em evidências para 
-                            orientação de políticas públicas municipais, estaduais e federais.</li>
-                        <li>Convênios-Filhos e TRL Alta: Os Convênios-Filhos representam a materialização do retorno social 
-                            do investimento em ciência e tecnologia, transformando pesquisas acadêmicas em produtos, serviços e políticas públicas</li>
-                    </ul>
                 </div>
-                <!-- Espaço para imagem ilustrativa -->
-                <div class="about-image">
-                    <img src="images/projeto-demo.jpg" alt="Demonstração do projeto">
+                <div class="mission-visual">
+                    <img src="images/transformação_digital.jpeg" alt="Transformação Digital" class="mission-img">
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Seção de Recursos/Features -->
-    <section id="features" class="features">
+    <!-- Quintupla Helice Section -->
+    <section id="helice" class="helice">
         <div class="container">
-            <h2 class="section-title">Recursos Principais</h2>
-            <div class="features-grid">
-                <!-- Card 1 -->
-                <div class="feature-card">
-                    <div class="feature-icon">⚡</div>
-                    <h3>Rápido</h3>
-                    <p>Descreva como seu projeto oferece velocidade ou eficiência.</p>
-                </div>
-                
-                <!-- Card 2 -->
-                <div class="feature-card">
-                    <div class="feature-icon">🛡️</div>
-                    <h3>Seguro</h3>
-                    <p>Explique os aspectos de segurança do seu projeto.</p>
-                </div>
-                
-                <!-- Card 3 -->
-                <div class="feature-card">
-                    <div class="feature-icon">🎯</div>
-                    <h3>Preciso</h3>
-                    <p>Descreva a precisão ou confiabilidade da solução.</p>
+            <h2 class="section-title">O Modelo de Inovação da Quíntupla Hélice</h2>
+            <div class="helice-description">
+                <p>Adotamos a Quíntupla Hélice, incorporando sociedade civil e agências de fomento. 
+                   Essa evolução amplia a legitimidade social, sustentabilidade financeira e fortalece a missão 
+                   de transformar ciência em impacto real.</p>
+            </div>
+            <div class="helice-diagram">
+                <div class="helix-container">
+                    <div class="helix-element" data-helix="governo">
+                        <div class="helix-icon">
+                            <i class="fas fa-university"></i>
+                        </div>
+                        <h3>Governo (Estado)</h3>
+                        <p>Políticas públicas e regulamentação</p>
+                    </div>
+                    <div class="helix-element" data-helix="academia">
+                        <div class="helix-icon">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <h3>Academia</h3>
+                        <p>Pesquisa e conhecimento</p>
+                    </div>
+                    <div class="helix-element" data-helix="industria">
+                        <div class="helix-icon">
+                            <i class="fas fa-industry"></i>
+                        </div>
+                        <h3>Setor Produtivo</h3>
+                        <p>Inovação e aplicação</p>
+                    </div>
+                    <div class="helix-element" data-helix="sociedade">
+                        <div class="helix-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h3>Sociedade Civil</h3>
+                        <p>Participação e legitimidade</p>
+                    </div>
+                    <div class="helix-element" data-helix="fomento">
+                        <div class="helix-icon">
+                            <i class="fas fa-handshake"></i>
+                        </div>
+                        <h3>Agências de Fomento</h3>
+                        <p>Financiamento e sustentabilidade</p>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Seção de Contato -->
-    <section id="contact" class="contact">
+    <!-- Eixos Section -->
+    <section id="eixos" class="eixos">
         <div class="container">
-            <h2 class="section-title">Entre em Contato</h2>
-            <div class="contact-content">
-                <div class="contact-info">
-                    <h3>Fale Conosco</h3>
-                    <p>Interessado no projeto? Entre em contato!</p>
-                    <div class="contact-details">
-                        <p>📧 email@exemplo.com</p>
-                        <p>📱 (11) 99999-9999</p>
-                        <p>🌐 github.com/seuusuario</p>
+            <h2 class="section-title">Eixos Estratégicos de Atuação</h2>
+            <div class="eixos-grid">
+                <div class="eixo-card">
+                    <div class="eixo-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Indicadores e Diagnósticos</h3>
+                    <p>Coleta, análise e interpretação de dados de transformação digital em âmbito municipal e setorial.</p>
+                </div>
+                <div class="eixo-card">
+                    <div class="eixo-icon">
+                        <i class="fas fa-balance-scale"></i>
+                    </div>
+                    <h3>Políticas Públicas e Inclusão</h3>
+                    <p>Formulação de recomendações técnicas baseadas em evidências para orientação de políticas públicas municipais, estaduais e federais.</p>
+                </div>
+                <div class="eixo-card">
+                    <div class="eixo-icon">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h3>Convênios-Filhos e TRL Alta</h3>
+                    <p>Materialização do retorno social do investimento em ciência e tecnologia, transformando pesquisas acadêmicas em produtos, serviços e políticas públicas.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Convenios Section -->
+    <section id="convenios" class="convenios">
+        <div class="container">
+            <h2 class="section-title">Modelo de Convênio e Estrutura Operacional</h2>
+            <div class="convenio-diagram">
+                <div class="convenio-center">
+                    <div class="convenio-mae">
+                        <h3>Convênio Guarda-Chuva</h3>
+                        <p>Governança Contínua</p>
+                    </div>
+                </div>
+                <div class="convenio-branches">
+                    <div class="branch left">
+                        <div class="branch-content">
+                            <h4>Verticais Públicas</h4>
+                            <ul>
+                                <li>Saúde</li>
+                                <li>Educação</li>
+                                <li>Segurança Eletrônica</li>
+                                <li>Meio Ambiente</li>
+                                <li>Telecomunicações</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="branch right">
+                        <div class="branch-content">
+                            <h4>Horizontais Tecnológicas</h4>
+                            <ul>
+                                <li>Inteligência Artifical</li>
+                                <li>Conectividade</li>
+                                <li>Cidades Inteligentes</li>
+                                <li>Impacto Social</li>
+                                <li>Ecossistemas Inovadores</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="ciclo-virtuoso">
+                    <h4>Ciclos Virtuosos de Integração</h4>
+                    <div class="ciclo-flow">
+                        <div class="cycle-container">
+                            <div class="cycle-item">
+                                <i class="fas fa-users"></i>
+                                <span>Demandas</span>
+                            </div>
+                            <div class="cycle-item">
+                                <i class="fas fa-university"></i>
+                                <span>USP</span>
+                            </div>
+                            <div class="cycle-item">
+                                <i class="fas fa-building"></i>
+                                <span>Governo</span>
+                            </div>
+                            <div class="cycle-item">
+                                <i class="fas fa-users-cog"></i>
+                                <span>Soluções</span>
+                            </div>
+                            
+                            <!-- Setas circulares conectando os elementos -->
+                            <svg class="cycle-arrows" viewBox="0 0 300 300">
+                                <path d="M 150 50 A 100 100 0 0 1 250 150" stroke="#60a5fa" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+                                <path d="M 250 150 A 100 100 0 0 1 150 250" stroke="#60a5fa" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+                                <path d="M 150 250 A 100 100 0 0 1 50 150" stroke="#60a5fa" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+                                <path d="M 50 150 A 100 100 0 0 1 150 50" stroke="#60a5fa" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+                                
+                                <defs>
+                                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                        <polygon points="0 0, 10 3.5, 0 7" fill="#60a5fa"/>
+                                    </marker>
+                                </defs>
+                            </svg>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Timeline Section -->
+    <section id="timeline" class="timeline">
+        <div class="container">
+            <h2 class="section-title">Linha do Tempo: Entregas até Aqui</h2>
+            <div class="timeline-container">
+                <div class="timeline-item" data-year="2022">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <h3>2022: Gênese da Ideia</h3>
+                        <ul>
+                            <li>Início das discussões com a Frente Parlamentar de CTI</li>
+                            <li>Discussão das necessidades de fomento e reforma de leis de ciência, tecnologia e inovação</li>
+                        </ul>
                     </div>
                 </div>
                 
-                <!-- Formulário de contato simples -->
-                <form class="contact-form" id="contactForm">
-                    <input type="text" name="name" placeholder="Seu Nome" required>
-                    <input type="email" name="email" placeholder="Seu Email" required>
-                    <textarea name="message" placeholder="Sua Mensagem" rows="5" required></textarea>
-                    <button type="submit" class="btn btn-primary">Enviar Mensagem</button>
-                </form>
+                <div class="timeline-item" data-year="2024">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <h3>2024: Institucionalização e Lançamento Oficial</h3>
+                        <ul>
+                            <li>Definição do modelo operacional com base na Quíntupla Hélice</li>
+                            <li>Articulação com municípios-piloto e consórcios intermunicipais</li>
+                            <li>Planejamento das verticais e horizontais tecnológicas</li>
+                            <li>Lançamento do Observatório no InovaUSP</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="timeline-item" data-year="2025">
+                    <div class="timeline-marker active"></div>
+                    <div class="timeline-content">
+                        <h3>2025: Alinhamento Estratégico</h3>
+                        <ul>
+                            <li>Alinhamento e engajamento do ecossistema do Observatório</li>
+                            <li>Criação e adesão do modelo convênio continuado</li>
+                            <li>Adesão dos municípios e consórcios pilotos para criação do modelo de convênio-mãe</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="timeline-item future" data-year="2025">
+                    <div class="timeline-marker future"></div>
+                    <div class="timeline-content">
+                        <h3>Novembro de 2025: Implementação</h3>
+                        <ul>
+                            <li>Início da adesão dos demais convênios ao modelo e implementação do convênio-mãe criado</li>
+                            <li>Começo da execução do convênio-mãe com os municípios e consórcios participantes</li>
+                            <li>Benefícios do convênio-mãe: agregar pesquisadores, levantamentos das demandas e elaboração dos convênios-filhos e entregas reais que beneficiem os municípios</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
+
+<section id="agendamento-contato" class="section agendamento-contato">
+    <div class="container">
+        <div class="container-contact-agendamento">
+            <!-- Seção de Agendamento -->
+            <div class="agendamento">
+                <div class="agendamento-content">
+                    <div class="iframe-container">
+                        <iframe src="https://calendly.com/seu-calendario" 
+                                width="100%" 
+                                height="600" 
+                                frameborder="0">
+                        </iframe>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção de Contato - APENAS INFORMAÇÕES -->
+             <div class="contato">
+                <h2 class="section-title">Entre em Contato</h2>
+                <div class="contato-info">
+                    <p>Entre em contato conosco para saber mais sobre o Observatório Digital SP e como participar das nossas iniciativas.</p>
+                    
+                    <div class="contato-details">
+                        <div class="contato-item">
+                            <i class="fas fa-envelope"></i>
+                            <span>otdsp@inova.usp.br</span>
+                        </div>
+                        
+                        <div class="contato-item">
+                            <i class="fas fa-phone"></i>
+                            <span>(11) 2648-0552</span>
+                        </div>
+                        
+                        <div class="contato-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>Av. Prof. Lúcio Martins Rodrigues, 370, 2º andar, sala C216 | Butantã, São Paulo | CEP 05508-020 </span>
+                        </div>
+                        
+                        <div class="contato-item">
+                            <i class="fas fa-clock"></i>
+                            <span>Segunda à Sexta: 9h às 17h</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <p>&copy; 2025 Meu Projeto. Desenvolvido com ❤️</p>
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <img src="images/logo_branco.png" alt="Observatório de Transformação Digital do Estado de São Paulo" class="footer-logo-img">
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>Links Rápidos</h4>
+                    <ul>
+                        <li><a href="#mission">Missão</a></li>
+                        <li><a href="#helice">Quíntupla Hélice</a></li>
+                        <li><a href="#eixos">Eixos Estratégicos</a></li>
+                        <li><a href="#convenios">Convênios</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contato</h4>
+                    <p>otdsp@inova.usp.br</p>
+                    <p>+55 (11) 2648-0552</p>
+                    <div class="social-links">
+                        <a href="#" class="social-link"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Observatório de Transformação Digital do Estado de São Paulo. Todos os direitos reservados.</p>
+            </div>
         </div>
     </footer>
 
-    <!-- Link para o JavaScript -->
     <script src="js/script.js"></script>
 </body>
 </html>
