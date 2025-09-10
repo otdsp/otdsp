@@ -162,46 +162,6 @@ body {
     color: #e0e7ff;
 }
 
-.hero-cta {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.cta-button {
-    padding: 1rem 2rem;
-    border: none;
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 1.1rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.cta-button.primary {
-    background: #ff6b6b;
-    color: white;
-}
-
-.cta-button.primary:hover {
-    background: #ee5a5a;
-    transform: translateY(-2px);
-}
-
-.cta-button.secondary {
-    background: transparent;
-    color: white;
-    border: 2px solid white;
-}
-
-.cta-button.secondary:hover {
-    background: white;
-    color: #667eea;
-}
-
 .scroll-indicator {
     position: absolute;
     bottom: 2rem;
@@ -272,7 +232,8 @@ section {
 
 /* Helice Section */
 .helice {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
+    background: linear-gradient(45deg, #00A6FF 0%, #FFCB00 100%);
     color: white;
 }
 
@@ -319,7 +280,7 @@ section {
 .helix-icon {
     font-size: 3rem;
     margin-bottom: 1rem;
-    color: #60a5fa;
+    color: #ffffff;
 }
 
 .helix-element h3 {
@@ -389,7 +350,8 @@ section {
 }
 
 .convenio-mae {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
+    background: linear-gradient(45deg, #FFCB00 0%, #00A6FF 100%);
     color: white;
     padding: 2rem;
     border-radius: 15px;
@@ -450,7 +412,7 @@ section {
 }
 
 .ciclo-virtuoso {
-    background: #1f2937;
+    background: linear-gradient(45deg, #FFCB00 0%, #00A6FF 100%);
     color: white;
     padding: 2rem;
     border-radius: 15px;
@@ -540,8 +502,33 @@ section {
 
 /* Timeline Section */
 .timeline {
-    background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+    background-image: url('../images/timeline-bg.jpg');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     color: white;
+    position: relative;
+}
+
+/* Overlay para melhor legibilidade do texto */
+.timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(31, 41, 55, 0.2);
+    z-index: 0;
+}
+
+/* Garantir que todo o conteúdo fique visível */
+.timeline .container,
+.timeline .section-title,
+.timeline .timeline-container {
+    position: relative;
+    z-index: 1;
 }
 
 .timeline .section-title {
@@ -589,7 +576,7 @@ section {
     left: 50%;
     width: 20px;
     height: 20px;
-    background: #60a5fa;
+    background: #fbbf24;
     border-radius: 50%;
     transform: translateX(-50%);
     z-index: 2;
@@ -601,7 +588,7 @@ section {
 }
 
 .timeline-marker.future {
-    background: #fbbf24;
+    background: #60a5fa;
 }
 
 @keyframes pulse {
@@ -911,28 +898,38 @@ section {
         grid-template-columns: 1fr;
     }
 
+.timeline {
+        background-attachment: scroll;
+    }
+    
     .timeline-container::before {
         left: 20px;
     }
-
+    
     .timeline-item {
         flex-direction: column;
         align-items: flex-start;
     }
-
+    
     .timeline-marker {
         left: 20px;
         transform: translateX(-50%);
     }
-
+    
     .timeline-content {
         width: calc(100% - 60px);
         margin-left: 60px;
         margin-right: 0;
         text-align: left;
     }
-
+    
     .timeline-item:nth-child(odd) .timeline-content {
+        margin-left: 60px;
+        margin-right: 0;
+        text-align: left;
+    }
+    
+    .timeline-item:nth-child(even) .timeline-content {
         margin-left: 60px;
         margin-right: 0;
         text-align: left;
@@ -977,6 +974,10 @@ section {
     .contato-item {
         gap: 1rem;
         padding: 1rem;
+    }
+
+    .timeline {
+        background-attachment: scroll; /* Remove efeito fixo no mobile */
     }
 }
 
