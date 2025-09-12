@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bem vindo ao OTDSP</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav">
+            <div class="nav-container">
+                <div class="logo">
+                    <img src="images/LogoOTDSP.png" alt="Observatório de Transformação Digital do Estado de São Paulo" class="logo-img">
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="#home" class="nav-link">Início</a></li>
+                    <li><a href="#mission" class="nav-link">Missão</a></li>
+                    <li><a href="#helice" class="nav-link">Quíntupla Hélice</a></li>
+                    <li><a href="#eixos" class="nav-link">Eixos</a></li>
+                    <li><a href="#convenios" class="nav-link">Convênios</a></li>
+                    <li><a href="#timeline" class="nav-link">Linha do Tempo</a></li>
+                    <li><a href="#agendamento-contato" class="nav-link">Contato</a></li>
+                </ul>
+                <div class="hamburger">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-background">
+            <img src="images/fundo.jpg" alt="Background" class="hero-bg-img">
+        </div>
+        <div class="container">
+            <div class="hero-content">
+                <h1 class="hero-title">
+                    Observatório de Transformação Digital
+                    <span class="hero-subtitle">do Estado de São Paulo</span>
+                </h1>
+                <p class="hero-tagline">"Conectando Ciência e Transformação Digital para o Estado de São Paulo"</p>
+            </div>
+        </div>
+        <div class="scroll-indicator">
+            <i class="fas fa-chevron-down"></i>
+        </div>
+    </section>
+
+    <!-- Mission Section -->
+    <section id="mission" class="mission">
+        <div class="container">
+            <div class="mission-grid">
+                <div class="mission-text">
+                    <h2 class="section-title">Nossa Missão</h2>
+                    <p class="mission-description">
+                        Transformar o conhecimento da universidade em soluções inovadoras que promovam 
+                        inclusão digital, desenvolvimento sustentável e melhoria dos serviços públicos em todo o estado.
+                    </p>
+                    <p class="mission-vision">
+                        Somos uma iniciativa contínua, 
+                        com o potencial de se tornar política pública, que conecta governo, academia, setor produtivo, 
+                        sociedade civil e agências de fomento para acelerar a transformação digital.
+                    </p>
+                </div>
+                <div class="mission-visual">
+                    <img src="images/transformação_digital.jpeg" alt="Transformação Digital" class="mission-img">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quintupla Helice Section -->
+    <section id="helice" class="helice">
+        <div class="container">
+            <h2 class="section-title">O Modelo de Inovação da Quíntupla Hélice</h2>
+            <div class="helice-description">
+                <p>Adotamos a Quíntupla Hélice, incorporando sociedade civil e agências de fomento. 
+                   Essa evolução amplia a legitimidade social, sustentabilidade financeira e fortalece a missão 
+                   de transformar ciência em impacto real.</p>
+            </div>
+            <div class="helice-diagram">
+                <div class="helix-container">
+                    <div class="helix-element" data-helix="governo">
+                        <div class="helix-icon">
+                            <i class="fas fa-university"></i>
+                        </div>
+                        <h3>Governo (Estado)</h3>
+                        <p>Políticas públicas e regulamentação</p>
+                    </div>
+                    <div class="helix-element" data-helix="academia">
+                        <div class="helix-icon">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <h3>Academia</h3>
+                        <p>Pesquisa e conhecimento</p>
+                    </div>
+                    <div class="helix-element" data-helix="industria">
+                        <div class="helix-icon">
+                            <i class="fas fa-industry"></i>
+                        </div>
+                        <h3>Setor Produtivo</h3>
+                        <p>Inovação e aplicação</p>
+                    </div>
+                    <div class="helix-element" data-helix="sociedade">
+                        <div class="helix-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h3>Sociedade Civil</h3>
+                        <p>Participação e legitimidade</p>
+                    </div>
+                    <div class="helix-element" data-helix="fomento">
+                        <div class="helix-icon">
+                            <i class="fas fa-handshake"></i>
+                        </div>
+                        <h3>Agências de Fomento</h3>
+                        <p>Financiamento e sustentabilidade</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+<!-- Eixos Section -->
+<section id="eixos" class="eixos">
+    <div class="container">
+        <h2 class="section-title">Eixos Estratégicos de Atuação</h2>
+        <p class="section-subtitle">Conectando ciência, tecnologia e sociedade através de três pilares fundamentais</p>
+        <div class="eixos-grid">
+            <div class="eixo-card" data-aos="fade-up" data-aos-delay="100">
+                <div class="eixo-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>Indicadores e Diagnósticos</h3>
+                <p>Desenvolvimento de metodologias padronizadas para coleta, análise e interpretação de dados de transformação digital em âmbito municipal e setorial.</p>
+                <div class="eixo-features">
+                    <span class="feature-tag">Análise de Dados</span>
+                    <span class="feature-tag">Metodologias</span>
+                    <span class="feature-tag">Diagnósticos</span>
+                </div>
+            </div>
+            
+            <div class="eixo-card" data-aos="fade-up" data-aos-delay="200">
+                <div class="eixo-icon">
+                    <i class="fas fa-balance-scale"></i>
+                </div>
+                <h3>Políticas Públicas e Inclusão</h3>
+                <p>Formulação de recomendações técnicas baseadas em evidências para orientação de políticas públicas municipais, estaduais e federais.</p>
+                <div class="eixo-features">
+                    <span class="feature-tag">Evidências</span>
+                    <span class="feature-tag">Recomendações</span>
+                    <span class="feature-tag">Inclusão Digital</span>
+                </div>
+            </div>
+            
+            <div class="eixo-card" data-aos="fade-up" data-aos-delay="300">
+                <div class="eixo-icon">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <h3>Convênios-Filhos e TRL Alta</h3>
+                <p>Materialização do retorno social do investimento em ciência e tecnologia, transformando pesquisas acadêmicas em produtos, serviços e políticas públicas.</p>
+                <div class="eixo-features">
+                    <span class="feature-tag">TRL Alto</span>
+                    <span class="feature-tag">Inovação</span>
+                    <span class="feature-tag">Retorno Social</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+    <!-- Convenios Section -->
+    <section id="convenios" class="convenios">
+        <div class="container">
+            <!-- <h2 class="section-title">Estrutura Operacional</h2> -->
+            <div class="convenio-diagram">
+                <div class="convenio-center">
+                    <div class="convenio-mae">
+                        <h1>Estrutura Operacional</h1>
+                        <h3>Convênio Guarda-Chuva</h3>
+                        <p>Governança Contínua</p>
+                    </div>
+                </div>
+                <div class="convenio-branches">
+                    <div class="branch left">
+                        <div class="branch-content">
+                            <h4>Verticais Públicas</h4>
+                            <ul>
+                                <li>Saúde</li>
+                                <li>Educação</li>
+                                <li>Segurança Eletrônica</li>
+                                <li>Meio Ambiente</li>
+                                <li>Telecomunicações</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="branch right">
+                        <div class="branch-content">
+                            <h4>Horizontais Tecnológicas</h4>
+                            <ul>
+                                <li>Inteligência Artifical</li>
+                                <li>Conectividade</li>
+                                <li>Cidades Inteligentes</li>
+                                <li>Impacto Social</li>
+                                <li>Ecossistemas Inovadores</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <!-- <div class="ciclo-virtuoso">
+                <div class="container">
+                    <h3 class="section-title">Ciclos Virtuosos de Integração</h3>
+                    <div class="cycle-wrapper">
+                        <div class="cycle-container"> -->
+                            <!-- Items do ciclo 
+                            <div class="cycle-item" data-position="top">
+                                <div class="cycle-icon">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <span class="cycle-label">Demandas</span>
+                            </div>
+                            
+                            <div class="cycle-item" data-position="right">
+                                <div class="cycle-icon">
+                                    <i class="fas fa-flask"></i>
+                                </div>
+                                <span class="cycle-label">USP</span>
+                            </div>
+                            
+                            <div class="cycle-item" data-position="bottom">
+                                <div class="cycle-icon">
+                                    <i class="fas fa-university"></i>
+                                </div>
+                                <span class="cycle-label">Governo</span>
+                            </div>
+                            
+                            <div class="cycle-item" data-position="left">
+                                <div class="cycle-icon">
+                                    <i class="fas fa-cogs"></i>
+                                </div>
+                                <span class="cycle-label">Soluções</span>
+                            </div> -->
+                            
+                            <!-- Setas modernas 
+                            <svg class="cycle-arrows" viewBox="0 0 400 400">
+                                <defs>
+                                    <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" style="stop-color:#4F46E5"/>
+                                        <stop offset="100%" style="stop-color:#06B6D4"/>
+                                    </linearGradient>
+                                    <marker id="arrowhead" markerWidth="12" markerHeight="8" 
+                                            refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
+                                        <path d="M0,0 L0,8 L12,4 z" fill="url(#arrowGradient)"/>
+                                    </marker>
+                                </defs> -->
+                                
+                                <!-- Círculo de fundo sutil 
+                                <circle cx="200" cy="200" r="120" fill="none" stroke="#E5E7EB" 
+                                        stroke-width="2" stroke-dasharray="5,5" opacity="0.3"/> -->
+                                
+                                <!-- Setas do fluxo 
+                                <path d="M 200 80 A 120 120 0 0 1 320 200" 
+                                    stroke="url(#arrowGradient)" stroke-width="3" fill="none" 
+                                    marker-end="url(#arrowhead)" class="flow-arrow"/>
+                                <path d="M 320 200 A 120 120 0 0 1 200 320" 
+                                    stroke="url(#arrowGradient)" stroke-width="3" fill="none" 
+                                    marker-end="url(#arrowhead)" class="flow-arrow"/>
+                                <path d="M 200 320 A 120 120 0 0 1 80 200" 
+                                    stroke="url(#arrowGradient)" stroke-width="3" fill="none" 
+                                    marker-end="url(#arrowhead)" class="flow-arrow"/>
+                                <path d="M 80 200 A 120 120 0 0 1 200 80" 
+                                    stroke="url(#arrowGradient)" stroke-width="3" fill="none" 
+                                    marker-end="url(#arrowhead)" class="flow-arrow"/> -->
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Timeline Section -->
+    <section id="timeline" class="timeline">
+        <div class="container">
+            <h2 class="section-title">Linha do Tempo</h2>
+            <div class="timeline-container">
+                <div class="timeline-item" data-year="2022">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <h3>2022: Gênese da Ideia</h3>
+                        <ul>
+                            <li>Início das discussões com a Frente Parlamentar de CTI</li>
+                            <li>Discussão das necessidades de fomento e reforma de leis de ciência, tecnologia e inovação</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="timeline-item" data-year="2024">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <h3>2024: Institucionalização e Lançamento Oficial</h3>
+                        <ul>
+                            <li>Definição do modelo operacional com base na Quíntupla Hélice</li>
+                            <li>Articulação com municípios-piloto e consórcios intermunicipais</li>
+                            <li>Planejamento das verticais e horizontais tecnológicas</li>
+                            <li>Lançamento do Observatório no InovaUSP</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="timeline-item" data-year="2025">
+                    <div class="timeline-marker active"></div>
+                    <div class="timeline-content">
+                        <h3>2025: Alinhamento Estratégico</h3>
+                        <ul>
+                            <li>Alinhamento e engajamento do ecossistema do Observatório</li>
+                            <li>Criação e adesão do modelo convênio continuado</li>
+                            <li>Adesão dos municípios e consórcios pilotos para criação do modelo de convênio-mãe</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="timeline-item future" data-year="2025">
+                    <div class="timeline-marker future"></div>
+                    <div class="timeline-content">
+                        <h3>Novembro de 2025: Implementação</h3>
+                        <ul>
+                            <li>Início da adesão dos demais convênios ao modelo e implementação do convênio-mãe criado</li>
+                            <li>Começo da execução do convênio-mãe com os municípios e consórcios participantes</li>
+                            <li>Benefícios do convênio-mãe: agregar pesquisadores, levantamentos das demandas e elaboração dos convênios-filhos e entregas reais que beneficiem os municípios</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+<section id="agendamento-contato" class="section agendamento-contato">
+    <div class="container">
+        <div class="container-contact-agendamento">
+            <!-- Seção de Agendamento -->
+            <div class="agendamento">
+                <div class="agendamento-content">
+                    <div class="iframe-container">
+                        <iframe src="https://tidycal.com/observatorioestadosp/visite-o-otdsp" 
+                                width="100%" 
+                                height="600" 
+                                frameborder="0">
+                        </iframe>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção de Contato - APENAS INFORMAÇÕES -->
+             <div class="contato">
+                <h2 class="section-title">Entre em Contato</h2>
+                <div class="contato-info">
+                    <p>Entre em contato conosco para saber mais sobre o OTDSP e como fazer parte.</p>
+                    
+                    <div class="contato-details">
+                        <div class="contato-item">
+                            <i class="fas fa-envelope"></i>
+                            <span>otdsp@inova.usp.br</span>
+                        </div>
+                        
+                        <div class="contato-item">
+                            <i class="fas fa-phone"></i>
+                            <span>(11) 2648-0552</span>
+                        </div>
+                        
+                        <div class="contato-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>Av. Prof. Lúcio Martins Rodrigues, 370, 2º andar, sala C216 | Butantã, São Paulo | CEP 05508-020 </span>
+                        </div>
+                        
+                        <div class="contato-item">
+                            <i class="fas fa-clock"></i>
+                            <span>Segunda à Sexta: 9h às 17h</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <img src="images/logo_branco.png" alt="Observatório de Transformação Digital do Estado de São Paulo" class="footer-logo-img">
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>Links Rápidos</h4>
+                    <ul>
+                        <li><a href="#mission">Missão</a></li>
+                        <li><a href="#helice">Quíntupla Hélice</a></li>
+                        <li><a href="#eixos">Eixos Estratégicos</a></li>
+                        <li><a href="#convenios">Convênios</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Contato</h4>
+                    <p>otdsp@inova.usp.br</p>
+                    <p>+55 (11) 2648-0552</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Observatório de Transformação Digital do Estado de São Paulo. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
