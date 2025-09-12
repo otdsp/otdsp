@@ -621,6 +621,13 @@ section {
     margin-right: auto;
 }
 
+.convenios .convenio-branches {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
 /* Estrutura do diagrama */
 .convenio-diagram {
     max-width: 1200px;
@@ -791,32 +798,34 @@ section {
     flex-shrink: 0;
 }
 
+/* Resetar e configurar listas corretamente */
 .branch ul {
-    list-style: none;
+    list-style: none; /* Remove bullets padrão temporariamente */
+    margin: 0;
+    padding: 0;
 }
 
 .branch li {
-    padding: 1rem 0;
-    color: #4b5563;
-    border-bottom: 1px solid #f3f4f6;
-    transition: all 0.3s ease;
+    padding: 0.5rem 0;
+    color: #6b7280;
+    border-bottom: 1px solid #e5e7eb;
     position: relative;
-    padding-left: 2rem;
-    font-weight: 500;
+    padding-left: 1.2rem; /* Espaço para o bullet customizado */
 }
 
+.branch li:last-child {
+    border-bottom: none;
+}
+
+/* Bullet customizado que não quebra */
 .branch li::before {
-    content: '';
+    content: '•';
+    color: #2563eb;
     position: absolute;
     left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 12px;
-    height: 12px;
-    background: linear-gradient(135deg, #00A6FF 0%, #FFCB00 100%);
-    border-radius: 50%;
-    opacity: 0.7;
-    transition: all 0.3s ease;
+    top: 0.5rem;
+    font-size: 1rem;
+    line-height: 1;
 }
 
 .branch li:hover {
@@ -1735,7 +1744,23 @@ section {
 
     .convenio-branches {
         grid-template-columns: 1fr;
+        gap: 1.5rem; /* Reduz gap no tablet */
     }
+    
+    .convenios {
+        padding: 4rem 0; /* Reduz padding da seção */
+    }
+    
+    .convenio-mae {
+        padding: 1.5rem; /* Reduz padding interno */
+        margin-left: calc(-50vw + 50%);
+        margin-right: calc(-50vw + 50%);
+    }
+    
+    .branch {
+        padding: 1.5rem; /* Reduz padding dos cards */
+    }
+}
 
 .timeline {
         background-attachment: scroll, scroll; /* Altura fixa no mobile */
@@ -1835,15 +1860,46 @@ section {
         min-width: auto;
     }
     
-    .convenio-results {
-        padding: 2rem;
-        margin-top: 3rem;
+    .convenios {
+        padding: 3rem 0;
     }
+    
+    .convenio-branches {
+        gap: 1rem; /* Gap ainda menor no mobile */
+    }
+    
+    .convenio-mae {
+        padding: 1rem;
+        border-radius: 10px;
+    }
+    
+    .convenio-mae h3 {
+        font-size: 1.3rem; /* Reduz fonte do título */
+    }
+    
+    .branch {
+        padding: 1rem;
+        border-radius: 10px;
+    }
+    
+    .branch h4 {
+        font-size: 1.1rem;
+    }
+    .branch li {
+        padding-left: 1rem; /* Reduz espaço no mobile */
+        padding: 0.4rem 0 0.4rem 1rem;
+    }
+    
+    .branch li::before {
+        top: 0.4rem;
+        font-size: 0.9rem;
+    }
+
     
     .results-title {
         font-size: 1.5rem;
     }
-}
+
 
 @media (max-width: 480px) {
     .logo-img {
@@ -1949,8 +2005,53 @@ section {
         font-size: 1.2rem;
     }
     
-    .convenio-results {
-        padding: 1.5rem;
+    .convenios {
+        padding: 3rem 0;
+    }
+    
+    .convenio-branches {
+        gap: 1rem; /* Gap ainda menor no mobile */
+    }
+    
+    .convenio-mae {
+        padding: 1rem;
+        border-radius: 10px;
+    }
+    
+    .convenio-mae h3 {
+        font-size: 1.3rem; /* Reduz fonte do título */
+    }
+    
+    .branch {
+        padding: 1rem;
+        border-radius: 10px;
+    }
+    
+    .branch h4 {
+        font-size: 1.1rem;
+    }
+    
+    .branch li {
+        padding-left: 0.8rem;
+        padding: 0.3rem 0 0.3rem 0.8rem;
+        font-size: 0.9rem;
+    }
+    
+    .branch li::before {
+        top: 0.3rem;
+        font-size: 0.8rem;
+    }
+
+        .convenios .convenio-branches {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 1rem !important;
+    }
+    
+    .convenios .branch {
+        width: 100% !important;
+        flex: none !important;
+        padding: 1rem !important;
     }
     
     .results-title {
@@ -1970,5 +2071,54 @@ section {
 
     .iframe-container iframe {
         height: 400px;
+    }
+
+    .convenios {
+        padding: 2rem 0;
+    }
+    
+    .convenio-branches {
+        gap: 0.75rem;
+    }
+    
+    .convenio-mae {
+        padding: 0.75rem;
+        margin-left: calc(-50vw + 50%);
+        margin-right: calc(-50vw + 50%);
+    }
+    
+    .convenio-mae h3 {
+        font-size: 1.1rem;
+        margin-bottom: 0.3rem;
+    }
+    
+    .branch {
+        padding: 0.75rem;
+    }
+    
+    .branch h4 {
+        font-size: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .branch li {
+        padding-left: 0.75rem;
+        padding: 0.25rem 0 0.25rem 0.75rem;
+        font-size: 0.8rem;
+    }
+    
+    .branch li::before {
+        top: 0.25rem;
+        font-size: 0.75rem;
+    }
+
+        .convenios .convenio-branches {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+    
+    .convenios .branch {
+        padding: 0.75rem !important;
     }
 }
