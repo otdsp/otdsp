@@ -377,6 +377,9 @@ document.addEventListener('DOMContentLoaded', function() {
             info: 'fas fa-info-circle'
         };
 
+        // Mudei isso aqui para evitar XSS (Cross-Site Scripting)
+
+        /*
         notification.innerHTML = `
             <div class="notification-content">
                 <i class="${icons[type] || icons.info}"></i>
@@ -386,6 +389,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 </button>
             </div>
         `;
+        */
+
+        // Create main content
+        const content = document.createElement('div');
+        content.className = 'notification-content';
+
+        // Create icon
+        const icon = document.createElement('i');
+        icon.className = icons[type] || icons.info;
+
+        // Create span
+        const messageSpan = document.createElement('span');
+        messageSpan.textContent = message; // textContent escapa automaticamente HTML
+
+        // Create close button
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'notification-close';
+        closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+        closeBtn.onclick = () => notification.remove();
+
+        // Structure
+        content.appendChild(icon);
+        content.appendChild(messageSpan);
+        content.appendChild(closeBtn);
+        notification.appendChild(content);
 
         // Add notification styles
         notification.style.cssText = `
