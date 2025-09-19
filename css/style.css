@@ -642,7 +642,7 @@ section {
     margin-bottom: 4rem;
 }
 
-.convenio-mae {
+.convenio-guarda-chuva {
     background: linear-gradient(135deg, #00A6FF 0%, #0080cc 30%, #ffb000 70%, #FFCB00 100%);
     color: white;
     padding: 3rem 4rem;
@@ -655,7 +655,7 @@ section {
     min-width: 400px;
 }
 
-.convenio-mae::before {
+.convenio-guarda-chuva::before {
     content: '';
     position: absolute;
     top: 0;
@@ -668,24 +668,24 @@ section {
     background-size: 300px 300px;
 }
 
-.convenio-mae > * {
+.convenio-guarda-chuva > * {
     position: relative;
     z-index: 1;
 }
 
-.convenio-mae:hover {
+.convenio-guarda-chuva:hover {
     transform: translateY(-8px) scale(1.02);
     box-shadow: 0 30px 80px rgba(0, 166, 255, 0.35);
 }
 
-.convenio-mae h3 {
+.convenio-guarda-chuva h3 {
     font-size: 2.2rem;
     margin-bottom: 0.8rem;
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     font-weight: 700;
 }
 
-.convenio-mae p {
+.convenio-guarda-chuva p {
     font-size: 1.2rem;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     opacity: 0.95;
@@ -1751,7 +1751,7 @@ section {
         padding: 4rem 0; /* Reduz padding da seção */
     }
     
-    .convenio-mae {
+    .convenio-guarda-chuva {
         padding: 1.5rem; /* Reduz padding interno */
         margin-left: calc(-50vw + 50%);
         margin-right: calc(-50vw + 50%);
@@ -1868,12 +1868,12 @@ section {
         gap: 1rem; /* Gap ainda menor no mobile */
     }
     
-    .convenio-mae {
+    .convenio-guarda-chuva {
         padding: 1rem;
         border-radius: 10px;
     }
     
-    .convenio-mae h3 {
+    .convenio-guarda-chuva h3 {
         font-size: 1.3rem; /* Reduz fonte do título */
     }
     
@@ -2013,12 +2013,12 @@ section {
         gap: 1rem; /* Gap ainda menor no mobile */
     }
     
-    .convenio-mae {
+    .convenio-guarda-chuva {
         padding: 1rem;
         border-radius: 10px;
     }
     
-    .convenio-mae h3 {
+    .convenio-guarda-chuva h3 {
         font-size: 1.3rem; /* Reduz fonte do título */
     }
     
@@ -2081,13 +2081,13 @@ section {
         gap: 0.75rem;
     }
     
-    .convenio-mae {
+    .convenio-guarda-chuva {
         padding: 0.75rem;
         margin-left: calc(-50vw + 50%);
         margin-right: calc(-50vw + 50%);
     }
     
-    .convenio-mae h3 {
+    .convenio-guarda-chuva h3 {
         font-size: 1.1rem;
         margin-bottom: 0.3rem;
     }
