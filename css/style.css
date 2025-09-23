@@ -1756,6 +1756,11 @@ section {
         margin-left: calc(-50vw + 50%);
         margin-right: calc(-50vw + 50%);
     }
+
+    .convenio-ecosystem {
+        grid-template-columns: 1fr; /* continua 1 coluna no mobile */
+        gap: 1.5rem;
+    }
     
     .branch {
         padding: 1.5rem; /* Reduz padding dos cards */
