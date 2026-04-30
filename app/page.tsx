@@ -7,15 +7,21 @@ import Navbar from "@/components/Navbar";
 import AnimatedSection from "@/components/AnimatedSection";
 import MagneticCard from "@/components/MagneticCard";
 import ClipPathReveal from "@/components/ClipPathReveal";
+import { Variants } from "motion/react";
 import { ChevronDown, Building2, GraduationCap, Factory, Users, Rocket, Activity, BookOpen, ShieldAlert, Leaf, Brain, Wifi, MapPin, Heart, CheckCircle2, Mail, CalendarDays } from "lucide-react";
 
 const containerVariants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.15, delayChildren: 0.2 } }
 };
-const elasticItem = {
+const elasticItem: Variants = {
   hidden: { opacity: 0, y: 50, scale: 0.8 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 200, damping: 15 } }
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { type: "spring", stiffness: 200, damping: 15 }
+  }
 };
 
 export default function Home() {
