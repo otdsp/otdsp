@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+.animate-float { animation: float 4s ease-in-out infinite; }
+.animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
+.animate-flow { animation: flow 1s linear infinite; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+@keyframes flow {
+  from { stroke-dashoffset: 8; }
+  to { stroke-dashoffset: 0; }
+}
