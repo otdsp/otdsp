@@ -1,18 +1,22 @@
 import type {Metadata} from 'next';
 import { Inter } from 'next/font/google';
-import './globals.css';
+import './globals.css'; // Global styles
+import { Navbar } from '@/components/Navbar';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'Observatório de Transformação Digital do Estado de São Paulo',
-  description: 'Conectando Ciência e Transformação Digital para o Estado de São Paulo',
+  title: 'Transformação Digital USP',
+  description: 'An immersive, kinetic scrolling experience for an innovation hub.',
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
-    <html lang="pt-BR" className={inter.className}>
-      <body className="antialiased text-gray-800 bg-gray-50" suppressHydrationWarning>{children}</body>
+    <html lang="en" className={`${inter.variable} antialiased`}>
+      <body className="font-sans" suppressHydrationWarning>
+        <Navbar />
+        {children}
+      </body>
     </html>
   );
 }
