@@ -8,6 +8,8 @@ import Image from 'next/image';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 
+const basePath = process.env.NODE_ENV === 'production' ? '/otdsp' : '';
+
 const navItems = [
   { name: 'Home', href: '/' },
   {
@@ -111,7 +113,7 @@ export function Navbar() {
           <div className="flex items-center">
             {/* Logo */}
             <Link href="/" className="flex-shrink-0 flex items-center gap-2">
-              <Image src="/logo.png" alt="OTDSP Logo" width={200} height={40} className="h-10 w-auto object-contain" />
+              <Image src={`${basePath}/logo.png`} alt="OTDSP Logo" width={200} height={40} className="h-10 w-auto object-contain" />
             </Link>
           </div>
 

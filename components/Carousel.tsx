@@ -6,11 +6,13 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import Image from 'next/image';
 
+const basePath = process.env.NODE_ENV === 'production' ? '/otdsp' : '';
+
 const slides = [
   {
     id: 1,
     bg: 'bg-[#0F172A]',
-    img: '/carousel-1.png',
+    img: `${basePath}/carousel-1.png`,
     textColor: 'text-white',
     title: 'OTDSP ajuda o município na <span class="text-cyan-400">transformação digital</span>',
     tag: '01 / HUB',
@@ -20,7 +22,7 @@ const slides = [
   {
     id: 2,
     bg: 'bg-cyan-500',
-    img: '/carousel-2.png',
+    img: `${basePath}/carousel-2.png`,
     textColor: 'text-white',
     title: 'Seja <span class="text-orange-500">Protagonista</span> de inovação na sua região',
     tag: '02 / INNOVATION',
@@ -30,7 +32,7 @@ const slides = [
   {
     id: 3,
     bg: 'bg-white',
-    img: '/carousel-3.png',
+    img: `${basePath}/carousel-3.png`,
     textColor: 'text-white',
     title: 'Tenha um polo <span class="text-slate-900">tecnológico USP</span> no seu município',
     tag: '03 / TECH',
