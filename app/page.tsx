@@ -205,7 +205,7 @@ export default function Page() {
           {/* Image Column (Right) */}
           <div className="relative w-full h-full min-h-[400px] lg:min-h-[500px]">
             <Image 
-              src="/case-1.jpg" 
+              src="/public/case-1.jpg" 
               alt="Programa EDUCA + INOVAUSP" 
               fill 
               style={{ objectFit: 'cover' }}
@@ -219,7 +219,7 @@ export default function Page() {
           {/* Image Column (Left) */}
           <div className="relative w-full h-full min-h-[400px] lg:min-h-[500px]">
             <Image 
-              src="/case-2.png" 
+              src="/public/case-2.png" 
               alt="Projeto INSPIRE" 
               fill 
               style={{ objectFit: 'cover' }}
@@ -266,7 +266,7 @@ export default function Page() {
           {/* Solução 1: Left Aligned */}
           <div className="w-full relative z-10 flex">
             <SolucaoBlock 
-              imageSrc="/solucao-saude.png"
+              imagesrc="/public/solucao-saude.png"
               title="Saúde Digital" 
               description={<><strong>Projeto INSPIRE — Ventilador Pulmonar Emergencial:</strong> Ventilador pulmonar de baixo custo e tecnologia nacional criado pela Poli-USP, ampliando o acesso a suporte à vida em municípios remotos. <br/><br/> <strong>Projeto CROSS — Regulação de Urgências:</strong> Modernização do CROSS otimizando a regulação médica de urgências, aumentando a eficiência do atendimento municipal.</>}
               category="Saúde"
@@ -280,7 +280,7 @@ export default function Page() {
           {/* Solução 2: Right Aligned */}
           <div className="w-full relative z-20 flex">
             <SolucaoBlock 
-              imageSrc="/solucao-educacao.png"
+              imagesrc="/public/solucao-educacao.png"
               title="Laboratórios STEAM & Maker" 
               description={<>Voltados à integração interdisciplinar de áreas como ciências, arte e tecnologia equipados e experiências práticas em design, robótica e prototipagem que estimulam a criatividade aplicada.</>}
               category="Educação"
@@ -294,7 +294,7 @@ export default function Page() {
           {/* Solução 3: Left Aligned */}
           <div className="w-full relative z-30 flex">
             <SolucaoBlock 
-              imageSrc="/solucao-seguranca.png"
+              imagesrc="/public/solucao-seguranca.png"
               title="ABESE Labs - Laboratório de Experimentação" 
               description={<>Espaço avançado para testes e demonstrações de tecnologias de ponta em segurança eletrônica, desenvolvido em parceria com a ABESE, com compatibilidade total ao Programa Muralha Paulista e integração plena aos sistemas estaduais de segurança pública.</>}
               category="Segurança"
@@ -308,7 +308,7 @@ export default function Page() {
           {/* Solução 4: Right Aligned */}
           <div className="w-full relative z-40 flex">
             <SolucaoBlock 
-              imageSrc="/solucao-meio-ambiente.png"
+              imagesrc="/public/solucao-meio-ambiente.png"
               title="Gestão Territorial Baseada em Dados" 
               description={<>Sensores de precisão instalados no território capturam dados climáticos em tempo real — temperatura, umidade, precipitação e pressão atmosférica — , alimentando uma plataforma digital de gestão ambiental integrada.</>}
               category="Meio Ambiente"
@@ -334,7 +334,7 @@ export default function Page() {
           {/* Left Side */}
           <div className="flex flex-col items-center md:items-start text-center md:text-left gap-4">
             <div className="flex items-center gap-3">
-              <Image src="/logo.png" alt="OTDSP Logo" width={200} height={40} className="h-10 w-auto object-contain" />
+              <Image src="/public/logo.png" alt="OTDSP Logo" width={200} height={40} className="h-10 w-auto object-contain" />
             </div>
             <p className="text-slate-500 font-medium max-w-sm text-sm">
               Conectando inovação, dados e desenvolvimento para o avanço dos municípios no Estado de São Paulo.
