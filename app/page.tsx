@@ -221,7 +221,7 @@ export default function Page() {
           {/* Image Column (Left) */}
           <div className="relative w-full h-full min-h-[400px] lg:min-h-[500px]">
             <Image 
-              src={`${basePath}/case-2.png`} 
+              src={`${basePath}/case-2.jpg`} 
               alt="Projeto INSPIRE" 
               fill 
               style={{ objectFit: 'cover' }}
@@ -268,7 +268,7 @@ export default function Page() {
           {/* Solução 1: Left Aligned */}
           <div className="w-full relative z-10 flex">
             <SolucaoBlock 
-              imageSrc={`${basePath}/solucao-saude.png`}
+              imageSrc={`${basePath}/solucao-saude.jpg`}
               title="Saúde Digital" 
               description={<><strong>Projeto INSPIRE — Ventilador Pulmonar Emergencial:</strong> Ventilador pulmonar de baixo custo e tecnologia nacional criado pela Poli-USP, ampliando o acesso a suporte à vida em municípios remotos. <br/><br/> <strong>Projeto CROSS — Regulação de Urgências:</strong> Modernização do CROSS otimizando a regulação médica de urgências, aumentando a eficiência do atendimento municipal.</>}
               category="Saúde"
@@ -282,7 +282,7 @@ export default function Page() {
           {/* Solução 2: Right Aligned */}
           <div className="w-full relative z-20 flex">
             <SolucaoBlock 
-              imageSrc={`${basePath}/solucao-educacao.png`}
+              imageSrc={`${basePath}/solucao-educacao.jpg`}
               title="Laboratórios STEAM & Maker" 
               description={<>Voltados à integração interdisciplinar de áreas como ciências, arte e tecnologia equipados e experiências práticas em design, robótica e prototipagem que estimulam a criatividade aplicada.</>}
               category="Educação"
@@ -296,7 +296,7 @@ export default function Page() {
           {/* Solução 3: Left Aligned */}
           <div className="w-full relative z-30 flex">
             <SolucaoBlock 
-              imageSrc={`${basePath}/solucao-seguranca.png`}
+              imageSrc={`${basePath}/solucao-seguranca.jpg`}
               title="ABESE Labs - Laboratório de Experimentação" 
               description={<>Espaço avançado para testes e demonstrações de tecnologias de ponta em segurança eletrônica, desenvolvido em parceria com a ABESE, com compatibilidade total ao Programa Muralha Paulista e integração plena aos sistemas estaduais de segurança pública.</>}
               category="Segurança"
@@ -310,7 +310,7 @@ export default function Page() {
           {/* Solução 4: Right Aligned */}
           <div className="w-full relative z-40 flex">
             <SolucaoBlock 
-              imageSrc={`${basePath}/solucao-meio-ambiente.png`}
+              imageSrc={`${basePath}/solucao-meio-ambiente.jpg`}
               title="Gestão Territorial Baseada em Dados" 
               description={<>Sensores de precisão instalados no território capturam dados climáticos em tempo real — temperatura, umidade, precipitação e pressão atmosférica — , alimentando uma plataforma digital de gestão ambiental integrada.</>}
               category="Meio Ambiente"
@@ -347,7 +347,7 @@ export default function Page() {
           <div className="flex flex-col items-center md:items-end gap-6">
             <div className="flex flex-wrap justify-center md:justify-end gap-4">
               {[
-                { name: 'LinkedIn', url: 'https://www.linkedin.com/in/otdsp' },
+                { name: 'LinkedIn', url: 'https://www.linkedin.com/company/otdsp/' },
                 { name: 'Instagram', url: 'https://www.instagram.com/otdsp.usp' }
               ].map((social, i) => (
                 <motion.a 
