@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
+import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import { 
@@ -34,15 +34,10 @@ interface UserProfile {
   organization_type: string
   job_title: string
   relationship_with_otdsp: string
-  updated_at?: string
 }
 
 export default function ProfilePage() {
   const router = useRouter()
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
-  )
 
   // Auth & Data State
   const [session, setSession] = useState<any>(null)
@@ -62,16 +57,13 @@ export default function ProfilePage() {
     confirm: ''
   })
 
-  useEffect(() => {
-    router.push('/em-construcao')
-  }, [router])
 
   useEffect(() => {
     const initProfile = async () => {
       const { data: { session: currentSession } } = await supabase.auth.getSession()
       
       if (!currentSession) {
-        router.push('/')
+        router.push('/login')
         return
       }
 
@@ -96,7 +88,7 @@ export default function ProfilePage() {
     }
 
     initProfile()
-  }, [supabase, router])
+  }, [router])
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     if (!profile) return
@@ -122,8 +114,7 @@ export default function ProfilePage() {
           institution_organization: profile.institution_organization,
           organization_type: profile.organization_type,
           job_title: profile.job_title,
-          relationship_with_otdsp: profile.relationship_with_otdsp,
-          updated_at: new Date().toISOString()
+          relationship_with_otdsp: profile.relationship_with_otdsp
         })
         .eq('user_id', session.user.id)
 

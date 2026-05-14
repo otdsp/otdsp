@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
+import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import { 
   User, 
@@ -19,19 +19,26 @@ import {
   Building
 } from 'lucide-react'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
 
 /**
  * Registration Page component for the OTDSP app.
  */
 export default function CadastroPage() {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
-  )
-  
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.push('/perfil')
+      }
+    }
+    checkSession()
+  }, [router])
 
   const [formData, setFormData] = useState({
     email: '',
@@ -57,21 +64,42 @@ export default function CadastroPage() {
       setError('Por favor, selecione o tipo de organização.')
       return
     }
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co') {
-      setError('Configuração do Supabase ausente. Verifique as variáveis de ambiente (URL e ANON KEY).')
-      setLoading(false)
-      return
-    }
+    
     setLoading(true)
     setError(null)
 
     try {
-      // Auth Sign Up with Profile Data in Metadata
-      const { error: signUpError } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
+            full_name: formData.full_name,
+          }
+        }
+      })
+      
+      if (error) throw error
+
+      const user = data.user
+      if (user) {
+        // Insert into user_auth (Note: This might fail if RLS is strict and trigger isn't used)
+        const { error: authTableError } = await supabase
+          .from('user_auth')
+          .insert({
+            id: user.id,
+            email: user.email,
+            is_staff: false,
+            is_active: true,
+          })
+        
+        if (authTableError) console.error('Error in user_auth insert:', authTableError)
+
+        // Insert into user_profile
+        const { error: profileTableError } = await supabase
+          .from('user_profile')
+          .insert({
+            user_id: user.id,
             full_name: formData.full_name,
             phone: formData.phone,
             home_address: formData.home_address,
@@ -80,11 +108,10 @@ export default function CadastroPage() {
             organization_type: formData.organization_type,
             job_title: formData.job_title,
             relationship_with_otdsp: formData.relationship_with_otdsp
-          }
-        }
-      })
-
-      if (signUpError) throw signUpError
+          })
+        
+        if (profileTableError) console.error('Error in user_profile insert:', profileTableError)
+      }
 
       setSuccess(true)
     } catch (err: any) {
@@ -112,11 +139,11 @@ export default function CadastroPage() {
           </p>
           <div className="space-y-4">
             <Link 
-              href="/em-construcao"
+              href="/perfil"
               className="flex items-center justify-center gap-2 w-full py-4 bg-gradient-to-r from-cyan-600 to-cyan-500 text-white rounded-xl font-bold hover:shadow-lg hover:shadow-cyan-200 transition-all shadow-md"
             >
               <User className="w-5 h-5" />
-              Verificar Painel
+              Acessar Meu Perfil
             </Link>
             <Link 
               href="/"

@@ -85,7 +85,7 @@ export default function Carousel() {
   }, [page]);
 
   return (
-    <div className="relative w-[95%] md:w-full max-w-7xl mx-auto h-[60vh] md:h-[70vh] rounded-[2.5rem] overflow-hidden shadow-2xl shadow-[#0F172A]/10 mt-6 z-10 group bg-slate-100 flex items-center justify-center">
+    <div className="relative w-full max-w-7xl mx-auto min-h-[85vh] md:min-h-[600px] md:h-[70vh] rounded-none md:rounded-[2.5rem] overflow-hidden shadow-2xl shadow-[#0F172A]/10 mt-0 md:mt-6 z-10 group bg-slate-100 flex items-center justify-center">
       <AnimatePresence initial={false} custom={direction}>
         <motion.div
           key={page}
@@ -110,24 +110,24 @@ export default function Carousel() {
               paginate(-1);
             }
           }}
-          className={`absolute inset-0 flex flex-col justify-center px-10 md:px-24 ${slides[currentIndex].bg}`}
+          className={`absolute inset-0 flex flex-col justify-end md:justify-center pb-24 md:pb-0 px-5 md:px-24 ${slides[currentIndex].bg}`}
         >
           {slides[currentIndex].img && (
             <Image
               src={slides[currentIndex].img}
               alt="Slide Background"
               fill
-              className="object-cover z-0"
+              className="object-cover object-top md:object-center z-0"
               referrerPolicy="no-referrer"
             />
           )}
 
-          <div className={`relative z-10 p-8 rounded-2xl shadow-2xl max-w-2xl ${slides[currentIndex].boxBg}`}>
+          <div className={`relative z-10 p-5 md:p-8 rounded-2xl shadow-2xl max-w-2xl h-auto ${slides[currentIndex].boxBg}`}>
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.5 }}
-              className={`inline-block px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider mb-6 ${slides[currentIndex].tagBg}`}
+              className={`inline-block px-3 py-1.5 md:px-4 md:py-1.5 rounded-full text-xs md:text-sm font-bold uppercase tracking-wider mb-4 md:mb-6 ${slides[currentIndex].tagBg}`}
             >
               {slides[currentIndex].tag}
             </motion.div>
@@ -136,7 +136,7 @@ export default function Carousel() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.6 }}
-              className={`text-4xl md:text-5xl lg:text-6xl font-extrabold max-w-4xl leading-tight tracking-tight ${slides[currentIndex].textColor}`}
+              className={`text-2xl md:text-5xl lg:text-6xl font-extrabold max-w-4xl leading-tight tracking-tight ${slides[currentIndex].textColor}`}
               dangerouslySetInnerHTML={{ __html: slides[currentIndex].title }}
             />
           </div>

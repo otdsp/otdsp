@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Menu, X, ChevronDown, UserPlus, User, LogOut, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { createBrowserClient } from '@supabase/ssr';
+import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
 const basePath = process.env.NODE_ENV === 'production' ? '/otdsp' : '';
@@ -13,18 +13,20 @@ const basePath = process.env.NODE_ENV === 'production' ? '/otdsp' : '';
 const navItems = [
   { name: 'Home', href: '/' },
   {
-    name: 'Vertentes',
+    name: 'Transversais',
     href: '#',
     dropdown: [
-      { name: 'Social', href: '/em-construcao?s=Social' },
-      { name: 'Municipal', href: '/em-construcao?s=Municipal' },
+      { name: 'Mulheres', href: '/em-construcao?s=Mulheres' },
+      { name: 'Inclusão de alunos com necessidades especiais', href: '/em-construcao?s=Inclusao' },
+      { name: 'Igualdade de Gênero', href: '/em-construcao?s=Igualdade' },
+      { name: 'LGBTQIA+', href: '/em-construcao?s=LGBTQIA' },
     ],
   },
   {
-    name: 'Produtos',
+    name: 'Tecnologias',
     href: '#',
     dropdown: [
-      { name: 'Caninos', href: '/em-construcao?s=Caninos' },
+      { name: 'Hardware aberto - Caninos', href: '/em-construcao?s=Caninos' },
     ],
   },
   {
@@ -55,10 +57,6 @@ export function Navbar() {
   const [user, setUser] = useState<any>(null);
   
   const router = useRouter();
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
-  )
 
   useEffect(() => {
     const checkUser = async () => {
@@ -75,7 +73,7 @@ export function Navbar() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, []);
 
   const handleLogout = async (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
@@ -93,11 +91,12 @@ export function Navbar() {
         ...item,
         dropdown: user
           ? [
-              { name: 'Meu Painel', href: '/em-construcao', icon: User },
+              { name: 'Meu Perfil', href: '/perfil', icon: User },
               { name: 'Engajamento', href: 'https://tidycal.com/observatorioestadosp', icon: Calendar },
               { name: 'Sair', href: '#', isLogout: true, icon: LogOut },
             ]
           : [
+              { name: 'Entrar', href: '/login', icon: User },
               { name: 'Cadastro', href: '/cadastro', icon: UserPlus },
               { name: 'Engajamento', href: 'https://tidycal.com/observatorioestadosp', icon: Calendar },
             ],
