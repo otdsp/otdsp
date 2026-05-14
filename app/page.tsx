@@ -248,17 +248,37 @@ export default function Page() {
             transition={{ repeat: Infinity, ease: "linear", duration: 30 }}
           >
             {[
-              "inovausp.png", "iea.png", "citi.png", "abese.png", "rede-nacional.png", "forum-iot.png", "abes.png",
-              "inovausp.png", "iea.png", "citi.png", "abese.png", "rede-nacional.png", "forum-iot.png", "abes.png"
-            ].map((logo, index) => (
-              <Image 
-                key={index}
-                src={`${basePath}/${logo}`} 
-                alt={`Partner ${index}`}
-                width={200}
-                height={64}
-                className="h-16 w-auto object-contain transition-all"
-              />
+              { img: "inovausp.png", url: "https://inova.usp.br/", name: "InovaUSP" },
+              { img: "iea.png", url: "https://www.iea.usp.br/", name: "IEA" },
+              { img: "citi.png", url: "https://www.lsi.usp.br/citi/", name: "CiTi" },
+              { img: "abese.png", url: "https://www.abese.org.br/", name: "ABESE" },
+              { img: "rede-nacional.png", url: "https://www.rncp.org.br/", name: "Rede Nacional de Consórcios Intermunicipais" },
+              { img: "forum-iot.png", url: "https://iotbrasil.org.br/", name: "Fórum Brasileiro de IoT" },
+              { img: "abes.png", url: "https://abes.org.br/", name: "ABES" },
+              { img: "inovausp.png", url: "https://inova.usp.br/", name: "InovaUSP" },
+              { img: "iea.png", url: "https://www.iea.usp.br/", name: "IEA" },
+              { img: "citi.png", url: "https://www.lsi.usp.br/citi/", name: "CiTi" },
+              { img: "abese.png", url: "https://www.abese.org.br/", name: "ABESE" },
+              { img: "rede-nacional.png", url: "https://www.rncp.org.br/", name: "Rede Nacional de Consórcios Intermunicipais" },
+              { img: "forum-iot.png", url: "https://iotbrasil.org.br/", name: "Fórum Brasileiro de IoT" },
+              { img: "abes.png", url: "https://abes.org.br/", name: "ABES" }
+            ].map((partner, index) => (
+              <a 
+                key={index} 
+                href={partner.url} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="transition-transform hover:scale-105"
+                title={partner.name}
+              >
+                <Image 
+                  src={`${basePath}/${partner.img}`} 
+                  alt={partner.name}
+                  width={200}
+                  height={64}
+                  className="h-16 w-auto object-contain transition-all"
+                />
+              </a>
             ))}
           </motion.div>
         </div>
