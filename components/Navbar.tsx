@@ -39,7 +39,7 @@ const navItems = [
       { name: 'Meio Ambiente', href: '/em-construcao?s=MeioAmbiente' },
     ],
   },
-  { name: 'Contato', href: '/#footer' },
+  { name: 'Contato', href: '#footer' },
   {
     name: 'Faça Parte',
     href: '#',
