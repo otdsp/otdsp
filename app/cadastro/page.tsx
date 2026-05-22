@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import { 
@@ -45,20 +45,20 @@ export default function CadastroPage() {
     password: '',
     full_name: '',
     phone: '',
-    home_address: '',
-    work_address: '',
+    municipality: '',
     institution_organization: '',
     organization_type: '',
     job_title: '',
-    relationship_with_otdsp: ''
+    relationship_with_otdsp: '',
+    referral_source: ''
   })
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: any) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault()
     if (formData.organization_type === '') {
       setError('Por favor, selecione o tipo de organização.')
@@ -75,6 +75,13 @@ export default function CadastroPage() {
         options: {
           data: {
             full_name: formData.full_name,
+            phone: formData.phone,
+            municipality: formData.municipality,
+            institution_organization: formData.institution_organization,
+            organization_type: formData.organization_type,
+            job_title: formData.job_title,
+            relationship_with_otdsp: formData.relationship_with_otdsp,
+            referral_source: formData.referral_source
           }
         }
       })
@@ -83,34 +90,34 @@ export default function CadastroPage() {
 
       const user = data.user
       if (user) {
-        // Insert into user_auth (Note: This might fail if RLS is strict and trigger isn't used)
+        // Try to insert/upsert into user_auth (using upsert to avoid primary key conflict if trigger executed)
         const { error: authTableError } = await supabase
           .from('user_auth')
-          .insert({
+          .upsert({
             id: user.id,
             email: user.email,
             is_staff: false,
             is_active: true,
           })
         
-        if (authTableError) console.error('Error in user_auth insert:', authTableError)
+        if (authTableError) console.error('Error in user_auth upsert:', authTableError)
 
-        // Insert into user_profile
+        // Try to insert/upsert into user_profile (using upsert to avoid primary key conflict if trigger executed)
         const { error: profileTableError } = await supabase
           .from('user_profile')
-          .insert({
+          .upsert({
             user_id: user.id,
             full_name: formData.full_name,
             phone: formData.phone,
-            home_address: formData.home_address,
-            work_address: formData.work_address,
+            municipality: formData.municipality,
             institution_organization: formData.institution_organization,
             organization_type: formData.organization_type,
             job_title: formData.job_title,
-            relationship_with_otdsp: formData.relationship_with_otdsp
+            relationship_with_otdsp: formData.relationship_with_otdsp,
+            referral_source: formData.referral_source
           })
         
-        if (profileTableError) console.error('Error in user_profile insert:', profileTableError)
+        if (profileTableError) console.error('Error in user_profile upsert:', profileTableError)
       }
 
       setSuccess(true)
@@ -261,41 +268,55 @@ export default function CadastroPage() {
               </div>
             </div>
 
-            {/* Section: Endereços */}
-            <div>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600">
-                  <MapPin className="w-5 h-5" />
+            {/* Section: Localização e Indicação */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600">
+                    <MapPin className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-800">Localização</h2>
                 </div>
-                <h2 className="text-xl font-bold text-slate-800">Localização</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700 ml-1">Endereço Residencial</label>
+                  <label className="text-sm font-semibold text-slate-700 ml-1">Município de Sede</label>
                   <div className="relative">
                     <Home className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input 
+                      required
                       type="text"
-                      name="home_address"
-                      value={formData.home_address}
+                      name="municipality"
+                      value={formData.municipality}
                       onChange={handleChange}
-                      placeholder="Rua, Número, Bairro, Cidade"
+                      placeholder="Ex: São Paulo, Campinas, Santos"
                       className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3.5 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-400"
                     />
                   </div>
                 </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-800">Indicação</h2>
+                </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700 ml-1">Endereço de Trabalho</label>
+                  <label className="text-sm font-semibold text-slate-700 ml-1">Como nos conheceu?</label>
                   <div className="relative">
-                    <Building className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input 
-                      type="text"
-                      name="work_address"
-                      value={formData.work_address}
+                    <select 
+                      name="referral_source"
+                      value={formData.referral_source}
                       onChange={handleChange}
-                      placeholder="Instituição, Unidade, Cidade"
-                      className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3.5 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-400"
-                    />
+                      className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3.5 px-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="">Selecione uma opção...</option>
+                      <option value="Redes Sociais">Redes Sociais</option>
+                      <option value="Site Institucional">Site Institucional</option>
+                      <option value="Indicação de Colega">Indicação de Colega</option>
+                      <option value="Evento / Workshop">Evento / Workshop</option>
+                      <option value="Outros">Outros</option>
+                    </select>
                   </div>
                 </div>
               </div>
