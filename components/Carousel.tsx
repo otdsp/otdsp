@@ -34,7 +34,7 @@ const slides = [
     bg: 'bg-white',
     img: `${basePath}/carousel-3.jpg`,
     textColor: 'text-white',
-    title: 'Tenha um polo <span class="text-slate-900">tecnológico USP</span> no seu município',
+    title: 'Tenha <span class="text-slate-900">tecnologia USP</span> no seu município',
     tag: '03 / TECH',
     tagBg: 'bg-white/20 text-white border border-white/30',
     boxBg: 'bg-[#00A6FF]/95 backdrop-blur-md'
