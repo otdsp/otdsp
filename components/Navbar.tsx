@@ -11,7 +11,8 @@ import { useRouter } from 'next/navigation';
 const basePath = '';
 
 const navItems = [
-  { name: 'Home', href: '/' },
+  { name: 'Início', href: '/' },
+  { name: 'Sobre nós', href: '/sobre-nos' },
   {
     name: 'Transversais',
     href: '#',
@@ -77,6 +78,8 @@ export default function Navbar() {
   const handleLogout = async (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
     await supabase.auth.signOut();
+    setMobileMenuOpen(false);
+    setMobileExpandedIndex(null);
     router.push('/');
     router.refresh();
   };
@@ -115,17 +118,17 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Menu */}
-          <div className="hidden lg:flex items-center space-x-1">
+          <div className="hidden lg:flex flex-1 items-center justify-end gap-1">
             {dynamicNavItems.map((item, index) => (
               <div
                 key={item.name}
-                className="relative"
+                className="relative flex-none"
                 onMouseEnter={() => setHoveredIndex(index)}
                 onMouseLeave={() => setHoveredIndex(null)}
               >
                 <Link
                   href={item.href}
-                  className="px-4 py-2 flex items-center gap-1 text-[#0F172A] font-medium transition-colors hover:text-cyan-600 rounded-lg group"
+                  className="px-1.5 xl:px-2 py-2 flex items-center gap-1 text-[#0F172A] font-medium transition-colors hover:text-cyan-600 text-[14px] xl:text-[15px] tracking-wide whitespace-nowrap group"
                 >
                   {item.name}
                   {item.dropdown && (
@@ -249,6 +252,7 @@ export default function Navbar() {
                                     href={subItem.href}
                                     target={subItem.href.startsWith('http') ? "_blank" : undefined}
                                     rel={subItem.href.startsWith('http') ? "noopener noreferrer" : undefined}
+                                    onClick={() => setMobileMenuOpen(false)}
                                     className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors relative"
                                   >
                                     {subItem.icon && <subItem.icon className="w-5 h-5" />}
@@ -264,6 +268,7 @@ export default function Navbar() {
                   ) : (
                     <Link
                       href={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
                       className="block px-3 py-3 text-base font-medium text-[#0F172A] hover:bg-slate-50 hover:text-cyan-600 rounded-xl transition-colors"
                     >
                       {item.name}
