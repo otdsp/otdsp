@@ -8,7 +8,7 @@ import { useSearchParams } from 'next/navigation';
 
 function EmConstrucaoContent() {
   const searchParams = useSearchParams();
-  const section = searchParams.get('s') || 'default';
+  const section = searchParams?.get('s') || 'default';
 
   return (
     <motion.div 
