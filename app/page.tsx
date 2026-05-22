@@ -4,10 +4,10 @@ import { useEffect, useRef, MouseEvent, useState } from 'react';
 import { motion, useMotionValue, useSpring, AnimatePresence } from 'motion/react';
 import { ParticleBackground } from '../components/ParticleBackground';
 import Carousel from '../components/Carousel';
-import { Box, Layers, Activity, CheckCircle, MapPin, GraduationCap, Landmark, Microscope, Briefcase, Target, HeartPulse, BookOpen, ShieldCheck, Leaf, Pencil, Map, ChevronLeft, ChevronRight, Phone, Mail } from 'lucide-react';
+import { Box, Layers, Activity, CheckCircle, MapPin, GraduationCap, Landmark, Microscope, Briefcase, Target, HeartPulse, BookOpen, ShieldCheck, Leaf, Pencil, Map, ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 
-const basePath = '';
+const basePath = process.env.NODE_ENV === 'production' ? '/otdsp' : '';
 
 // -----------------------------------------------------------------------------
 // Soluções Strategy Block (using Case style)
@@ -67,7 +67,7 @@ function CasesCarousel() {
       category: "Tecnologia Nacional",
       categoryColor: "bg-orange-100 text-orange-900",
       title: "Projeto INSPIRE",
-      image: "case-2.jpg",
+      image: "case-2.png",
       points: [
         { iconColor: "text-orange-500", text: <span className="text-slate-700 font-medium">+ 1.000 ventiladores fabricados com tecnologia 100% brasileira, contando com o apoio de mais de 60 parceiros.</span> },
         { iconColor: "text-orange-500", text: <span className="text-slate-700 font-medium">Até novembro de 2021, o projeto já havia distribuído 825 equipamentos, atendendo 219 hospitais em 219 cidades, espalhadas por 16 estados brasileiros.</span> },
@@ -307,7 +307,7 @@ export default function Page() {
           {/* Solução 1: Left Aligned */}
           <div className="w-full relative z-10 flex">
             <SolucaoBlock 
-              imageSrc={`${basePath}/solucao-saude.jpg`}
+              imageSrc={`${basePath}/solucao-saude.png`}
               title="Saúde Digital" 
               description={<><strong>Projeto INSPIRE — Ventilador Pulmonar Emergencial:</strong> Ventilador pulmonar de baixo custo e tecnologia nacional criado pela Poli-USP, ampliando o acesso a suporte à vida em municípios remotos. <br/><br/> <strong>Projeto CROSS — Regulação de Urgências:</strong> Modernização do CROSS otimizando a regulação médica de urgências, aumentando a eficiência do atendimento municipal.</>}
               category="Saúde"
@@ -321,7 +321,7 @@ export default function Page() {
           {/* Solução 2: Right Aligned */}
           <div className="w-full relative z-20 flex">
             <SolucaoBlock 
-              imageSrc={`${basePath}/solucao-educacao.jpg`}
+              imageSrc={`${basePath}/solucao-educacao.png`}
               title="Laboratórios STEAM & Maker" 
               description={<>Voltados à integração interdisciplinar de áreas como ciências, arte e tecnologia equipados e experiências práticas em design, robótica e prototipagem que estimulam a criatividade aplicada.</>}
               category="Educação"
@@ -335,7 +335,7 @@ export default function Page() {
           {/* Solução 3: Left Aligned */}
           <div className="w-full relative z-30 flex">
             <SolucaoBlock 
-              imageSrc={`${basePath}/solucao-seguranca.jpg`}
+              imageSrc={`${basePath}/solucao-seguranca.png`}
               title="ABESE Labs - Laboratório de Experimentação" 
               description={<>Espaço avançado para testes e demonstrações de tecnologias de ponta em segurança eletrônica, desenvolvido em parceria com a ABESE, com compatibilidade total ao Programa Muralha Paulista e integração plena aos sistemas estaduais de segurança pública.</>}
               category="Segurança"
@@ -349,7 +349,7 @@ export default function Page() {
           {/* Solução 4: Right Aligned */}
           <div className="w-full relative z-40 flex">
             <SolucaoBlock 
-              imageSrc={`${basePath}/solucao-meio-ambiente.jpg`}
+              imageSrc={`${basePath}/solucao-meio-ambiente.png`}
               title="Gestão Territorial Baseada em Dados" 
               description={<>Sensores de precisão instalados no território capturam dados climáticos em tempo real — temperatura, umidade, precipitação e pressão atmosférica — , alimentando uma plataforma digital de gestão ambiental integrada.</>}
               category="Meio Ambiente"
@@ -361,6 +361,53 @@ export default function Page() {
           </div>
         </div>
       </section>
+
+      {/* 5. Footer Element */}
+      <motion.footer 
+        id="footer"
+        initial={{ opacity: 0, y: 50 }} 
+        whileInView={{ opacity: 1, y: 0 }} 
+        viewport={{ once: true, margin: "-50px" }} 
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="w-full py-12 bg-white text-[#0F172A] border-t border-slate-200 mt-12 md:mt-24"
+      >
+        <div className="max-w-7xl mx-auto w-full px-4 flex flex-col md:flex-row justify-between items-center gap-8">
+          {/* Left Side */}
+          <div className="flex flex-col items-center md:items-start text-center md:text-left gap-4">
+            <div className="flex items-center gap-3">
+              <Image src={`${basePath}/logo.png`} alt="OTDSP Logo" width={200} height={40} className="h-10 w-auto object-contain" />
+            </div>
+            <p className="text-slate-500 font-medium max-w-sm text-sm">
+              Conectando inovação, dados e desenvolvimento para o avanço dos municípios no Estado de São Paulo.
+            </p>
+          </div>
+
+          {/* Right Side */}
+          <div className="flex flex-col items-center md:items-end gap-6">
+            <div className="flex flex-wrap justify-center md:justify-end gap-4">
+              {[
+                { name: 'LinkedIn', url: 'https://www.linkedin.com/company/otdsp' },
+                { name: 'Instagram', url: 'https://www.instagram.com/otdsp.usp' }
+              ].map((social, i) => (
+                <motion.a 
+                  key={i}
+                  href={social.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="font-medium px-6 py-2.5 bg-[#0F172A] text-white hover:bg-cyan-600 hover:shadow-lg hover:shadow-cyan-600/20 rounded-full transition-all duration-300 text-sm"
+                >
+                  {social.name}
+                </motion.a>
+              ))}
+            </div>
+            <p className="text-slate-400 font-medium tracking-wide text-xs">
+              © 2026 Observatório de Transformação Digital – USP.
+            </p>
+          </div>
+        </div>
+      </motion.footer>
     </div>
   );
 }

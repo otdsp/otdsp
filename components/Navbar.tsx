@@ -8,11 +8,10 @@ import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
-const basePath = '';
+const basePath = process.env.NODE_ENV === 'production' ? '/otdsp' : '';
 
 const navItems = [
-  { name: 'Início', href: '/' },
-  { name: 'Sobre nós', href: '/sobre-nos' },
+  { name: 'Home', href: '/' },
   {
     name: 'Transversais',
     href: '#',
@@ -20,7 +19,7 @@ const navItems = [
       { name: 'Mulheres', href: '/em-construcao?s=Mulheres' },
       { name: 'Inclusão de alunos com necessidades especiais', href: '/em-construcao?s=Inclusao' },
       { name: 'Igualdade de Gênero', href: '/em-construcao?s=Igualdade' },
-      { name: 'LGBTQIA+', href: '/em-construcao?s=LGBTQIA+' },
+      { name: 'LGBTQIA+', href: '/em-construcao?s=LGBTQIA' },
     ],
   },
   {
@@ -46,11 +45,12 @@ const navItems = [
     href: '#',
     dropdown: [
       { name: 'Cadastro', href: '/cadastro', icon: UserPlus },
+      { name: 'Engajamento', href: 'https://tidycal.com/observatorioestadosp', icon: Calendar },
     ],
   },
 ];
 
-export default function Navbar() {
+export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [mobileExpandedIndex, setMobileExpandedIndex] = useState<number | null>(null);
@@ -78,8 +78,6 @@ export default function Navbar() {
   const handleLogout = async (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
     await supabase.auth.signOut();
-    setMobileMenuOpen(false);
-    setMobileExpandedIndex(null);
     router.push('/');
     router.refresh();
   };
@@ -94,12 +92,13 @@ export default function Navbar() {
         dropdown: user
           ? [
               { name: 'Meu Perfil', href: '/perfil', icon: User },
-              { name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
+              { name: 'Engajamento', href: 'https://tidycal.com/observatorioestadosp', icon: Calendar },
               { name: 'Sair', href: '#', isLogout: true, icon: LogOut },
             ]
           : [
               { name: 'Entrar', href: '/login', icon: User },
               { name: 'Cadastro', href: '/cadastro', icon: UserPlus },
+              { name: 'Engajamento', href: 'https://tidycal.com/observatorioestadosp', icon: Calendar },
             ],
       };
     }
@@ -118,17 +117,17 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Menu */}
-          <div className="hidden lg:flex flex-1 items-center justify-end gap-1">
+          <div className="hidden lg:flex items-center space-x-1">
             {dynamicNavItems.map((item, index) => (
               <div
                 key={item.name}
-                className="relative flex-none"
+                className="relative"
                 onMouseEnter={() => setHoveredIndex(index)}
                 onMouseLeave={() => setHoveredIndex(null)}
               >
                 <Link
                   href={item.href}
-                  className="px-1.5 xl:px-2 py-2 flex items-center gap-1 text-[#0F172A] font-medium transition-colors hover:text-cyan-600 text-[14px] xl:text-[15px] tracking-wide whitespace-nowrap group"
+                  className="px-4 py-2 flex items-center gap-1 text-[#0F172A] font-medium transition-colors hover:text-cyan-600 rounded-lg group"
                 >
                   {item.name}
                   {item.dropdown && (
@@ -209,8 +208,7 @@ export default function Navbar() {
             transition={{ duration: 0.3 }}
             className="lg:hidden bg-white border-b border-slate-200 overflow-hidden"
           >
-            {/* ADICIONANDO ALTURA MÁXIMA E SCROLL */}
-            <div className="px-4 pt-2 pb-6 space-y-1 sm:px-6 max-h-[calc(100vh-5rem)] overflow-y-auto">
+            <div className="px-4 pt-2 pb-6 space-y-1 sm:px-6">
               {dynamicNavItems.map((item, index) => (
                 <div key={item.name} className="py-1">
                   {item.dropdown ? (
@@ -253,7 +251,6 @@ export default function Navbar() {
                                     href={subItem.href}
                                     target={subItem.href.startsWith('http') ? "_blank" : undefined}
                                     rel={subItem.href.startsWith('http') ? "noopener noreferrer" : undefined}
-                                    onClick={() => setMobileMenuOpen(false)}
                                     className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors relative"
                                   >
                                     {subItem.icon && <subItem.icon className="w-5 h-5" />}
@@ -269,7 +266,6 @@ export default function Navbar() {
                   ) : (
                     <Link
                       href={item.href}
-                      onClick={() => setMobileMenuOpen(false)}
                       className="block px-3 py-3 text-base font-medium text-[#0F172A] hover:bg-slate-50 hover:text-cyan-600 rounded-xl transition-colors"
                     >
                       {item.name}
