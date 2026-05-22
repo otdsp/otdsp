@@ -209,7 +209,8 @@ export default function Navbar() {
             transition={{ duration: 0.3 }}
             className="lg:hidden bg-white border-b border-slate-200 overflow-hidden"
           >
-            <div className="px-4 pt-2 pb-6 space-y-1 sm:px-6">
+            {/* ADICIONANDO ALTURA MÁXIMA E SCROLL */}
+            <div className="px-4 pt-2 pb-6 space-y-1 sm:px-6 max-h-[calc(100vh-5rem)] overflow-y-auto">
               {dynamicNavItems.map((item, index) => (
                 <div key={item.name} className="py-1">
                   {item.dropdown ? (
