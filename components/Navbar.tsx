@@ -128,9 +128,16 @@ export default function Navbar() {
               >
                 <Link
                   href={item.href}
-                  className="px-1.5 xl:px-2 py-2 flex items-center text-[#0F172A] font-medium transition-colors hover:text-cyan-600 text-[14px] xl:text-[15px] tracking-wide whitespace-nowrap"
+                  className="px-1.5 xl:px-2 py-2 flex items-center gap-1 text-[#0F172A] font-medium transition-colors hover:text-cyan-600 text-[14px] xl:text-[15px] tracking-wide whitespace-nowrap group"
                 >
                   {item.name}
+                  {item.dropdown && (
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform duration-200 ${
+                        hoveredIndex === index ? 'rotate-180 text-cyan-600' : 'text-slate-400 group-hover:text-cyan-600'
+                      }`}
+                    />
+                  )}
                 </Link>
 
                 {/* Dropdown Menu */}

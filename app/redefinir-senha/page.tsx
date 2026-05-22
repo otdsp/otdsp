@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import { 
@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase'
 
 export default function RedefinirSenhaPage() {
   const router = useRouter()
+  const [checkingSession, setCheckingSession] = useState(true) // Estado para controlar o carregamento inicial da segurança
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -24,6 +25,34 @@ export default function RedefinirSenhaPage() {
     password: '',
     confirmPassword: ''
   })
+
+  useEffect(() => {
+    const verificarSessaoDeRecuperacao = async () => {
+      // Pega os dados da sessão atual criados pelo link do Supabase
+      const { data: { session } } = await supabase.auth.getSession()
+
+      // O Supabase injeta as informações no hash da URL (#access_token=...)
+      const hash = typeof window !== 'undefined' ? window.location.hash : ''
+      
+      // Valida se há uma sessão ativa E se ela veio do fluxo de recuperação de senha
+      const isRecovery = hash.includes('type=recovery') || hash.includes('error=')
+
+      if (!session && !isRecovery) {
+        // Se tentar acessar a URL diretamente sem a sessão do e-mail, manda para o login
+        router.replace('/login')
+      } else {
+        // Se houver algum erro vindo no hash do Supabase (ex: link expirado)
+        if (hash.includes('error_description=')) {
+          const params = new URLSearchParams(hash.replace('#', '?'))
+          const errorMessage = params.get('error_description') || 'O link de recuperação expirou ou é inválido.'
+          setError(decodeURIComponent(errorMessage.replace(/\+/g, ' ')))
+        }
+        setCheckingSession(false) // Libera a visualização da página com segurança
+      }
+    }
+
+    verificarSessaoDeRecuperacao()
+  }, [router])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -66,6 +95,15 @@ export default function RedefinirSenhaPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Tela de carregamento discreta enquanto valida a sessão por segurança
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-cyan-600" />
+      </div>
+    )
   }
 
   return (
@@ -156,7 +194,7 @@ export default function RedefinirSenhaPage() {
 
             <button
               type="submit"
-              disabled={loading || success}
+              disabled={loading || success || !!error} // Bloqueia o botão caso haja erro de link expirado
               className="w-full h-14 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-cyan-100 hover:shadow-cyan-200 hover:opacity-95 transition-all flex items-center justify-center gap-3 disabled:opacity-70 group"
             >
               {loading ? (
