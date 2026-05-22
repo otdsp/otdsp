@@ -28,12 +28,12 @@ interface UserProfile {
   user_id: string
   full_name: string
   phone: string
-  municipality: string
+  home_address: string
+  work_address: string
   institution_organization: string
   organization_type: string
   job_title: string
   relationship_with_otdsp: string
-  referral_source: string
 }
 
 export default function ProfilePage() {
@@ -109,12 +109,12 @@ export default function ProfilePage() {
         .update({
           full_name: profile.full_name,
           phone: profile.phone,
-          municipality: profile.municipality,
+          home_address: profile.home_address,
+          work_address: profile.work_address,
           institution_organization: profile.institution_organization,
           organization_type: profile.organization_type,
           job_title: profile.job_title,
-          relationship_with_otdsp: profile.relationship_with_otdsp,
-          referral_source: profile.referral_source
+          relationship_with_otdsp: profile.relationship_with_otdsp
         })
         .eq('user_id', session.user.id)
 
@@ -340,36 +340,31 @@ export default function ProfilePage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700 ml-1">Município de Sede</label>
-                        <div className="relative">
-                          <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                          <input 
-                            required
-                            type="text"
-                            name="municipality"
-                            value={profile?.municipality || ''}
-                            onChange={handleProfileChange}
-                            className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700 ml-1">Como nos conheceu?</label>
-                        <select 
-                          name="referral_source"
-                          value={profile?.referral_source || ''}
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-slate-700 ml-1">Endereço Residencial (Opcional)</label>
+                      <div className="relative">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                        <input 
+                          type="text"
+                          name="home_address"
+                          value={profile?.home_address || ''}
                           onChange={handleProfileChange}
-                          className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3.5 px-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all appearance-none cursor-pointer"
-                        >
-                          <option value="">Selecione uma opção...</option>
-                          <option value="Redes Sociais">Redes Sociais</option>
-                          <option value="Site Institucional">Site Institucional</option>
-                          <option value="Indicação de Colega">Indicação de Colega</option>
-                          <option value="Evento / Workshop">Evento / Workshop</option>
-                          <option value="Outros">Outros</option>
-                        </select>
+                          className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-slate-700 ml-1">Local de Trabalho</label>
+                      <div className="relative">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                        <input 
+                          type="text"
+                          name="work_address"
+                          value={profile?.work_address || ''}
+                          onChange={handleProfileChange}
+                          className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+                        />
                       </div>
                     </div>
 

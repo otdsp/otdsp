@@ -21,8 +21,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const [resetSuccess, setResetSuccess] = useState<string | null>(null)
-  const [infoMessage, setInfoMessage] = useState<string | null>(null)
 
   useEffect(() => {
     const checkSession = async () => {
@@ -34,56 +32,17 @@ export default function LoginPage() {
     checkSession()
   }, [router])
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const searchParams = new URLSearchParams(window.location.search)
-      if (searchParams.get('recovery') === 'success') {
-        const timer = setTimeout(() => {
-          setInfoMessage('Sua senha foi redefinida com sucesso! Você já pode fazer login com sua nova senha.')
-        }, 0)
-        return () => clearTimeout(timer)
-      }
-    }
-  }, [])
-
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   })
 
-  const handleResetPassword = async (e: any) => {
-    e.preventDefault()
-    setError(null)
-    setResetSuccess(null)
-    setInfoMessage(null)
-
-    const email = formData.email?.trim()
-    if (!email) {
-      setError('Por favor, informe seu e-mail para receber o link de recuperação de senha.')
-      return
-    }
-
-    setLoading(true)
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/redefinir-senha`
-      })
-      if (error) throw error
-      setResetSuccess('E-mail de recuperação enviado! Verifique sua caixa de entrada para redefinir a senha.')
-    } catch (err: any) {
-      console.error('Password reset error:', err)
-      setError(err.message || 'Erro ao enviar e-mail de recuperação. Verifique se o e-mail está correto.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleChange = (e: any) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
@@ -160,13 +119,7 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex justify-between items-center ml-1">
                 <label className="text-sm font-semibold text-slate-700">Senha</label>
-                <button
-                  type="button"
-                  onClick={handleResetPassword}
-                  className="text-xs font-bold text-cyan-600 hover:text-cyan-700 cursor-pointer focus:outline-none transition-colors"
-                >
-                  Esqueci minha senha
-                </button>
+                <Link href="#" className="text-xs font-bold text-cyan-600 hover:text-cyan-700">Esqueci a senha</Link>
               </div>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -190,28 +143,6 @@ export default function LoginPage() {
               >
                 <AlertCircle className="w-5 h-5 shrink-0" />
                 {error}
-              </motion.div>
-            )}
-
-            {resetSuccess && (
-              <motion.div 
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-[#ECFEFF] border border-[#CFFAFE] p-4 rounded-xl flex items-center gap-3 text-[#0E7490] text-sm font-medium"
-              >
-                <CheckCircle2 className="w-5 h-5 shrink-0 text-[#0891B2]" />
-                {resetSuccess}
-              </motion.div>
-            )}
-
-            {infoMessage && (
-              <motion.div 
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-green-50 border border-green-100 p-4 rounded-xl flex items-center gap-3 text-green-700 text-sm font-medium"
-              >
-                <CheckCircle2 className="w-5 h-5 shrink-0 text-green-600" />
-                {infoMessage}
               </motion.div>
             )}
 
