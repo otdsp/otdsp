@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import Image from 'next/image';
 
-const basePath = '';
+const basePath = process.env.__NEXT_ROUTER_BASEPATH || '';
 
 const slides = [
   {

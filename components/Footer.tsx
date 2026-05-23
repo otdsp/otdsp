@@ -3,6 +3,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, Phone, MapPin, Linkedin, Instagram } from 'lucide-react';
 
+const basePath = process.env.__NEXT_ROUTER_BASEPATH || '';
+
 export default function Footer() {
   return (
     <footer id="footer" className="w-full bg-white border-t border-slate-200 pt-16 pb-8 text-slate-500 font-sans mt-auto overflow-x-hidden">
@@ -12,7 +14,7 @@ export default function Footer() {
           {/* Logo & Info */}
           <div className="md:col-span-4 lg:col-span-5">
             <Link href="/" className="inline-block mb-6 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded-sm">
-              <Image src="/logo.png" alt="OTDSP Logo" width={200} height={40} className="h-10 w-auto object-contain" />
+              <Image src={`${basePath}/logo.png`} alt="OTDSP Logo" width={200} height={40} className="h-10 w-auto object-contain" />
             </Link>
             <p className="text-sm font-medium leading-relaxed max-w-sm text-slate-500">
               Conectando inovação, dados e desenvolvimento para o avanço dos municípios no Estado de São Paulo.

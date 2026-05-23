@@ -14,7 +14,6 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   images: {
-    // 3. Desativa a otimização nativa que exige servidor Node.js
     unoptimized: true, 
     remotePatterns: [
       {
