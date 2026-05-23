@@ -4,8 +4,6 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import { 
-  User, 
-  Mail, 
   Lock, 
   ChevronRight,
   Loader2,
@@ -16,99 +14,96 @@ import {
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
-export default function LoginPage() {
+export default function RedefinirSenhaPage() {
   const router = useRouter()
+  const [checkingSession, setCheckingSession] = useState(true) // Estado para controlar o carregamento inicial da segurança
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const [resetSuccess, setResetSuccess] = useState<string | null>(null)
-  const [infoMessage, setInfoMessage] = useState<string | null>(null)
-
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        router.push('/perfil')
-      }
-    }
-    checkSession()
-  }, [router])
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const searchParams = new URLSearchParams(window.location.search)
-      if (searchParams.get('recovery') === 'success') {
-        const timer = setTimeout(() => {
-          setInfoMessage('Sua senha foi redefinida com sucesso! Você já pode fazer login com sua nova senha.')
-        }, 0)
-        return () => clearTimeout(timer)
-      }
-    }
-  }, [])
 
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    password: '',
+    confirmPassword: ''
   })
 
-  const handleResetPassword = async (e: any) => {
-    e.preventDefault()
-    setError(null)
-    setResetSuccess(null)
-    setInfoMessage(null)
+  useEffect(() => {
+    const verificarSessaoDeRecuperacao = async () => {
+      // Pega os dados da sessão atual criados pelo link do Supabase
+      const { data: { session } } = await supabase.auth.getSession()
 
-    const email = formData.email?.trim()
-    if (!email) {
-      setError('Por favor, informe seu e-mail para receber o link de recuperação de senha.')
-      return
+      // O Supabase injeta as informações no hash da URL (#access_token=...)
+      const hash = typeof window !== 'undefined' ? window.location.hash : ''
+      
+      // Valida se há uma sessão ativa E se ela veio do fluxo de recuperação de senha
+      const isRecovery = hash.includes('type=recovery') || hash.includes('error=')
+
+      if (!session && !isRecovery) {
+        // Se tentar acessar a URL diretamente sem a sessão do e-mail, manda para o login
+        router.replace('/login')
+      } else {
+        // Se houver algum erro vindo no hash do Supabase (ex: link expirado)
+        if (hash.includes('error_description=')) {
+          const params = new URLSearchParams(hash.replace('#', '?'))
+          const errorMessage = params.get('error_description') || 'O link de recuperação expirou ou é inválido.'
+          setError(decodeURIComponent(errorMessage.replace(/\+/g, ' ')))
+        }
+        setCheckingSession(false) // Libera a visualização da página com segurança
+      }
     }
 
-    setLoading(true)
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/redefinir-senha`
-      })
-      if (error) throw error
-      setResetSuccess('E-mail de recuperação enviado! Verifique sua caixa de entrada para redefinir a senha.')
-    } catch (err: any) {
-      console.error('Password reset error:', err)
-      setError(err.message || 'Erro ao enviar e-mail de recuperação. Verifique se o e-mail está correto.')
-    } finally {
-      setLoading(false)
-    }
-  }
+    verificarSessaoDeRecuperacao()
+  }, [router])
 
-  const handleChange = (e: any) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
+    if (formData.password.length < 6) {
+      setError('A senha deve conter pelo menos 6 caracteres.')
+      setLoading(false)
+      return
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('As senhas digitadas não coincidem.')
+      setLoading(false)
+      return
+    }
+
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
+      const { error } = await supabase.auth.updateUser({
+        password: formData.password
       })
-      
+
       if (error) {
         throw error
       }
 
       setSuccess(true)
       setTimeout(() => {
-        router.push('/perfil')
-        router.refresh()
+        router.push('/login?recovery=success')
       }, 1500)
     } catch (err: any) {
-      console.error('Login error:', err)
-      setError(err.message || 'Credenciais inválidas. Tente novamente.')
+      console.error('Password update error:', err)
+      setError(err.message || 'Ocorreu um erro ao atualizar sua senha. Tente novamente.')
     } finally {
       setLoading(false)
     }
+  }
+
+  // Tela de carregamento discreta enquanto valida a sessão por segurança
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-cyan-600" />
+      </div>
+    )
   }
 
   return (
@@ -120,11 +115,11 @@ export default function LoginPage() {
       <div className="max-w-md w-full relative z-10">
         {/* Back Link */}
         <Link 
-          href="/" 
+          href="/login" 
           className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-600 transition-colors mb-8 group font-medium"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Voltar para o Início
+          Voltar para o Login
         </Link>
 
         <motion.div 
@@ -134,40 +129,15 @@ export default function LoginPage() {
         >
           <div className="text-center mb-10">
             <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-cyan-100 mx-auto mb-6">
-              <User className="w-8 h-8" />
+              <Lock className="w-8 h-8" />
             </div>
-            <h1 className="text-3xl font-bold text-[#0F172A] tracking-tight">Acesso ao Painel</h1>
-            <p className="text-slate-500 mt-2 font-medium">Bem-vindo de volta ao Observatório.</p>
+            <h1 className="text-3xl font-bold text-[#0F172A] tracking-tight">Redefinir Senha</h1>
+            <p className="text-slate-500 mt-2 font-medium">Informe e confirme sua nova senha de acesso.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700 ml-1">E-mail Institucional</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input 
-                  required
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="seu@email.com"
-                  className="w-full bg-slate-50 border-slate-200 border rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-300"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between items-center ml-1">
-                <label className="text-sm font-semibold text-slate-700">Senha</label>
-                <button
-                  type="button"
-                  onClick={handleResetPassword}
-                  className="text-xs font-bold text-cyan-600 hover:text-cyan-700 cursor-pointer focus:outline-none transition-colors"
-                >
-                  Esqueci minha senha
-                </button>
-              </div>
+              <label className="text-sm font-semibold text-slate-700 ml-1">Nova Senha</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input 
@@ -176,7 +146,23 @@ export default function LoginPage() {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="••••••••"
+                  placeholder="Mínimo de 6 caracteres"
+                  className="w-full bg-slate-50 border-slate-200 border rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-300"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-700 ml-1">Confirmar Nova Senha</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input 
+                  required
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Confirme a nova senha"
                   className="w-full bg-slate-50 border-slate-200 border rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-300"
                 />
               </div>
@@ -193,28 +179,6 @@ export default function LoginPage() {
               </motion.div>
             )}
 
-            {resetSuccess && (
-              <motion.div 
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-[#ECFEFF] border border-[#CFFAFE] p-4 rounded-xl flex items-center gap-3 text-[#0E7490] text-sm font-medium"
-              >
-                <CheckCircle2 className="w-5 h-5 shrink-0 text-[#0891B2]" />
-                {resetSuccess}
-              </motion.div>
-            )}
-
-            {infoMessage && (
-              <motion.div 
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-green-50 border border-green-100 p-4 rounded-xl flex items-center gap-3 text-green-700 text-sm font-medium"
-              >
-                <CheckCircle2 className="w-5 h-5 shrink-0 text-green-600" />
-                {infoMessage}
-              </motion.div>
-            )}
-
             <AnimatePresence>
               {success && (
                 <motion.div 
@@ -223,40 +187,31 @@ export default function LoginPage() {
                   className="bg-green-50 border border-green-100 p-4 rounded-xl flex items-center gap-3 text-green-600 text-sm font-medium overflow-hidden"
                 >
                   <CheckCircle2 className="w-5 h-5 shrink-0" />
-                  Acesso autorizado! Redirecionando...
+                  Senha atualizada com sucesso! Redirecionando...
                 </motion.div>
               )}
             </AnimatePresence>
 
             <button
               type="submit"
-              disabled={loading || success}
+              disabled={loading || success || !!error} // Bloqueia o botão caso haja erro de link expirado
               className="w-full h-14 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-cyan-100 hover:shadow-cyan-200 hover:opacity-95 transition-all flex items-center justify-center gap-3 disabled:opacity-70 group"
             >
               {loading ? (
                 <>
                   <Loader2 className="w-6 h-6 animate-spin" />
-                  Verificando...
+                  Atualizando...
                 </>
               ) : success ? (
                 <CheckCircle2 className="w-6 h-6" />
               ) : (
                 <>
-                  Entrar no Sistema
+                  Atualizar Senha
                   <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
             </button>
           </form>
-
-          <div className="mt-10 pt-8 border-t border-slate-100 text-center">
-            <p className="text-slate-500 text-sm font-medium">
-              Ainda não é membro?{' '}
-              <Link href="/cadastro" className="text-cyan-600 hover:text-cyan-700 font-bold">
-                Crie sua conta aqui
-              </Link>
-            </p>
-          </div>
         </motion.div>
 
         {/* Footer Info */}
