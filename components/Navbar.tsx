@@ -45,7 +45,6 @@ const navItems = [
     name: 'Faça Parte',
     href: '#',
     dropdown: [
-      { name: 'Cadastro', href: '/cadastro', icon: UserPlus },
     ],
   },
 ];
@@ -100,6 +99,7 @@ export default function Navbar() {
           : [
               { name: 'Entrar', href: '/login', icon: User },
               { name: 'Cadastro', href: '/cadastro', icon: UserPlus },
+              { name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
             ],
       };
     }
