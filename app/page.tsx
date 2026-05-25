@@ -7,7 +7,7 @@ import Carousel from '../components/Carousel';
 import { Box, Layers, Activity, CheckCircle, MapPin, GraduationCap, Landmark, Microscope, Briefcase, Target, HeartPulse, BookOpen, ShieldCheck, Leaf, Pencil, Map, ChevronLeft, ChevronRight, Phone, Mail } from 'lucide-react';
 import Image from 'next/image';
 
-const basePath = '';
+const basePath = process.env.__NEXT_ROUTER_BASEPATH || '';
 
 // -----------------------------------------------------------------------------
 // Soluções Strategy Block (using Case style)

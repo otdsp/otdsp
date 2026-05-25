@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { motion } from 'motion/react'
 import Image from 'next/image'
+
+const basePath = process.env.__NEXT_ROUTER_BASEPATH || '';
 import { 
   Mail, Phone, MapPin, Quote, ClipboardList, Handshake, Cog, X, 
   Users, Landmark, GraduationCap, Factory, Leaf 
@@ -45,7 +47,7 @@ export default function SobreNosPage() {
         {/* Background Image with Overlay */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/universidade.jpg"
+            src={`${basePath}/universidade.jpg`}
             alt="Universidade USP"
             fill
             className="object-cover"
@@ -217,7 +219,7 @@ export default function SobreNosPage() {
                 {/* Center Circle with Logo */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-full z-20 flex items-center justify-center shadow-lg border border-slate-100 p-4 w-[110px] h-[110px] md:w-[130px] md:h-[130px]">
                   <div className="relative w-16 h-16 md:w-20 md:h-20">
-                    <Image src="/logo-quadrado.png" alt="OTDSP Logo" fill className="object-contain" />
+                    <Image src={`${basePath}/logo-quadrado.png`} alt="OTDSP Logo" fill className="object-contain" />
                   </div>
                 </div>
 

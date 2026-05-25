@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
-const basePath = '';
+const basePath = process.env.__NEXT_ROUTER_BASEPATH || '';
 
 const navItems = [
   { name: 'Início', href: '/' },
