@@ -1,12 +1,12 @@
 -- =====================================================================
--- OTDSP DATABASE SCHEMA & SECURITY POLICIES (PRISTINE INITIAL SETUP)
+-- OTDSP DATABASE SCHEMA & SECURITY POLICIES (COMPLETELY CLEAN INITIAL SETUP)
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- 1. DEFINIÇÕES DAS TABELAS
+-- 1. DEFINIÇÕES DAS TABELAS (ORDEM CRONOLÓGICA DE DEPENDÊNCIAS)
 -- ---------------------------------------------------------------------
 
--- Tabela: user_auth (Dados internos de controle de acesso)
+-- Tabela: user_auth (Controle interno de acessos)
 CREATE TABLE public.user_auth (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT UNIQUE NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE public.user_auth (
     date_joined TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Tabela: user_profile (Informações cadastrais e de perfil)
+-- Tabela: user_profile (Informações de perfil cadastral)
 CREATE TABLE public.user_profile (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID UNIQUE NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -29,30 +29,32 @@ CREATE TABLE public.user_profile (
     referral_source TEXT
 );
 
--- Tabela: engagements (Eventos e Engajamentos principais)
+-- Tabela: engagements (Iniciativas e Eventos Principais)
 CREATE TABLE public.engagements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
+    description TEXT,
     event_date TIMESTAMPTZ,
     location TEXT,
-    description TEXT,
-    feedback TEXT,
-    interests TEXT[] DEFAULT '{}',
-    technologies TEXT[] DEFAULT '{}',
-    public_policies TEXT[] DEFAULT '{}',
-    planned_activities TEXT[] DEFAULT '{}',
     estimated_duration NUMERIC,
-    status TEXT DEFAULT 'planned',
+    status TEXT DEFAULT 'Planejado',
     created_by UUID REFERENCES auth.users(id) DEFAULT auth.uid(),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Tabela: engagement_participants (Tabela Intermediária / Relacionamento n:n)
+-- Tabela: engagement_participants (Lista de Presença Segura e Privada)
 CREATE TABLE public.engagement_participants (
     engagement_id UUID REFERENCES public.engagements(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_email TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (engagement_id, user_id)
+    PRIMARY KEY (engagement_id, user_email)
+);
+
+-- Tabela: engagement_staff_notes (Anotações Confidenciais de Gestão)
+CREATE TABLE public.engagement_staff_notes (
+    engagement_id UUID PRIMARY KEY REFERENCES public.engagements(id) ON DELETE CASCADE,
+    notes TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ---------------------------------------------------------------------
@@ -62,10 +64,13 @@ ALTER TABLE public.user_auth ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_profile ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.engagements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.engagement_participants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.engagement_staff_notes ENABLE ROW LEVEL SECURITY;
 
 -- ---------------------------------------------------------------------
--- 3. FUNÇÕES UTILITÁRIAS
+-- 3. FUNÇÕES UTILITÁRIAS E DE VALIDAÇÃO
 -- ---------------------------------------------------------------------
+
+-- Função para verificar se o usuário é Staff
 CREATE OR REPLACE FUNCTION public.is_staff()
 RETURNS BOOLEAN AS $$
 BEGIN
@@ -75,6 +80,17 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Função para travar alteração de Status (Apenas Staff)
+CREATE OR REPLACE FUNCTION public.check_status_change()
+RETURNS trigger AS $$
+BEGIN
+    IF NEW.status IS DISTINCT FROM OLD.status AND NOT public.is_staff() THEN
+        RAISE EXCEPTION 'Apenas membros da Staff podem alterar o status de um engajamento.';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 -- ---------------------------------------------------------------------
 -- 4. REGRAS DE CONTROLE DE ACESSO (POLÍTICAS RLS)
@@ -91,18 +107,34 @@ FOR ALL TO authenticated
 USING (user_id = auth.uid() OR public.is_staff())
 WITH CHECK (user_id = auth.uid() OR public.is_staff());
 
+-- Políticas para: engagement_staff_notes (Confidencialidade Total)
+CREATE POLICY "staff_notes_all_policy" ON public.engagement_staff_notes
+FOR ALL TO authenticated
+USING (public.is_staff())
+WITH CHECK (public.is_staff());
+
 -- Políticas para: engagement_participants
 CREATE POLICY "eng_part_select_policy" ON public.engagement_participants
 FOR SELECT TO authenticated
-USING (user_id = auth.uid() OR public.is_staff());
+USING ((auth.jwt() ->> 'email') = user_email OR public.is_staff());
 
--- Políticas para: engagements (Separação Granular de Privilégios)
+CREATE POLICY "eng_part_insert_policy" ON public.engagement_participants
+FOR INSERT TO authenticated
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM public.engagements 
+        WHERE id = engagement_id 
+        AND (created_by = auth.uid() OR public.is_staff())
+    )
+);
+
+-- Políticas para: engagements (Controle Granular com Trava de Tempo)
 CREATE POLICY "engagement_select_policy" ON public.engagements
 FOR SELECT TO authenticated 
 USING (
     EXISTS (
         SELECT 1 FROM public.engagement_participants 
-        WHERE engagement_id = id AND user_id = auth.uid()
+        WHERE engagement_id = id AND user_email = (auth.jwt() ->> 'email')
     )
     OR created_by = auth.uid()
     OR public.is_staff()
@@ -117,20 +149,40 @@ WITH CHECK (
 CREATE POLICY "engagement_update_policy" ON public.engagements
 FOR UPDATE TO authenticated
 USING (
-    EXISTS (
-        SELECT 1 FROM public.engagement_participants 
-        WHERE engagement_id = id AND user_id = auth.uid()
+    public.is_staff()
+    OR 
+    (
+        (
+            created_by = auth.uid()
+            OR EXISTS (
+                SELECT 1 FROM public.engagement_participants 
+                WHERE engagement_id = id AND user_email = (auth.jwt() ->> 'email')
+            )
+        )
+        AND 
+        (
+            event_date IS NULL 
+            OR (event_date + (COALESCE(estimated_duration, 0) * interval '1 hour') >= NOW())
+        )
     )
-    OR created_by = auth.uid()
-    OR public.is_staff()
 )
 WITH CHECK (
-    EXISTS (
-        SELECT 1 FROM public.engagement_participants 
-        WHERE engagement_id = id AND user_id = auth.uid()
+    public.is_staff()
+    OR 
+    (
+        (
+            created_by = auth.uid()
+            OR EXISTS (
+                SELECT 1 FROM public.engagement_participants 
+                WHERE engagement_id = id AND user_email = (auth.jwt() ->> 'email')
+            )
+        )
+        AND 
+        (
+            event_date IS NULL 
+            OR (event_date + (COALESCE(estimated_duration, 0) * interval '1 hour') >= NOW())
+        )
     )
-    OR created_by = auth.uid()
-    OR public.is_staff()
 );
 
 CREATE POLICY "engagement_delete_policy" ON public.engagements
@@ -138,12 +190,19 @@ FOR DELETE TO authenticated
 USING (public.is_staff());
 
 -- ---------------------------------------------------------------------
--- 5. AUTOMAÇÃO DE CRIAÇÃO DE PERFIL (TRIGGER SERVER-SIDE)
+-- 5. CONFIGURAÇÃO DOS GATILHOS (TRIGGERS)
 -- ---------------------------------------------------------------------
+
+-- Trigger 1: Validação de Status em Engagements
+CREATE TRIGGER enforce_staff_status_update
+    BEFORE UPDATE ON public.engagements
+    FOR EACH ROW EXECUTE FUNCTION public.check_status_change();
+
+-- Função de automação para novos usuários do sistema (Cadastro público)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  -- Criação automática do registro de autenticação (is_staff sempre falso no cadastro público)
+  -- Criação controlada na user_auth (is_staff sempre injetado como FALSE por segurança)
   INSERT INTO public.user_auth (id, email, is_staff, is_active)
   VALUES (
     new.id, 
@@ -154,7 +213,7 @@ BEGIN
   ON CONFLICT (id) DO UPDATE SET
     email = EXCLUDED.email;
 
-  -- Criação automática do perfil puxando os metadados enviados no cadastro do Next.js
+  -- Criação controlada do perfil com metadados do Next.js
   INSERT INTO public.user_profile (
     user_id,
     full_name,
@@ -191,7 +250,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Vinculando o Trigger à tabela nativa auth.users do Supabase
+-- Trigger 2: Espelhamento automático de novos cadastros da auth.users
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

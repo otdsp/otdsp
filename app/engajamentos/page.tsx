@@ -20,12 +20,11 @@ import {
   Heart,
   Pencil,
   Trash2,
-  Lock // Novo ícone para indicar campo bloqueado
+  Lock
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { addParticipantsToEngagement } from '@/app/actions' 
 
-// Interface atualizada para refletir o relacionamento do Supabase
+// Interface limpa e sincronizada com o banco de dados atual
 interface Engagement {
   id: string
   title: string
@@ -39,7 +38,6 @@ interface Engagement {
   planned_activities: string[]
   estimated_duration: number
   created_by: string
-  // Dados relacionais que vêm das novas tabelas intermediárias
   engagement_participants?: { user_email: string }[]
   engagement_staff_notes?: { notes: string } | null
 }
@@ -70,7 +68,7 @@ export default function EngajamentosPage() {
     event_date: '',
     location: '',
     status: 'Planejado',
-    feedback: '', // Este campo guardará a nota administrativa da Staff
+    feedback: '',
     estimated_duration: '',
     interests: [] as string[],
     technologies: [] as string[],
@@ -79,7 +77,7 @@ export default function EngajamentosPage() {
     participants: [] as string[]
   })
 
-  // Consulta Relacional Avançada (Puxa dados cruzados respeitando o RLS)
+  // Busca Avançada Relacional
   const fetchEngajamentos = async () => {
     setLoading(true)
     const { data, error } = await supabase
@@ -94,7 +92,6 @@ export default function EngajamentosPage() {
     if (error) {
       console.error('Error fetching engagements:', error)
     } else {
-      // Ajusta o formato para lidar com o retorno de objeto único do Supabase
       const formattedData = (data || []).map((eng: any) => ({
         ...eng,
         engagement_staff_notes: Array.isArray(eng.engagement_staff_notes) 
@@ -163,13 +160,13 @@ export default function EngajamentosPage() {
       event_date: eng.event_date ? new Date(eng.event_date).toISOString().slice(0, 16) : '',
       location: eng.location,
       status: eng.status || 'Planejado',
-      feedback: eng.engagement_staff_notes?.notes || '', // Puxa da tabela de notas
+      feedback: eng.engagement_staff_notes?.notes || '',
       estimated_duration: eng.estimated_duration ? eng.estimated_duration.toString() : '',
       interests: eng.interests || [],
       technologies: eng.technologies || [],
       public_policies: eng.public_policies || [],
       planned_activities: eng.planned_activities || [],
-      participants: [] // Inicia limpo para novos convites
+      participants: [] // Começa limpo para receber novos convidados
     })
     setShowForm(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -189,7 +186,7 @@ export default function EngajamentosPage() {
     setIsSubmitting(true)
     setMessage(null)
 
-    // Dados da tabela principal (comum a todos)
+    // Payload limpo sem referências à antiga coluna 'participants'
     const payload: any = {
       title: formData.title,
       description: formData.description,
@@ -202,7 +199,7 @@ export default function EngajamentosPage() {
       planned_activities: formData.planned_activities,
     }
 
-    // Apenas Staff pode injetar alteração de Status via payload
+    // Controle rígido de payload para status
     if (isStaff || !editingId) {
       payload.status = formData.status
     }
@@ -210,6 +207,7 @@ export default function EngajamentosPage() {
     let result;
     let currentEngagementId = editingId;
 
+    // 1. Gravação do Engajamento Principal
     if (editingId) {
       result = await supabase.from('engagements').update(payload).eq('id', editingId).select()
     } else {
@@ -220,19 +218,26 @@ export default function EngajamentosPage() {
     if (result.error) {
       setMessage({ type: 'error', text: 'Erro ao salvar: ' + result.error.message })
     } else {
-      // 1. Gravação das Notas confidenciais (Exclusivo para Staff)
+      // 2. Gravação das Notas Confidenciais (Apenas se for Staff)
       if (isStaff && currentEngagementId) {
         await supabase
           .from('engagement_staff_notes')
           .upsert({ engagement_id: currentEngagementId, notes: formData.feedback })
       }
 
-      // 2. Vinculação segura de participantes via Action padrão
+      // 3. Gravação Direta de Participantes no Front-end (Opção 1 Funcional!)
       if (formData.participants.length > 0 && currentEngagementId) {
-        try {
-          await addParticipantsToEngagement(currentEngagementId, formData.participants)
-        } catch (err) {
-          console.error(err)
+        const participantsData = formData.participants.map(email => ({
+          engagement_id: currentEngagementId,
+          user_email: email.trim().toLowerCase()
+        }))
+
+        const { error: partError } = await supabase
+          .from('engagement_participants')
+          .insert(participantsData)
+
+        if (partError) {
+          console.error("Erro ao vincular e-mails dos participantes:", partError.message)
         }
       }
 
@@ -297,17 +302,13 @@ export default function EngajamentosPage() {
                         <textarea name="description" value={formData.description} onChange={handleInputChange} rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none resize-none" />
                       </div>
 
-                      {/* EDIÇÃO DE STATUS: Exibido APENAS se o usuário logado for da Staff */}
+                      {/* UX Inteligente: O Status e o Feedback somem completamente para usuários comuns */}
                       {editingId && isStaff && (
                         <div className="space-y-6 pt-4 border-t border-slate-100">
                           <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700 ml-1">
-                              Status do Engajamento (Apenas Staff)
-                            </label>
+                            <label className="text-sm font-semibold text-slate-700 ml-1">Status do Engajamento (Apenas Staff)</label>
                             <select 
-                              name="status" 
-                              value={formData.status} 
-                              onChange={handleInputChange}
+                              name="status" value={formData.status} onChange={handleInputChange}
                               className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none font-medium cursor-pointer"
                             >
                               <option value="Planejado">Planejado</option>
@@ -316,27 +317,19 @@ export default function EngajamentosPage() {
                               <option value="Concluído">Concluído</option>
                             </select>
                           </div>
-                        </div>
-                      )}
-
-                      {/* ANOTAÇÕES DE FEEDBACK: Também exclusivo para a Staff */}
-                      {editingId && isStaff && (
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-cyan-700 ml-1 font-bold">
-                            Anotações Internas / Feedback (Apenas Staff)
-                          </label>
-                          <textarea 
-                            name="feedback" 
-                            value={formData.feedback} 
-                            onChange={handleInputChange}
-                            placeholder="Notas exclusivas da equipa de gestão..."
-                            rows={3} 
-                            className="w-full bg-cyan-50/30 border border-cyan-100 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none resize-none font-medium"
-                          />
+                          
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-cyan-700 ml-1 font-bold">Anotações Internas / Feedback (Apenas Staff)</label>
+                            <textarea 
+                              name="feedback" value={formData.feedback} onChange={handleInputChange}
+                              placeholder="Notas exclusivas da equipa de gestão..." rows={3} 
+                              className="w-full bg-cyan-50/30 border border-cyan-100 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none resize-none font-medium"
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
@@ -399,7 +392,6 @@ export default function EngajamentosPage() {
         {/* Existing List */}
         <div className="bg-white/40 backdrop-blur-md rounded-[2.5rem] border border-white p-2 mt-8">
           <div className="bg-white rounded-[2rem] shadow-sm p-8 md:p-12 min-h-[500px]">
-            {/* Filtros de busca restaurados */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-12">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-800"><Calendar className="w-6 h-6" /></div>
@@ -431,35 +423,28 @@ export default function EngajamentosPage() {
                     return matchesStatus && (!searchTerm || eng.title.toLowerCase().includes(searchLower) || eng.description.toLowerCase().includes(searchLower))
                   })
                   .map((eng) => {
-                    
-                    // NOVO: Lógica de cálculo de expiração do evento
-                    // Transforma a data do banco em milissegundos e soma as horas de duração
+                    // Trava de Tempo: Verifica se a data atual passou do término do evento
                     const endTimeMs = eng.event_date 
                       ? new Date(eng.event_date).getTime() + ((eng.estimated_duration || 0) * 60 * 60 * 1000)
                       : null;
                     
-                    // Verifica se a data atual já ultrapassou a data de conclusão
                     const isPast = endTimeMs ? endTimeMs < Date.now() : false;
-                    
-                    // Pode editar se for da Staff OU se o evento ainda não passou
                     const canEdit = isStaff || !isPast;
 
                     return (
                       <motion.div key={eng.id} className="bg-white border border-slate-100 hover:border-cyan-200 hover:shadow-xl rounded-3xl p-8 transition-all duration-300">
                         <div className="flex justify-between items-start mb-6">
-                          <span className="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-cyan-50 text-cyan-600">
-                            {eng.status}
-                          </span>
+                          <span className="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-cyan-50 text-cyan-600">{eng.status}</span>
                           <div className="flex items-center gap-3">
                             
-                            {/* BOTÃO DE EDITAR: Só aparece se 'canEdit' for verdadeiro */}
+                            {/* O Botão Editar só renderiza se estiver no prazo ou for Staff */}
                             {canEdit && (
                               <button onClick={() => handleEdit(eng)} className="text-xs font-bold text-slate-500 hover:text-cyan-600 transition-colors flex items-center gap-1">
                                 <Pencil className="w-3.5 h-3.5" /> Editar
                               </button>
                             )}
 
-                            {/* AVISO DE BLOQUEIO: Informa ao usuário que o evento foi encerrado */}
+                            {/* Tag de bloqueio exibida para o usuário comum se o prazo expirou */}
                             {!canEdit && (
                               <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md">
                                 <Lock className="w-3 h-3" /> Encerrado
@@ -478,7 +463,7 @@ export default function EngajamentosPage() {
                         <h3 className="text-2xl font-bold text-slate-900 mb-2">{eng.title}</h3>
                         <p className="text-slate-500 text-sm mb-4 line-clamp-2">{eng.description}</p>
                         
-                        {/* EXIBIÇÃO DE NOTAS CONFIDENCIAIS DA STAFF */}
+                        {/* Notas Administrativas confidenciais */}
                         {eng.engagement_staff_notes?.notes && (
                           <div className="mb-4 p-4 bg-cyan-50/20 rounded-xl border border-cyan-100/50">
                             <p className="text-[10px] font-black uppercase tracking-widest text-cyan-600 mb-1">Notas Administrativas (Staff)</p>
@@ -486,7 +471,7 @@ export default function EngajamentosPage() {
                           </div>
                         )}
 
-                        {/* LISTA DE PARTICIPANTES VISÍVEIS */}
+                        {/* Participantes vinculados (Filtrado automaticamente via RLS no banco) */}
                         {eng.engagement_participants && eng.engagement_participants.length > 0 && (
                           <div className="mb-6">
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-1">
@@ -507,8 +492,8 @@ export default function EngajamentosPage() {
                           <span className="flex items-center gap-1 text-cyan-600"><MapPin className="w-4 h-4" /> {eng.location}</span>
                         </div>
                       </motion.div>
-                    ); // <-- Correção aqui
-                  })   // <-- E aqui
+                    );
+                  })
                 }
               </div>
             )}
