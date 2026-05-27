@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X, ChevronDown, UserPlus, User, LogOut, Calendar, ChartColumn} from 'lucide-react';
+import { Menu, X, ChevronDown, UserPlus, User, LogOut, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
@@ -40,11 +40,11 @@ const navItems = [
       { name: 'Meio Ambiente', href: '/em-construcao?s=MeioAmbiente' },
     ],
   },
-  { name: 'Contato', href: '#footer' },
   {
-    name: 'Acessos',
+    name: 'Faça Parte',
     href: '#',
     dropdown: [
+      { name: 'Cadastro', href: '/cadastro', icon: UserPlus },
     ],
   },
 ];
@@ -54,53 +54,19 @@ export default function Navbar() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [mobileExpandedIndex, setMobileExpandedIndex] = useState<number | null>(null);
   const [user, setUser] = useState<any>(null);
-  const [isStaff, setIsStaff] = useState<boolean>(false); // NOVO: Estado para controlar se é Staff
   
   const router = useRouter();
 
   useEffect(() => {
-    const checkStaffStatus = async (userId: string) => {
-      try {
-        const { data, error } = await supabase
-          .from('user_auth')
-          .select('is_staff')
-          .eq('id', userId)
-          .single();
-
-        if (data && !error) {
-          setIsStaff(data.is_staff);
-        } else {
-          setIsStaff(false);
-        }
-      } catch (err) {
-        console.error("Erro ao verificar status de staff:", err);
-        setIsStaff(false);
-      }
-    };
-
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      
-      if (currentUser) {
-        await checkStaffStatus(currentUser.id);
-      } else {
-        setIsStaff(false);
-      }
+      setUser(session?.user ?? null);
     };
 
     checkUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      
-      if (currentUser) {
-        await checkStaffStatus(currentUser.id);
-      } else {
-        setIsStaff(false);
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
     });
 
     return () => {
@@ -113,31 +79,26 @@ export default function Navbar() {
     await supabase.auth.signOut();
     setMobileMenuOpen(false);
     setMobileExpandedIndex(null);
-    setIsStaff(false); // Reseta o estado ao deslogar
     router.push('/');
     router.refresh();
   };
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
 
-  // Dynamic menu items based on auth state and staff status
+  // Dynamic menu items based on auth state
   const dynamicNavItems = navItems.map((item) => {
-    if (item.name === 'Acessos') {
-      const loggedInDropdown = [
-        { name: 'Meu Perfil', href: '/perfil', icon: User },
-        ...(isStaff ? [{ name: 'Indicadores', href: '/indicadores', icon: ChartColumn }] : []),
-        { name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
-        { name: 'Sair', href: '#', isLogout: true, icon: LogOut },
-      ];
-
+    if (item.name === 'Faça Parte') {
       return {
         ...item,
         dropdown: user
-          ? loggedInDropdown
+          ? [
+              { name: 'Meu Perfil', href: '/perfil', icon: User },
+              { name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
+              { name: 'Sair', href: '#', isLogout: true, icon: LogOut },
+            ]
           : [
               { name: 'Entrar', href: '/login', icon: User },
               { name: 'Cadastro', href: '/cadastro', icon: UserPlus },
-              { name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
             ],
       };
     }
@@ -149,10 +110,14 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20">
           <div className="flex items-center">
-            {/* Logo */}
-            <Link href="/" className="flex-shrink-0 flex items-center gap-2">
-              <Image src={`${basePath}/logo.png`} alt="OTDSP Logo" width={200} height={40} className="h-10 w-auto object-contain" />
-            </Link>
+            {/* Logo Group */}
+            <div className="flex-shrink-0 flex items-center select-none max-w-[70vw] sm:max-w-none">
+              <Link href="/" className="flex items-center gap-2 md:gap-4">
+                <Image src={`${basePath}/logo.png`} alt="OTDSP Logo" width={200} height={40} className="h-8 md:h-10 w-auto object-contain" />
+                <div className="h-6 md:h-8 w-px bg-slate-200/80 shrink-0" />
+                <Image src={`${basePath}/inovausp.png`} alt="Inova USP Logo" width={280} height={56} className="h-10 md:h-14 w-auto object-contain" />
+              </Link>
+            </div>
           </div>
 
           {/* Desktop Menu */}
@@ -169,7 +134,7 @@ export default function Navbar() {
                   className="px-1.5 xl:px-2 py-2 flex items-center gap-1 text-[#0F172A] font-medium transition-colors hover:text-cyan-600 text-[14px] xl:text-[15px] tracking-wide whitespace-nowrap group"
                 >
                   {item.name}
-                  {item.dropdown && item.dropdown.length > 0 && (
+                  {item.dropdown && (
                     <ChevronDown
                       className={`w-4 h-4 transition-transform duration-200 ${
                         hoveredIndex === index ? 'rotate-180 text-cyan-600' : 'text-slate-400 group-hover:text-cyan-600'
@@ -179,7 +144,7 @@ export default function Navbar() {
                 </Link>
 
                 {/* Dropdown Menu */}
-                {item.dropdown && item.dropdown.length > 0 && (
+                {item.dropdown && (
                   <AnimatePresence>
                     {hoveredIndex === index && (
                       <motion.div
@@ -247,10 +212,11 @@ export default function Navbar() {
             transition={{ duration: 0.3 }}
             className="lg:hidden bg-white border-b border-slate-200 overflow-hidden"
           >
+            {/* ADICIONANDO ALTURA MÁXIMA E SCROLL */}
             <div className="px-4 pt-2 pb-6 space-y-1 sm:px-6 max-h-[calc(100vh-5rem)] overflow-y-auto">
               {dynamicNavItems.map((item, index) => (
                 <div key={item.name} className="py-1">
-                  {item.dropdown && item.dropdown.length > 0 ? (
+                  {item.dropdown ? (
                     <>
                       <button
                         onClick={() =>
