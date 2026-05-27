@@ -19,7 +19,9 @@ import {
   AlertCircle,
   ChevronRight,
   LogOut,
-  Settings
+  Settings,
+  Trash2,
+  TriangleAlert
 } from 'lucide-react'
 
 // Profile fields type
@@ -57,6 +59,10 @@ export default function ProfilePage() {
     confirm: ''
   })
 
+  // Delete Account States (LGPD)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirmation, setDeleteConfirmation] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     const initProfile = async () => {
@@ -81,7 +87,6 @@ export default function ProfilePage() {
         setProfile(data)
       } catch (err) {
         console.error('Error fetching profile:', err)
-        // If profile doesn't exist, we might want to handle it, but for now assuming it was created at signup
       } finally {
         setLoading(false)
       }
@@ -121,7 +126,6 @@ export default function ProfilePage() {
       if (error) throw error
 
       setFeedback({ type: 'success', message: 'Perfil atualizado com sucesso!' })
-      // Auto clear feedback after 3s
       setTimeout(() => setFeedback(null), 3000)
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || 'Erro ao atualizar perfil.' })
@@ -148,7 +152,6 @@ export default function ProfilePage() {
     setFeedback(null)
 
     try {
-      // Step 2: Verify current password by re-auth
       const { error: verifyError } = await supabase.auth.signInWithPassword({
         email: session.user.email,
         password: passwords.current
@@ -158,7 +161,6 @@ export default function ProfilePage() {
         throw new Error('A senha atual está incorreta.')
       }
 
-      // Step 4: Update Password
       const { error: updateError } = await supabase.auth.updateUser({
         password: passwords.new
       })
@@ -172,6 +174,31 @@ export default function ProfilePage() {
       setFeedback({ type: 'error', message: err.message || 'Erro ao atualizar senha.' })
     } finally {
       setPasswordLoading(false)
+    }
+  }
+
+  // Função disparada no botão do Modal de Exclusão
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation !== 'EXCLUIR') return
+
+    setIsDeleting(true)
+    
+    try {
+      // Chama a função (RPC) segura para excluir a conta de dentro do banco de dados
+      const { error } = await supabase.rpc('delete_user_account')
+
+      if (error) throw error
+
+      // Limpa a sessão local e redireciona
+      await supabase.auth.signOut()
+      router.push('/')
+      router.refresh()
+    } catch (err: any) {
+      console.error('Erro ao excluir:', err)
+      setFeedback({ type: 'error', message: 'Erro ao excluir conta. Contate o suporte ou tente novamente mais tarde.' })
+      setIsDeleting(false)
+      setShowDeleteModal(false)
+      setDeleteConfirmation('')
     }
   }
 
@@ -193,7 +220,66 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-28 pb-16 px-4 font-sans">
+    <div className="min-h-screen bg-slate-50 pt-28 pb-16 px-4 font-sans relative">
+      
+      {/* ⚠️ MODAL DE TRAVA PARA EXCLUSÃO (ZONA DE PERIGO) */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 border border-slate-200"
+            >
+              <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mb-6">
+                <TriangleAlert className="w-8 h-8 text-red-600" />
+              </div>
+              
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">Você tem certeza?</h3>
+              <p className="text-slate-600 text-sm mb-6 leading-relaxed">
+                Sua conta será apagada permanentemente. Todos os seus dados pessoais e vínculos com a plataforma serão eliminados da base de dados sem possibilidade de recuperação.
+              </p>
+
+              <div className="space-y-2 mb-8">
+                <label className="text-sm font-semibold text-slate-700 ml-1">
+                  Digite <span className="text-red-600 select-none">EXCLUIR</span> para confirmar
+                </label>
+                <input 
+                  type="text"
+                  value={deleteConfirmation}
+                  onChange={(e) => setDeleteConfirmation(e.target.value)}
+                  className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3 px-4 focus:ring-2 focus:ring-red-500 outline-none transition-all placeholder:text-slate-300 font-medium text-slate-900"
+                  placeholder="EXCLUIR"
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteModal(false)
+                    setDeleteConfirmation('')
+                  }}
+                  className="flex-1 py-3.5 bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 rounded-xl font-bold transition-colors order-2 sm:order-1"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={deleteConfirmation !== 'EXCLUIR' || isDeleting}
+                  className="flex-1 py-3.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 order-1 sm:order-2"
+                >
+                  {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
+                  Confirmar Exclusão
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <div className="max-w-7xl mx-auto">
         
         {/* Header */}
@@ -243,7 +329,7 @@ export default function ProfilePage() {
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${activeTab === 'seguranca' ? 'bg-cyan-50 text-cyan-700 shadow-sm border-cyan-100/50 border' : 'text-slate-500 hover:bg-slate-50'}`}
                 >
                   <ShieldCheck className="w-5 h-5" />
-                  Segurança e Senha
+                  Segurança e Privacidade
                 </button>
               </nav>
 
@@ -284,7 +370,7 @@ export default function ProfilePage() {
                   exit={{ opacity: 0, y: -10 }}
                   className={`p-4 rounded-xl flex items-center gap-3 font-medium ${feedback.type === 'success' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-red-50 text-red-600 border border-red-100'}`}
                 >
-                  {feedback.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                  {feedback.type === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <AlertCircle className="w-5 h-5 shrink-0" />}
                   {feedback.message}
                 </motion.div>
               )}
@@ -310,6 +396,7 @@ export default function ProfilePage() {
                   </div>
 
                   <form onSubmit={handleProfileUpdate} className="space-y-6">
+                    {/* ... (Formulário de dados intocado) ... */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-slate-700 ml-1">Nome Completo</label>
@@ -461,8 +548,8 @@ export default function ProfilePage() {
                       <Lock className="w-5 h-5" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-slate-900">Segurança da Identidade</h2>
-                      <p className="text-slate-400 text-sm">Atualize sua senha de acesso ao ecossistema.</p>
+                      <h2 className="text-xl font-bold text-slate-900">Segurança e Privacidade</h2>
+                      <p className="text-slate-400 text-sm">Gerencie suas credenciais e os direitos sobre seus dados.</p>
                     </div>
                   </div>
 
@@ -512,7 +599,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
 
-                    <div className="pt-4">
+                    <div className="pt-4 pb-4">
                       <button 
                         type="submit"
                         disabled={passwordLoading}
@@ -523,6 +610,29 @@ export default function ProfilePage() {
                       </button>
                     </div>
                   </form>
+
+                  {/* ZONA DE PERIGO (LGPD) */}
+                  <div className="mt-12 pt-8 border-t border-slate-100">
+                    <div className="bg-red-50 border border-red-100 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                      <div>
+                        <h3 className="text-lg font-bold text-red-700 flex items-center gap-2 mb-2">
+                          <Trash2 className="w-5 h-5" />
+                          Zona de Perigo
+                        </h3>
+                        <p className="text-sm text-red-600/80 max-w-xl text-justify leading-relaxed font-medium">
+                          Ao prosseguir, todos os seus dados pessoais, credenciais e vínculos profissionais serão permanentemente apagados da base do OTDSP. Esta ação é irreversível.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setShowDeleteModal(true)}
+                        type="button"
+                        className="shrink-0 px-6 py-3 bg-white text-red-600 border border-red-200 hover:bg-red-600 hover:text-white hover:border-red-600 rounded-xl font-bold transition-all shadow-sm"
+                      >
+                        Excluir minha conta
+                      </button>
+                    </div>
+                  </div>
+
                 </motion.div>
               )}
             </AnimatePresence>

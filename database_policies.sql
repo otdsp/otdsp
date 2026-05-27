@@ -7,7 +7,7 @@
 -- ---------------------------------------------------------------------
 
 -- Tabela: user_auth (Controle interno de acessos)
-CREATE TABLE public.user_auth (
+CREATE TABLE IF NOT EXISTS public.user_auth (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT UNIQUE NOT NULL,
     is_staff BOOLEAN DEFAULT FALSE,
@@ -16,7 +16,7 @@ CREATE TABLE public.user_auth (
 );
 
 -- Tabela: user_profile (Informações de perfil cadastral)
-CREATE TABLE public.user_profile (
+CREATE TABLE IF NOT EXISTS public.user_profile (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID UNIQUE NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     full_name TEXT,
@@ -30,7 +30,7 @@ CREATE TABLE public.user_profile (
 );
 
 -- Tabela: engagements (Iniciativas e Eventos Principais)
-CREATE TABLE public.engagements (
+CREATE TABLE IF NOT EXISTS public.engagements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
     description TEXT,
@@ -43,7 +43,7 @@ CREATE TABLE public.engagements (
 );
 
 -- Tabela: engagement_participants (Lista de Presença Segura e Privada)
-CREATE TABLE public.engagement_participants (
+CREATE TABLE IF NOT EXISTS public.engagement_participants (
     engagement_id UUID REFERENCES public.engagements(id) ON DELETE CASCADE,
     user_email TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -51,7 +51,7 @@ CREATE TABLE public.engagement_participants (
 );
 
 -- Tabela: engagement_staff_notes (Anotações Confidenciais de Gestão)
-CREATE TABLE public.engagement_staff_notes (
+CREATE TABLE IF NOT EXISTS public.engagement_staff_notes (
     engagement_id UUID PRIMARY KEY REFERENCES public.engagements(id) ON DELETE CASCADE,
     notes TEXT,
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -92,9 +92,30 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Função LGPD: Permite que o usuário exclua permanentemente sua própria conta
+CREATE OR REPLACE FUNCTION public.delete_user_account()
+RETURNS void AS $$
+BEGIN
+  -- Exclui o usuário autenticado atual da tabela mestre auth.users
+  -- O "ON DELETE CASCADE" cuidará de apagar o user_profile e user_auth
+  DELETE FROM auth.users WHERE id = auth.uid();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- ---------------------------------------------------------------------
 -- 4. REGRAS DE CONTROLE DE ACESSO (POLÍTICAS RLS)
 -- ---------------------------------------------------------------------
+
+-- Limpeza de políticas antigas para evitar conflitos ao rodar novamente
+DROP POLICY IF EXISTS "auth_select_policy" ON public.user_auth;
+DROP POLICY IF EXISTS "profile_access_policy" ON public.user_profile;
+DROP POLICY IF EXISTS "staff_notes_all_policy" ON public.engagement_staff_notes;
+DROP POLICY IF EXISTS "eng_part_select_policy" ON public.engagement_participants;
+DROP POLICY IF EXISTS "eng_part_insert_policy" ON public.engagement_participants;
+DROP POLICY IF EXISTS "engagement_select_policy" ON public.engagements;
+DROP POLICY IF EXISTS "engagement_insert_policy" ON public.engagements;
+DROP POLICY IF EXISTS "engagement_update_policy" ON public.engagements;
+DROP POLICY IF EXISTS "engagement_delete_policy" ON public.engagements;
 
 -- Políticas para: user_auth
 CREATE POLICY "auth_select_policy" ON public.user_auth
@@ -192,6 +213,10 @@ USING (public.is_staff());
 -- ---------------------------------------------------------------------
 -- 5. CONFIGURAÇÃO DOS GATILHOS (TRIGGERS)
 -- ---------------------------------------------------------------------
+
+-- Limpeza de Triggers para evitar duplicações
+DROP TRIGGER IF EXISTS enforce_staff_status_update ON public.engagements;
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 
 -- Trigger 1: Validação de Status em Engagements
 CREATE TRIGGER enforce_staff_status_update

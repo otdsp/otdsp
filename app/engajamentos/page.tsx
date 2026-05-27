@@ -58,6 +58,8 @@ export default function EngajamentosPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [emailInput, setEmailInput] = useState('')
+  const [emailSuggestions, setEmailSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('Todos')
   const router = useRouter()
@@ -124,6 +126,36 @@ export default function EngajamentosPage() {
     getSession()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!isStaff || emailInput.trim().length < 2) {
+      setEmailSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+
+    const fetchSuggestions = async () => {
+      const { data, error } = await supabase
+        .from('user_auth')
+        .select('email')
+        .ilike('email', `%${emailInput}%`)
+        .limit(5) // Traz as 5 melhores correspondências
+
+      if (!error && data) {
+        // Filtra para não sugerir e-mails que já foram adicionados
+        const newSuggestions = data
+          .map(d => d.email)
+          .filter(email => !formData.participants.includes(email))
+        
+        setEmailSuggestions(newSuggestions)
+        setShowSuggestions(newSuggestions.length > 0)
+      }
+    }
+
+    // Debounce de 300ms
+    const timeoutId = setTimeout(fetchSuggestions, 300)
+    return () => clearTimeout(timeoutId)
+  }, [emailInput, isStaff, formData.participants])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -353,13 +385,53 @@ export default function EngajamentosPage() {
                         <div className="space-y-2">
                           <label className="text-sm font-semibold text-slate-700 ml-1">Convidar Participantes</label>
                           <div className="flex gap-2">
-                            <input type="email" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addParticipant())} placeholder="E-mail" className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-4 text-sm" />
-                            <button type="button" onClick={addParticipant} className="bg-slate-100 p-4 rounded-xl"><Plus className="w-5 h-5" /></button>
+                            {/* Bloco relativo para o auto-complete flutuar abaixo */}
+                            <div className="relative flex-grow">
+                              <input 
+                                type="email" 
+                                value={emailInput} 
+                                onChange={(e) => setEmailInput(e.target.value)} 
+                                onFocus={() => emailSuggestions.length > 0 && setShowSuggestions(true)}
+                                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Pequeno delay para permitir o clique
+                                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addParticipant())} 
+                                placeholder="Digite o e-mail..." 
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-4 text-sm focus:ring-2 focus:ring-cyan-500 outline-none" 
+                              />
+                              
+                              {/* CAIXA DE SUGESTÕES (Apenas Staff) */}
+                              {isStaff && showSuggestions && (
+                                <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                                  {emailSuggestions.map(suggestion => (
+                                    <button
+                                      key={suggestion}
+                                      type="button"
+                                      // Usamos onMouseDown em vez de onClick porque ele é disparado antes do onBlur do input
+                                      onMouseDown={(e) => {
+                                        e.preventDefault()
+                                        setFormData(prev => ({ ...prev, participants: [...prev.participants, suggestion] }))
+                                        setEmailInput('')
+                                        setShowSuggestions(false)
+                                      }}
+                                      className="w-full text-left px-4 py-3 text-sm text-slate-600 font-medium hover:bg-cyan-50 hover:text-cyan-700 transition-colors border-b border-slate-50 last:border-0"
+                                    >
+                                      {suggestion}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <button type="button" onClick={addParticipant} className="bg-slate-100 p-4 rounded-xl hover:bg-slate-200 transition-colors">
+                              <Plus className="w-5 h-5 text-slate-600" />
+                            </button>
                           </div>
+                          
                           <div className="flex flex-wrap gap-2 mt-2">
                             {formData.participants.map(email => (
-                              <span key={email} className="inline-flex items-center gap-1 px-2 py-1 bg-cyan-50 text-cyan-700 rounded-full text-xs font-bold border border-cyan-100">
-                                {email} <button type="button" onClick={() => removeParticipant(email)}><X className="w-3 h-3" /></button>
+                              <span key={email} className="inline-flex items-center gap-1 px-3 py-1.5 bg-cyan-50 text-cyan-700 rounded-full text-xs font-bold border border-cyan-100">
+                                {email} 
+                                <button type="button" onClick={() => removeParticipant(email)} className="hover:text-red-500 transition-colors">
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
                               </span>
                             ))}
                           </div>
