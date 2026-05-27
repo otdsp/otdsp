@@ -21,11 +21,9 @@ import {
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
-/**
- * Registration Page component for the OTDSP app.
- */
 export default function CadastroPage() {
   const router = useRouter()
+  const [acceptTerms, setAcceptTerms] = useState(false)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -60,6 +58,12 @@ export default function CadastroPage() {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault()
+
+    if (!acceptTerms) {
+      setError('Você precisa aceitar a Política de Privacidade para se cadastrar.')
+      return
+    }
+
     if (formData.organization_type === '') {
       setError('Por favor, selecione o tipo de organização.')
       return
@@ -142,7 +146,7 @@ export default function CadastroPage() {
           </div>
           <h2 className="text-3xl font-bold text-slate-900 mb-4 tracking-tight">Seja Bem-vindo(a)!</h2>
           <p className="text-slate-600 mb-8 leading-relaxed">
-            Seu cadastro no Observatório de Transformação Digital foi realizado com sucesso. Explore as ferramentas e dados disponíveis no seu espaço exclusivo.
+            Seu cadastro no Observatório de Transformação Digital do Estado de São Paulo foi realizado com sucesso. Explore as ferramentas e dados disponíveis no seu espaço exclusivo.
           </p>
           <div className="space-y-4">
             <Link 
@@ -174,7 +178,7 @@ export default function CadastroPage() {
         <div className="text-center mb-10">
           <h1 className="text-3xl md:text-4xl font-bold text-[#0F172A] tracking-tight mb-3">Faça Parte do Observatório</h1>
           <p className="text-slate-500 max-w-2xl mx-auto text-lg font-medium">
-            Transformação Digital de São Paulo: Inovação, Dados e Estratégia em um só lugar.
+            Transformação Digital do Estado de São Paulo.
           </p>
         </div>
 
@@ -396,6 +400,33 @@ export default function CadastroPage() {
                     </select>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Section: Termos e LGPD */}
+            <div className="pt-4 pb-2 border-t border-slate-100 mt-6">
+              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                <p className="text-xs text-slate-500 mb-4 text-justify leading-relaxed">
+                  <strong>Privacidade e Uso de Dados:</strong> Seus dados são coletados para validação de acesso, comunicação institucional (não enviamos spam) e geração de insights estratégicos agregados sobre o perfil do nosso público. Nenhum dado é comercializado com terceiros.
+                </p>
+                
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <div className="relative flex items-center justify-center mt-0.5">
+                    <input 
+                      type="checkbox" 
+                      required
+                      checked={acceptTerms}
+                      onChange={(e) => setAcceptTerms(e.target.checked)}
+                      className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded bg-white checked:bg-cyan-500 checked:border-cyan-500 transition-all cursor-pointer"
+                    />
+                    <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
+                    Estou ciente do uso dos meus dados e concordo com a <Link href="/privacidade" className="text-cyan-600 hover:underline">Política de Privacidade</Link>.
+                  </span>
+                </label>
               </div>
             </div>
 

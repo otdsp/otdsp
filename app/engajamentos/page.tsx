@@ -11,17 +11,20 @@ import {
   CheckCircle, 
   AlertCircle, 
   Loader2, 
-  ChevronRight,
   Target,
   X,
   Mail,
   Users,
   Briefcase,
   Monitor,
-  Heart
+  Heart,
+  Pencil,
+  Trash2,
+  Lock
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
+// Interface limpa e sincronizada com o banco de dados atual
 interface Engagement {
   id: string
   title: string
@@ -34,8 +37,9 @@ interface Engagement {
   public_policies: string[]
   planned_activities: string[]
   estimated_duration: number
-  participants: string[]
-  feedback?: string
+  created_by: string
+  engagement_participants?: { user_email: string }[]
+  engagement_staff_notes?: { notes: string } | null
 }
 
 const INTEREST_OPTIONS = ["Educação", "Saúde", "Segurança", "Meio Ambiente", "Infraestutura de TI"]
@@ -46,6 +50,7 @@ const LOCATION_OPTIONS = ["Remoto", "Inova USP"]
 
 export default function EngajamentosPage() {
   const [user, setUser] = useState<any>(null)
+  const [isStaff, setIsStaff] = useState(false)
   const [loading, setLoading] = useState(true)
   const [engagements, setEngagements] = useState<Engagement[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -53,6 +58,8 @@ export default function EngajamentosPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [emailInput, setEmailInput] = useState('')
+  const [emailSuggestions, setEmailSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('Todos')
   const router = useRouter()
@@ -72,18 +79,28 @@ export default function EngajamentosPage() {
     participants: [] as string[]
   })
 
-  const fetchEngajamentos = async (userEmail: string) => {
+  // Busca Avançada Relacional
+  const fetchEngajamentos = async () => {
     setLoading(true)
     const { data, error } = await supabase
       .from('engagements')
-      .select('*')
-      .contains('participants', [userEmail])
+      .select(`
+        *,
+        engagement_participants(user_email),
+        engagement_staff_notes(notes)
+      `)
       .order('event_date', { ascending: false })
 
     if (error) {
       console.error('Error fetching engagements:', error)
     } else {
-      setEngagements(data || [])
+      const formattedData = (data || []).map((eng: any) => ({
+        ...eng,
+        engagement_staff_notes: Array.isArray(eng.engagement_staff_notes) 
+          ? eng.engagement_staff_notes[0] 
+          : eng.engagement_staff_notes
+      }))
+      setEngagements(formattedData)
     }
     setLoading(false)
   }
@@ -96,13 +113,49 @@ export default function EngajamentosPage() {
         return
       }
       setUser(session.user)
-      if (session.user.email) {
-        fetchEngajamentos(session.user.email)
-      }
+      
+      const { data: authData } = await supabase
+        .from('user_auth')
+        .select('is_staff')
+        .eq('id', session.user.id)
+        .single()
+        
+      setIsStaff(authData?.is_staff || false)
+      fetchEngajamentos()
     }
     getSession()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!isStaff || emailInput.trim().length < 2) {
+      setEmailSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+
+    const fetchSuggestions = async () => {
+      const { data, error } = await supabase
+        .from('user_auth')
+        .select('email')
+        .ilike('email', `%${emailInput}%`)
+        .limit(5) // Traz as 5 melhores correspondências
+
+      if (!error && data) {
+        // Filtra para não sugerir e-mails que já foram adicionados
+        const newSuggestions = data
+          .map(d => d.email)
+          .filter(email => !formData.participants.includes(email))
+        
+        setEmailSuggestions(newSuggestions)
+        setShowSuggestions(newSuggestions.length > 0)
+      }
+    }
+
+    // Debounce de 300ms
+    const timeoutId = setTimeout(fetchSuggestions, 300)
+    return () => clearTimeout(timeoutId)
+  }, [emailInput, isStaff, formData.participants])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -139,16 +192,23 @@ export default function EngajamentosPage() {
       event_date: eng.event_date ? new Date(eng.event_date).toISOString().slice(0, 16) : '',
       location: eng.location,
       status: eng.status || 'Planejado',
-      feedback: eng.feedback || '',
+      feedback: eng.engagement_staff_notes?.notes || '',
       estimated_duration: eng.estimated_duration ? eng.estimated_duration.toString() : '',
       interests: eng.interests || [],
       technologies: eng.technologies || [],
       public_policies: eng.public_policies || [],
       planned_activities: eng.planned_activities || [],
-      participants: eng.participants || []
+      participants: [] // Começa limpo para receber novos convidados
     })
     setShowForm(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir este engajamento?')) return
+    const { error } = await supabase.from('engagements').delete().eq('id', id)
+    if (error) alert('Erro ao excluir: ' + error.message)
+    else fetchEngajamentos()
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -158,10 +218,8 @@ export default function EngajamentosPage() {
     setIsSubmitting(true)
     setMessage(null)
 
-    // Ensure the creator is also a participant
-    const finalParticipants = [...new Set([...formData.participants, user.email])]
-
-    const payload = {
+    // Payload limpo sem referências à antiga coluna 'participants'
+    const payload: any = {
       title: formData.title,
       description: formData.description,
       event_date: formData.event_date || null,
@@ -171,44 +229,59 @@ export default function EngajamentosPage() {
       technologies: formData.technologies,
       public_policies: formData.public_policies,
       planned_activities: formData.planned_activities,
-      participants: finalParticipants,
-      status: editingId ? formData.status : 'Planejado',
-      feedback: formData.status === 'Concluído' ? formData.feedback : null
+    }
+
+    // Controle rígido de payload para status
+    if (isStaff || !editingId) {
+      payload.status = formData.status
     }
 
     let result;
+    let currentEngagementId = editingId;
+
+    // 1. Gravação do Engajamento Principal
     if (editingId) {
-      result = await supabase
-        .from('engagements')
-        .update(payload)
-        .eq('id', editingId)
+      result = await supabase.from('engagements').update(payload).eq('id', editingId).select()
     } else {
-      result = await supabase
-        .from('engagements')
-        .insert([payload])
+      result = await supabase.from('engagements').insert([payload]).select()
+      if (result.data) currentEngagementId = result.data[0].id
     }
 
     if (result.error) {
       setMessage({ type: 'error', text: 'Erro ao salvar: ' + result.error.message })
     } else {
-      setMessage({ type: 'success', text: editingId ? 'Engajamento atualizado com sucesso!' : 'Engajamento planejado com sucesso!' })
+      // 2. Gravação das Notas Confidenciais (Apenas se for Staff)
+      if (isStaff && currentEngagementId) {
+        await supabase
+          .from('engagement_staff_notes')
+          .upsert({ engagement_id: currentEngagementId, notes: formData.feedback })
+      }
+
+      // 3. Gravação Direta de Participantes no Front-end (Opção 1 Funcional!)
+      if (formData.participants.length > 0 && currentEngagementId) {
+        const participantsData = formData.participants.map(email => ({
+          engagement_id: currentEngagementId,
+          user_email: email.trim().toLowerCase()
+        }))
+
+        const { error: partError } = await supabase
+          .from('engagement_participants')
+          .insert(participantsData)
+
+        if (partError) {
+          console.error("Erro ao vincular e-mails dos participantes:", partError.message)
+        }
+      }
+
+      setMessage({ type: 'success', text: editingId ? 'Engajamento atualizado!' : 'Engajamento criado!' })
       setFormData({
-        title: '',
-        description: '',
-        event_date: '',
-        location: '',
-        status: 'Planejado',
-        feedback: '',
-        estimated_duration: '',
-        interests: [],
-        technologies: [],
-        public_policies: [],
-        planned_activities: [],
-        participants: []
+        title: '', description: '', event_date: '', location: '', status: 'Planejado',
+        feedback: '', estimated_duration: '', interests: [], technologies: [],
+        public_policies: [], planned_activities: [], participants: []
       })
       setEditingId(null)
       setTimeout(() => setShowForm(false), 2000)
-      fetchEngajamentos(user.email)
+      fetchEngajamentos()
     }
     setIsSubmitting(false)
   }
@@ -216,11 +289,7 @@ export default function EngajamentosPage() {
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Data não definida'
     return new Date(dateString).toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
     })
   }
 
@@ -229,124 +298,50 @@ export default function EngajamentosPage() {
       {/* Header Section */}
       <section className="relative overflow-hidden bg-[#0F172A] py-16 md:py-20 px-4">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-900 opacity-90" />
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,rgba(6,182,212,0.1),transparent)] pointer-events-none" />
-        
         <div className="relative z-10 max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center md:text-left"
-          >
+          <div>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-sm font-bold tracking-wider uppercase mb-6">
-              <Target className="w-4 h-4" />
-              Gestão de Iniciativas
+              <Target className="w-4 h-4" /> Gestão de Iniciativas
             </div>
             <h1 className="text-4xl md:text-6xl font-extrabold text-white mb-6 tracking-tight">
               Seus <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-cyan-200">Engajamentos</span>
             </h1>
-            <p className="text-lg md:text-xl text-slate-300 max-w-2xl leading-relaxed">
-              Organize suas ações estratégicas no ecossistema do Observatório.
-            </p>
-          </motion.div>
-
-          <motion.button
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              if (showForm) {
-                setShowForm(false)
-                setEditingId(null)
-                setFormData({
-                  title: '',
-                  description: '',
-                  event_date: '',
-                  location: '',
-                  status: 'Planejado',
-                  feedback: '',
-                  estimated_duration: '',
-                  interests: [],
-                  technologies: [],
-                  public_policies: [],
-                  planned_activities: [],
-                  participants: []
-                })
-              } else {
-                setShowForm(true)
-              }
-            }}
-            className="bg-white text-[#0F172A] font-bold py-4 px-8 rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all hover:bg-cyan-50"
+          </div>
+          <button
+            onClick={() => { setShowForm(!showForm); setEditingId(null); }}
+            className="bg-white text-[#0F172A] font-bold py-4 px-8 rounded-2xl shadow-xl flex items-center gap-3 transition-all hover:bg-cyan-50"
           >
             {showForm ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
             {showForm ? 'Cancelar' : 'Novo Engajamento'}
-          </motion.button>
+          </button>
         </div>
       </section>
 
       <div className="max-w-7xl mx-auto px-4 relative z-20">
         <AnimatePresence>
           {showForm && (
-            <motion.div
-              initial={{ opacity: 0, height: 0, y: -20 }}
-              animate={{ opacity: 1, height: 'auto', y: 0 }}
-              exit={{ opacity: 0, height: 0, y: -20 }}
-              className="overflow-hidden mb-12"
-            >
-              <div className="bg-white rounded-3xl shadow-2xl shadow-slate-900/10 p-8 md:p-12 border border-slate-100 mt-8">
-                <div className="flex items-center gap-4 mb-10">
-                  <div className="w-14 h-14 bg-cyan-50 rounded-2xl flex items-center justify-center text-cyan-600">
-                    {editingId ? <ChevronRight className="w-8 h-8" /> : <Plus className="w-8 h-8" />}
-                  </div>
-                  <div>
-                    <h2 className="text-3xl font-extrabold text-slate-900">
-                      {editingId ? 'Editar Engajamento' : 'Planejar Engajamento'}
-                    </h2>
-                    <p className="text-slate-500">
-                      {editingId ? 'Atualize os detalhes da sua iniciativa.' : 'Preencha os detalhes da sua nova iniciativa.'}
-                    </p>
-                  </div>
-                </div>
-
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="mb-12">
+              <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border border-slate-100 mt-8">
                 <form onSubmit={handleSubmit} className="space-y-10">
-                  {/* Basic Info Group */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div className="space-y-6">
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-slate-700 ml-1">Título da Atividade</label>
-                        <input 
-                          required
-                          type="text"
-                          name="title"
-                          value={formData.title}
-                          onChange={handleInputChange}
-                          placeholder="Ex: Workshop Territorial de Inovação"
-                          className="w-full bg-slate-50 border-slate-200 border rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-400 font-medium"
-                        />
+                        <input required type="text" name="title" value={formData.title} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none" />
                       </div>
-
                       <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700 ml-1">Descrição do Engajamento</label>
-                        <textarea 
-                          name="description"
-                          value={formData.description}
-                          onChange={handleInputChange}
-                          placeholder="Descreva brevemente os objetivos desta ação..."
-                          rows={4}
-                          className="w-full bg-slate-50 border-slate-200 border rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-400 resize-none"
-                        />
+                        <label className="text-sm font-semibold text-slate-700 ml-1">Descrição</label>
+                        <textarea name="description" value={formData.description} onChange={handleInputChange} rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none resize-none" />
                       </div>
 
-                      {editingId && (
+                      {/* UX Inteligente: O Status e o Feedback somem completamente para usuários comuns */}
+                      {editingId && isStaff && (
                         <div className="space-y-6 pt-4 border-t border-slate-100">
                           <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700 ml-1">Status do Engajamento</label>
+                            <label className="text-sm font-semibold text-slate-700 ml-1">Status do Engajamento (Apenas Staff)</label>
                             <select 
-                              name="status"
-                              value={formData.status}
-                              onChange={handleInputChange}
-                              className="w-full bg-slate-50 border-slate-200 border rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none transition-all appearance-none cursor-pointer font-medium"
+                              name="status" value={formData.status} onChange={handleInputChange}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none font-medium cursor-pointer"
                             >
                               <option value="Planejado">Planejado</option>
                               <option value="Pendente">Pendente</option>
@@ -354,24 +349,15 @@ export default function EngajamentosPage() {
                               <option value="Concluído">Concluído</option>
                             </select>
                           </div>
-
-                          {formData.status === 'Concluído' && (
-                            <motion.div 
-                              initial={{ opacity: 0, y: -10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className="space-y-2"
-                            >
-                              <label className="text-sm font-semibold text-slate-700 ml-1">Feedback / Resultados (Opcional)</label>
-                              <textarea 
-                                name="feedback"
-                                value={formData.feedback}
-                                onChange={handleInputChange}
-                                placeholder="Relate os principais resultados e feedbacks..."
-                                rows={3}
-                                className="w-full bg-slate-50 border-slate-200 border rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-400 resize-none"
-                              />
-                            </motion.div>
-                          )}
+                          
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-cyan-700 ml-1 font-bold">Anotações Internas / Feedback (Apenas Staff)</label>
+                            <textarea 
+                              name="feedback" value={formData.feedback} onChange={handleInputChange}
+                              placeholder="Notas exclusivas da equipa de gestão..." rows={3} 
+                              className="w-full bg-cyan-50/30 border border-cyan-100 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none resize-none font-medium"
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
@@ -380,77 +366,71 @@ export default function EngajamentosPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <label className="text-sm font-semibold text-slate-700 ml-1">Data e Hora</label>
-                          <div className="relative">
-                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                            <input 
-                              required
-                              type="datetime-local"
-                              name="event_date"
-                              value={formData.event_date}
-                              onChange={handleInputChange}
-                              className="w-full bg-slate-50 border-slate-200 border rounded-xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all font-medium"
-                            />
-                          </div>
-                          <p className="text-[11px] text-orange-500 font-medium ml-1">Sugere-se agendamento com 48h de antecedência.</p>
+                          <input required type="datetime-local" name="event_date" value={formData.event_date} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-4 focus:ring-2 focus:ring-cyan-500 outline-none" />
                         </div>
-
                         <div className="space-y-2">
                           <label className="text-sm font-semibold text-slate-700 ml-1">Localização</label>
-                          <select 
-                            name="location"
-                            value={formData.location}
-                            onChange={handleInputChange}
-                            className="w-full bg-slate-50 border-slate-200 border rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none transition-all appearance-none cursor-pointer font-medium"
-                          >
-                            <option value="">Selecione o Local...</option>
-                            {LOCATION_OPTIONS.map(loc => (
-                              <option key={loc} value={loc}>{loc}</option>
-                            ))}
+                          <select name="location" value={formData.location} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none">
+                            <option value="">Selecione...</option>
+                            {LOCATION_OPTIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
                           </select>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <label className="text-sm font-semibold text-slate-700 ml-1">Duração Estimada (Horas)</label>
-                          <input 
-                            type="number"
-                            name="estimated_duration"
-                            value={formData.estimated_duration}
-                            onChange={handleInputChange}
-                            placeholder="Ex: 2"
-                            className="w-full bg-slate-50 border-slate-200 border rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none transition-all font-medium"
-                          />
+                          <label className="text-sm font-semibold text-slate-700 ml-1">Duração (Horas)</label>
+                          <input type="number" name="estimated_duration" value={formData.estimated_duration} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5" />
                         </div>
-
                         <div className="space-y-2">
-                          <label className="text-sm font-semibold text-slate-700 ml-1">Participantes (E-mails)</label>
+                          <label className="text-sm font-semibold text-slate-700 ml-1">Convidar Participantes</label>
                           <div className="flex gap-2">
+                            {/* Bloco relativo para o auto-complete flutuar abaixo */}
                             <div className="relative flex-grow">
-                              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                               <input 
-                                type="email"
-                                value={emailInput}
-                                onChange={(e) => setEmailInput(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addParticipant())}
-                                placeholder="Pressione Enter"
-                                className="w-full bg-slate-50 border-slate-200 border rounded-xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-400"
+                                type="email" 
+                                value={emailInput} 
+                                onChange={(e) => setEmailInput(e.target.value)} 
+                                onFocus={() => emailSuggestions.length > 0 && setShowSuggestions(true)}
+                                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Pequeno delay para permitir o clique
+                                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addParticipant())} 
+                                placeholder="Digite o e-mail..." 
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-4 text-sm focus:ring-2 focus:ring-cyan-500 outline-none" 
                               />
+                              
+                              {/* CAIXA DE SUGESTÕES (Apenas Staff) */}
+                              {isStaff && showSuggestions && (
+                                <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                                  {emailSuggestions.map(suggestion => (
+                                    <button
+                                      key={suggestion}
+                                      type="button"
+                                      // Usamos onMouseDown em vez de onClick porque ele é disparado antes do onBlur do input
+                                      onMouseDown={(e) => {
+                                        e.preventDefault()
+                                        setFormData(prev => ({ ...prev, participants: [...prev.participants, suggestion] }))
+                                        setEmailInput('')
+                                        setShowSuggestions(false)
+                                      }}
+                                      className="w-full text-left px-4 py-3 text-sm text-slate-600 font-medium hover:bg-cyan-50 hover:text-cyan-700 transition-colors border-b border-slate-50 last:border-0"
+                                    >
+                                      {suggestion}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                            <button 
-                              type="button"
-                              onClick={addParticipant}
-                              className="bg-slate-100 p-4 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors"
-                            >
-                              <Plus className="w-6 h-6" />
+                            <button type="button" onClick={addParticipant} className="bg-slate-100 p-4 rounded-xl hover:bg-slate-200 transition-colors">
+                              <Plus className="w-5 h-5 text-slate-600" />
                             </button>
                           </div>
-                          <div className="flex flex-wrap gap-2 mt-3">
+                          
+                          <div className="flex flex-wrap gap-2 mt-2">
                             {formData.participants.map(email => (
-                              <span key={email} className="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-50 text-cyan-700 rounded-full text-xs font-bold border border-cyan-100">
-                                {email}
-                                <button type="button" onClick={() => removeParticipant(email)}>
-                                  <X className="w-3 h-3" />
+                              <span key={email} className="inline-flex items-center gap-1 px-3 py-1.5 bg-cyan-50 text-cyan-700 rounded-full text-xs font-bold border border-cyan-100">
+                                {email} 
+                                <button type="button" onClick={() => removeParticipant(email)} className="hover:text-red-500 transition-colors">
+                                  <X className="w-3.5 h-3.5" />
                                 </button>
                               </span>
                             ))}
@@ -462,79 +442,18 @@ export default function EngajamentosPage() {
 
                   {/* Multi-selection Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 py-8 border-y border-slate-100">
-                    <BadgeToggleList 
-                      label="Áreas de Interesse"
-                      icon={Heart}
-                      options={INTEREST_OPTIONS}
-                      selected={formData.interests}
-                      onToggle={(item: string) => toggleArrayItem('interests', item)}
-                    />
-                    <BadgeToggleList 
-                      label="Tecnologias"
-                      icon={Monitor}
-                      options={TECH_OPTIONS}
-                      selected={formData.technologies}
-                      onToggle={(item: string) => toggleArrayItem('technologies', item)}
-                    />
-                    <BadgeToggleList 
-                      label="Políticas Públicas"
-                      icon={Briefcase}
-                      options={POLICY_OPTIONS}
-                      selected={formData.public_policies}
-                      onToggle={(item: string) => toggleArrayItem('public_policies', item)}
-                    />
-                    <BadgeToggleList 
-                      label="Atividades Planejadas"
-                      icon={Users}
-                      options={ACTIVITY_OPTIONS}
-                      selected={formData.planned_activities}
-                      onToggle={(item: string) => toggleArrayItem('planned_activities', item)}
-                    />
+                    <BadgeToggleList label="Áreas de Interesse" icon={Heart} options={INTEREST_OPTIONS} selected={formData.interests} onToggle={(item: string) => toggleArrayItem('interests', item)} />
+                    <BadgeToggleList label="Tecnologias" icon={Monitor} options={TECH_OPTIONS} selected={formData.technologies} onToggle={(item: string) => toggleArrayItem('technologies', item)} />
+                    <BadgeToggleList label="Políticas Públicas" icon={Briefcase} options={POLICY_OPTIONS} selected={formData.public_policies} onToggle={(item: string) => toggleArrayItem('public_policies', item)} />
+                    <BadgeToggleList label="Atividades" icon={Users} options={ACTIVITY_OPTIONS} selected={formData.planned_activities} onToggle={(item: string) => toggleArrayItem('planned_activities', item)} />
                   </div>
 
-                  {/* Action Group */}
-                  <div className="flex flex-col md:flex-row items-center justify-between gap-6 pt-4">
-                    <AnimatePresence>
-                      {message && (
-                        <motion.div 
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className={`flex items-center gap-3 p-4 rounded-2xl text-sm font-semibold flex-grow max-w-md ${
-                            message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'
-                          }`}
-                        >
-                          {message.type === 'success' ? <CheckCircle className="w-5 h-5 shrink-0" /> : <AlertCircle className="w-5 h-5 shrink-0" />}
-                          {message.text}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    <div className="flex items-center gap-4 w-full md:w-auto">
-                      <button
-                        type="button"
-                        onClick={() => setShowForm(false)}
-                        className="flex-grow md:flex-none px-10 py-4 rounded-xl text-slate-500 font-bold hover:bg-slate-50 transition-all"
-                      >
-                        Descartar
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="flex-grow md:flex-none bg-[#0F172A] hover:bg-slate-800 text-white font-bold py-4 px-12 rounded-xl shadow-xl shadow-slate-900/10 transition-all flex items-center justify-center gap-3 disabled:opacity-70"
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            Processando...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="w-5 h-5" />
-                            {editingId ? 'Salvar Alterações' : 'Confirmar Planejamento'}
-                          </>
-                        )}
-                      </button>
-                    </div>
+                  <div className="flex justify-end gap-4">
+                    <button type="button" onClick={() => setShowForm(false)} className="px-6 py-4 rounded-xl text-slate-500 font-bold hover:bg-slate-50">Descartar</button>
+                    <button type="submit" disabled={isSubmitting} className="bg-[#0F172A] hover:bg-slate-800 text-white font-bold py-4 px-12 rounded-xl shadow-xl flex items-center gap-2">
+                      {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
+                      {editingId ? 'Salvar Alterações' : 'Confirmar Planejamento'}
+                    </button>
                   </div>
                 </form>
               </div>
@@ -547,150 +466,106 @@ export default function EngajamentosPage() {
           <div className="bg-white rounded-[2rem] shadow-sm p-8 md:p-12 min-h-[500px]">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-12">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-800">
-                  <Calendar className="w-6 h-6" />
-                </div>
+                <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-800"><Calendar className="w-6 h-6" /></div>
                 <div>
                   <h2 className="text-3xl font-bold text-slate-900">Seu Histórico</h2>
-                  <p className="text-slate-500">Acompanhe suas ações planejadas e realizadas.</p>
+                  <p className="text-slate-500">Acompanhe suas ações no ecossistema.</p>
                 </div>
               </div>
-              
               <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50 p-2 rounded-2xl border border-slate-100">
-                <div className="relative w-full sm:w-64">
-                  <input 
-                    type="text"
-                    placeholder="Buscar engajamentos..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-4 pr-10 text-sm focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
-                  />
-                  <Target className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                </div>
-                <select 
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full sm:w-auto bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm font-semibold focus:ring-2 focus:ring-cyan-500 outline-none transition-all cursor-pointer"
-                >
+                <input type="text" placeholder="Buscar engajamentos..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:ring-2 focus:ring-cyan-500 outline-none" />
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm font-semibold outline-none cursor-pointer">
                   <option value="Todos">Todos Status</option>
                   <option value="Planejado">Planejado</option>
                   <option value="Pendente">Pendente</option>
                   <option value="Cancelado">Cancelado</option>
                   <option value="Concluído">Concluído</option>
                 </select>
-                <div className="hidden sm:block h-6 w-px bg-slate-200 mx-2" />
-                <span className="px-4 py-2 bg-white text-slate-600 rounded-xl text-xs font-black uppercase tracking-widest border border-slate-200">
-                  {engagements.length} Registros
-                </span>
               </div>
             </div>
 
             {loading ? (
-              <div className="flex flex-col items-center justify-center h-80 gap-6 text-slate-400">
-                <Loader2 className="w-12 h-12 animate-spin text-cyan-500" />
-                <p className="text-lg font-bold tracking-tight">Carregando seus dados...</p>
-              </div>
-            ) : engagements.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-[400px] text-center max-w-sm mx-auto">
-                <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center text-slate-200 mb-8 border-2 border-dashed border-slate-100">
-                  <Clock className="w-12 h-12" />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-3">Nenhuma iniciativa ainda</h3>
-                <p className="text-slate-500 leading-relaxed">Clique no botão <span className="font-bold text-slate-700">&quot;Novo Engajamento&quot;</span> acima para planejar seu primeiro encontro estratégico.</p>
-              </div>
+              <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-cyan-500" /></div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {engagements
                   .filter(eng => {
                     const matchesStatus = statusFilter === 'Todos' || eng.status === statusFilter
                     const searchLower = searchTerm.toLowerCase()
-                    const matchesSearch = !searchTerm || 
-                      eng.title.toLowerCase().includes(searchLower) || 
-                      eng.description.toLowerCase().includes(searchLower) || 
-                      eng.location.toLowerCase().includes(searchLower)
-                    return matchesStatus && matchesSearch
+                    return matchesStatus && (!searchTerm || eng.title.toLowerCase().includes(searchLower) || eng.description.toLowerCase().includes(searchLower))
                   })
-                  .map((eng) => (
-                    <motion.div 
-                      key={eng.id}
-                      initial={{ opacity: 0, scale: 0.98 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="group relative bg-white border border-slate-100 hover:border-cyan-200 hover:shadow-2xl hover:shadow-cyan-900/5 rounded-3xl p-8 transition-all duration-300"
-                    >
-                      <div className="flex justify-between items-start mb-6">
-                        <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
-                          eng.status === 'Planejado' ? 'bg-cyan-50 text-cyan-600' : 
-                          eng.status === 'Concluído' ? 'bg-emerald-50 text-emerald-600' :
-                          eng.status === 'Cancelado' ? 'bg-red-50 text-red-600' :
-                          'bg-slate-100 text-slate-500'
-                        }`}>
-                          {eng.status || 'Planejado'}
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <button 
-                            onClick={() => handleEdit(eng)}
-                            className="text-xs font-bold text-cyan-600 hover:text-cyan-800 transition-colors flex items-center gap-1"
-                          >
-                            <ChevronRight className="w-3 h-3" />
-                            Editar
-                          </button>
-                          <div className="text-sm font-bold text-slate-400 flex items-center gap-1.5">
-                            <Clock className="w-4 h-4" />
-                            {eng.estimated_duration ? `${eng.estimated_duration}h` : '--'}
+                  .map((eng) => {
+                    // Trava de Tempo: Verifica se a data atual passou do término do evento
+                    const endTimeMs = eng.event_date 
+                      ? new Date(eng.event_date).getTime() + ((eng.estimated_duration || 0) * 60 * 60 * 1000)
+                      : null;
+                    
+                    const isPast = endTimeMs ? endTimeMs < Date.now() : false;
+                    const canEdit = isStaff || !isPast;
+
+                    return (
+                      <motion.div key={eng.id} className="bg-white border border-slate-100 hover:border-cyan-200 hover:shadow-xl rounded-3xl p-8 transition-all duration-300">
+                        <div className="flex justify-between items-start mb-6">
+                          <span className="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-cyan-50 text-cyan-600">{eng.status}</span>
+                          <div className="flex items-center gap-3">
+                            
+                            {/* O Botão Editar só renderiza se estiver no prazo ou for Staff */}
+                            {canEdit && (
+                              <button onClick={() => handleEdit(eng)} className="text-xs font-bold text-slate-500 hover:text-cyan-600 transition-colors flex items-center gap-1">
+                                <Pencil className="w-3.5 h-3.5" /> Editar
+                              </button>
+                            )}
+
+                            {/* Tag de bloqueio exibida para o usuário comum se o prazo expirou */}
+                            {!canEdit && (
+                              <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md">
+                                <Lock className="w-3 h-3" /> Encerrado
+                              </span>
+                            )}
+
+                            {/* Botão com ícone de Lixeira (Restrito à Staff) */}
+                            {isStaff && (
+                              <button onClick={() => handleDelete(eng.id)} className="text-xs font-bold text-slate-500 hover:text-red-500 transition-colors flex items-center gap-1">
+                                <Trash2 className="w-3.5 h-3.5" /> Excluir
+                              </button>
+                            )}
                           </div>
                         </div>
-                      </div>
                       
-                      <h3 className="text-2xl font-bold text-slate-900 mb-3 group-hover:text-cyan-700 transition-colors leading-tight">{eng.title}</h3>
-                      <p className="text-slate-500 text-sm mb-6 line-clamp-2 leading-relaxed">{eng.description}</p>
-                      
-                      {eng.feedback && (
-                        <div className="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">Feedback</p>
-                          <p className="text-xs text-slate-600 italic leading-relaxed line-clamp-2">&quot;{eng.feedback}&quot;</p>
-                        </div>
-                      )}
-
-                      <div className="flex flex-wrap gap-2 mb-8">
-                        {eng.planned_activities.slice(0, 2).map(act => (
-                          <span key={act} className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded">
-                            {act}
-                          </span>
-                        ))}
-                        {eng.planned_activities.length > 2 && (
-                          <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded">
-                            +{eng.planned_activities.length - 2}
-                          </span>
+                        <h3 className="text-2xl font-bold text-slate-900 mb-2">{eng.title}</h3>
+                        <p className="text-slate-500 text-sm mb-4 line-clamp-2">{eng.description}</p>
+                        
+                        {/* Notas Administrativas confidenciais */}
+                        {eng.engagement_staff_notes?.notes && (
+                          <div className="mb-4 p-4 bg-cyan-50/20 rounded-xl border border-cyan-100/50">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-cyan-600 mb-1">Notas Administrativas (Staff)</p>
+                            <p className="text-xs text-slate-700 italic font-medium">&quot;{eng.engagement_staff_notes.notes}&quot;</p>
+                          </div>
                         )}
-                      </div>
 
-                      <div className="pt-6 border-t border-slate-50 flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-slate-600">
-                          <Calendar className="w-4 h-4" />
-                          <span className="text-sm font-semibold">{formatDate(eng.event_date)}</span>
+                        {/* Participantes vinculados (Filtrado automaticamente via RLS no banco) */}
+                        {eng.engagement_participants && eng.engagement_participants.length > 0 && (
+                          <div className="mb-6">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-1">
+                              <Users className="w-3 h-3" /> Participantes Vinculados
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {eng.engagement_participants.map(p => (
+                                <span key={p.user_email} className="text-[11px] font-semibold bg-slate-50 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-md">
+                                  {p.user_email}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="pt-4 border-t border-slate-50 flex justify-between text-xs font-medium text-slate-500">
+                          <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {formatDate(eng.event_date)}</span>
+                          <span className="flex items-center gap-1 text-cyan-600"><MapPin className="w-4 h-4" /> {eng.location}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-cyan-600 font-bold text-sm">
-                          <MapPin className="w-4 h-4" />
-                          {eng.location}
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))
-                }
-                {engagements
-                  .filter(eng => {
-                    const matchesStatus = statusFilter === 'Todos' || eng.status === statusFilter
-                    const searchLower = searchTerm.toLowerCase()
-                    const matchesSearch = !searchTerm || 
-                      eng.title.toLowerCase().includes(searchLower) || 
-                      eng.description.toLowerCase().includes(searchLower) || 
-                      eng.location.toLowerCase().includes(searchLower)
-                    return matchesStatus && matchesSearch
-                  }).length === 0 && (
-                    <div className="col-span-full py-20 text-center">
-                      <p className="text-slate-400 font-medium">Nenhum engajamento encontrado com os filtros atuais.</p>
-                    </div>
-                  )
+                      </motion.div>
+                    );
+                  })
                 }
               </div>
             )}
@@ -698,31 +573,17 @@ export default function EngajamentosPage() {
         </div>
       </div>
     </main>
-  )
+  );
 }
 
 const BadgeToggleList = ({ options, selected, onToggle, label, icon: Icon }: any) => (
   <div className="space-y-3">
-    <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 ml-1">
-      <Icon className="w-4 h-4 text-slate-400" />
-      {label}
-    </div>
-    <div className="flex flex-wrap gap-2">
+    <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 ml-1"><Icon className="w-4 h-4 text-slate-400" />{label}</div>
+    <div className="flex flex-wrap gap-1.5">
       {options.map((opt: string) => {
         const isActive = selected.includes(opt)
         return (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => onToggle(opt)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
-              isActive 
-                ? 'bg-[#0F172A] border-[#0F172A] text-white shadow-md scale-105' 
-                : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
-            }`}
-          >
-            {opt}
-          </button>
+          <button key={opt} type="button" onClick={() => onToggle(opt)} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${isActive ? 'bg-[#0F172A] border-[#0F172A] text-white' : 'bg-white border-slate-200 text-slate-500'}`}>{opt}</button>
         )
       })}
     </div>

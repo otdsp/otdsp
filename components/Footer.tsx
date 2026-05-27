@@ -1,7 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Mail, Phone, MapPin, Linkedin, Instagram } from 'lucide-react';
+import { Mail, Phone, MapPin, Linkedin, Instagram, Shield } from 'lucide-react';
 
 const basePath = process.env.__NEXT_ROUTER_BASEPATH || '';
 
@@ -76,10 +76,30 @@ export default function Footer() {
           </div>
         </div>
         
+        {/* Bottom Bar: Copyright & Legal */}
         <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-400">
-          <p className="text-center md:text-left tracking-wide">© 2026 Observatório de Transformação Digital do Estado de São Paulo</p>
-          <p className="text-center md:text-right tracking-wide">Todos os direitos reservados.</p>
+          <p className="text-center md:text-left tracking-wide">
+            © 2026 Observatório de Transformação Digital do Estado de São Paulo
+          </p>
+          
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+            {/* Link da Política de Privacidade adicionado aqui */}
+            <Link 
+              href="/privacidade" 
+              className="flex items-center gap-1.5 text-slate-500 hover:text-cyan-600 transition-colors"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              Política de Privacidade
+            </Link>
+            
+            <span className="hidden sm:inline text-slate-200">|</span>
+            
+            <p className="text-center md:text-right tracking-wide">
+              Todos os direitos reservados.
+            </p>
+          </div>
         </div>
+        
       </div>
     </footer>
   );

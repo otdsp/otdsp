@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X, ChevronDown, UserPlus, User, LogOut, Calendar } from 'lucide-react';
+import { Menu, X, ChevronDown, UserPlus, User, LogOut, Calendar, ChartColumn} from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
@@ -42,10 +42,9 @@ const navItems = [
   },
   { name: 'Contato', href: '#footer' },
   {
-    name: 'Faça Parte',
+    name: 'Acessos',
     href: '#',
     dropdown: [
-      { name: 'Cadastro', href: '/cadastro', icon: UserPlus },
     ],
   },
 ];
@@ -55,19 +54,53 @@ export default function Navbar() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [mobileExpandedIndex, setMobileExpandedIndex] = useState<number | null>(null);
   const [user, setUser] = useState<any>(null);
+  const [isStaff, setIsStaff] = useState<boolean>(false); // NOVO: Estado para controlar se é Staff
   
   const router = useRouter();
 
   useEffect(() => {
+    const checkStaffStatus = async (userId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('user_auth')
+          .select('is_staff')
+          .eq('id', userId)
+          .single();
+
+        if (data && !error) {
+          setIsStaff(data.is_staff);
+        } else {
+          setIsStaff(false);
+        }
+      } catch (err) {
+        console.error("Erro ao verificar status de staff:", err);
+        setIsStaff(false);
+      }
+    };
+
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      
+      if (currentUser) {
+        await checkStaffStatus(currentUser.id);
+      } else {
+        setIsStaff(false);
+      }
     };
 
     checkUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      
+      if (currentUser) {
+        await checkStaffStatus(currentUser.id);
+      } else {
+        setIsStaff(false);
+      }
     });
 
     return () => {
@@ -80,26 +113,31 @@ export default function Navbar() {
     await supabase.auth.signOut();
     setMobileMenuOpen(false);
     setMobileExpandedIndex(null);
+    setIsStaff(false); // Reseta o estado ao deslogar
     router.push('/');
     router.refresh();
   };
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
 
-  // Dynamic menu items based on auth state
+  // Dynamic menu items based on auth state and staff status
   const dynamicNavItems = navItems.map((item) => {
-    if (item.name === 'Faça Parte') {
+    if (item.name === 'Acessos') {
+      const loggedInDropdown = [
+        { name: 'Meu Perfil', href: '/perfil', icon: User },
+        ...(isStaff ? [{ name: 'Indicadores', href: '/indicadores', icon: ChartColumn }] : []),
+        { name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
+        { name: 'Sair', href: '#', isLogout: true, icon: LogOut },
+      ];
+
       return {
         ...item,
         dropdown: user
-          ? [
-              { name: 'Meu Perfil', href: '/perfil', icon: User },
-              { name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
-              { name: 'Sair', href: '#', isLogout: true, icon: LogOut },
-            ]
+          ? loggedInDropdown
           : [
               { name: 'Entrar', href: '/login', icon: User },
               { name: 'Cadastro', href: '/cadastro', icon: UserPlus },
+              { name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
             ],
       };
     }
@@ -131,7 +169,7 @@ export default function Navbar() {
                   className="px-1.5 xl:px-2 py-2 flex items-center gap-1 text-[#0F172A] font-medium transition-colors hover:text-cyan-600 text-[14px] xl:text-[15px] tracking-wide whitespace-nowrap group"
                 >
                   {item.name}
-                  {item.dropdown && (
+                  {item.dropdown && item.dropdown.length > 0 && (
                     <ChevronDown
                       className={`w-4 h-4 transition-transform duration-200 ${
                         hoveredIndex === index ? 'rotate-180 text-cyan-600' : 'text-slate-400 group-hover:text-cyan-600'
@@ -141,7 +179,7 @@ export default function Navbar() {
                 </Link>
 
                 {/* Dropdown Menu */}
-                {item.dropdown && (
+                {item.dropdown && item.dropdown.length > 0 && (
                   <AnimatePresence>
                     {hoveredIndex === index && (
                       <motion.div
@@ -209,11 +247,10 @@ export default function Navbar() {
             transition={{ duration: 0.3 }}
             className="lg:hidden bg-white border-b border-slate-200 overflow-hidden"
           >
-            {/* ADICIONANDO ALTURA MÁXIMA E SCROLL */}
             <div className="px-4 pt-2 pb-6 space-y-1 sm:px-6 max-h-[calc(100vh-5rem)] overflow-y-auto">
               {dynamicNavItems.map((item, index) => (
                 <div key={item.name} className="py-1">
-                  {item.dropdown ? (
+                  {item.dropdown && item.dropdown.length > 0 ? (
                     <>
                       <button
                         onClick={() =>

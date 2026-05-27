@@ -100,7 +100,7 @@ export default function LoginPage() {
 
       setSuccess(true)
       setTimeout(() => {
-        router.push('/perfil')
+        router.push('/')
         router.refresh()
       }, 1500)
     } catch (err: any) {
