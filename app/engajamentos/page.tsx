@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'motion/react'
 import { 
@@ -62,6 +62,7 @@ export default function EngajamentosPage() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('Todos')
+  
   const router = useRouter()
 
   const [formData, setFormData] = useState({
@@ -129,9 +130,11 @@ export default function EngajamentosPage() {
 
   useEffect(() => {
     if (!isStaff || emailInput.trim().length < 2) {
-      setEmailSuggestions([])
-      setShowSuggestions(false)
-      return
+      const timer = setTimeout(() => {
+        setEmailSuggestions([])
+        setShowSuggestions(false)
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
     const fetchSuggestions = async () => {
@@ -139,10 +142,9 @@ export default function EngajamentosPage() {
         .from('user_auth')
         .select('email')
         .ilike('email', `%${emailInput}%`)
-        .limit(5) // Traz as 5 melhores correspondências
+        .limit(5)
 
       if (!error && data) {
-        // Filtra para não sugerir e-mails que já foram adicionados
         const newSuggestions = data
           .map(d => d.email)
           .filter(email => !formData.participants.includes(email))
@@ -152,7 +154,6 @@ export default function EngajamentosPage() {
       }
     }
 
-    // Debounce de 300ms
     const timeoutId = setTimeout(fetchSuggestions, 300)
     return () => clearTimeout(timeoutId)
   }, [emailInput, isStaff, formData.participants])
@@ -198,7 +199,7 @@ export default function EngajamentosPage() {
       technologies: eng.technologies || [],
       public_policies: eng.public_policies || [],
       planned_activities: eng.planned_activities || [],
-      participants: [] // Começa limpo para receber novos convidados
+      participants: []
     })
     setShowForm(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -218,7 +219,6 @@ export default function EngajamentosPage() {
     setIsSubmitting(true)
     setMessage(null)
 
-    // Payload limpo sem referências à antiga coluna 'participants'
     const payload: any = {
       title: formData.title,
       description: formData.description,
@@ -231,7 +231,6 @@ export default function EngajamentosPage() {
       planned_activities: formData.planned_activities,
     }
 
-    // Controle rígido de payload para status
     if (isStaff || !editingId) {
       payload.status = formData.status
     }
@@ -239,7 +238,6 @@ export default function EngajamentosPage() {
     let result;
     let currentEngagementId = editingId;
 
-    // 1. Gravação do Engajamento Principal
     if (editingId) {
       result = await supabase.from('engagements').update(payload).eq('id', editingId).select()
     } else {
@@ -250,14 +248,12 @@ export default function EngajamentosPage() {
     if (result.error) {
       setMessage({ type: 'error', text: 'Erro ao salvar: ' + result.error.message })
     } else {
-      // 2. Gravação das Notas Confidenciais (Apenas se for Staff)
       if (isStaff && currentEngagementId) {
         await supabase
           .from('engagement_staff_notes')
           .upsert({ engagement_id: currentEngagementId, notes: formData.feedback })
       }
 
-      // 3. Gravação Direta de Participantes no Front-end (Opção 1 Funcional!)
       if (formData.participants.length > 0 && currentEngagementId) {
         const participantsData = formData.participants.map(email => ({
           engagement_id: currentEngagementId,
@@ -292,6 +288,14 @@ export default function EngajamentosPage() {
       day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
     })
   }
+
+  const checkIsPast = useMemo(() => {
+    return (eventDate: string, duration: number) => {
+      if (!eventDate) return false;
+      const endTimeMs = new Date(eventDate).getTime() + (duration * 60 * 60 * 1000);
+      return endTimeMs < Date.now();
+    };
+  }, []);
 
   return (
     <main className="min-h-screen bg-slate-50 pt-24 pb-20">
@@ -334,7 +338,6 @@ export default function EngajamentosPage() {
                         <textarea name="description" value={formData.description} onChange={handleInputChange} rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none resize-none" />
                       </div>
 
-                      {/* UX Inteligente: O Status e o Feedback somem completamente para usuários comuns */}
                       {editingId && isStaff && (
                         <div className="space-y-6 pt-4 border-t border-slate-100">
                           <div className="space-y-2">
@@ -385,27 +388,24 @@ export default function EngajamentosPage() {
                         <div className="space-y-2">
                           <label className="text-sm font-semibold text-slate-700 ml-1">Convidar Participantes</label>
                           <div className="flex gap-2">
-                            {/* Bloco relativo para o auto-complete flutuar abaixo */}
                             <div className="relative flex-grow">
                               <input 
                                 type="email" 
                                 value={emailInput} 
                                 onChange={(e) => setEmailInput(e.target.value)} 
                                 onFocus={() => emailSuggestions.length > 0 && setShowSuggestions(true)}
-                                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Pequeno delay para permitir o clique
+                                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addParticipant())} 
                                 placeholder="Digite o e-mail..." 
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-4 text-sm focus:ring-2 focus:ring-cyan-500 outline-none" 
                               />
                               
-                              {/* CAIXA DE SUGESTÕES (Apenas Staff) */}
                               {isStaff && showSuggestions && (
                                 <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
                                   {emailSuggestions.map(suggestion => (
                                     <button
                                       key={suggestion}
                                       type="button"
-                                      // Usamos onMouseDown em vez de onClick porque ele é disparado antes do onBlur do input
                                       onMouseDown={(e) => {
                                         e.preventDefault()
                                         setFormData(prev => ({ ...prev, participants: [...prev.participants, suggestion] }))
@@ -495,12 +495,7 @@ export default function EngajamentosPage() {
                     return matchesStatus && (!searchTerm || eng.title.toLowerCase().includes(searchLower) || eng.description.toLowerCase().includes(searchLower))
                   })
                   .map((eng) => {
-                    // Trava de Tempo: Verifica se a data atual passou do término do evento
-                    const endTimeMs = eng.event_date 
-                      ? new Date(eng.event_date).getTime() + ((eng.estimated_duration || 0) * 60 * 60 * 1000)
-                      : null;
-                    
-                    const isPast = endTimeMs ? endTimeMs < Date.now() : false;
+                    const isPast = checkIsPast(eng.event_date, eng.estimated_duration || 0);
                     const canEdit = isStaff || !isPast;
 
                     return (
@@ -509,21 +504,18 @@ export default function EngajamentosPage() {
                           <span className="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-cyan-50 text-cyan-600">{eng.status}</span>
                           <div className="flex items-center gap-3">
                             
-                            {/* O Botão Editar só renderiza se estiver no prazo ou for Staff */}
                             {canEdit && (
                               <button onClick={() => handleEdit(eng)} className="text-xs font-bold text-slate-500 hover:text-cyan-600 transition-colors flex items-center gap-1">
                                 <Pencil className="w-3.5 h-3.5" /> Editar
                               </button>
                             )}
 
-                            {/* Tag de bloqueio exibida para o usuário comum se o prazo expirou */}
                             {!canEdit && (
                               <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md">
                                 <Lock className="w-3 h-3" /> Encerrado
                               </span>
                             )}
 
-                            {/* Botão com ícone de Lixeira (Restrito à Staff) */}
                             {isStaff && (
                               <button onClick={() => handleDelete(eng.id)} className="text-xs font-bold text-slate-500 hover:text-red-500 transition-colors flex items-center gap-1">
                                 <Trash2 className="w-3.5 h-3.5" /> Excluir
@@ -535,7 +527,6 @@ export default function EngajamentosPage() {
                         <h3 className="text-2xl font-bold text-slate-900 mb-2">{eng.title}</h3>
                         <p className="text-slate-500 text-sm mb-4 line-clamp-2">{eng.description}</p>
                         
-                        {/* Notas Administrativas confidenciais */}
                         {eng.engagement_staff_notes?.notes && (
                           <div className="mb-4 p-4 bg-cyan-50/20 rounded-xl border border-cyan-100/50">
                             <p className="text-[10px] font-black uppercase tracking-widest text-cyan-600 mb-1">Notas Administrativas (Staff)</p>
@@ -543,7 +534,6 @@ export default function EngajamentosPage() {
                           </div>
                         )}
 
-                        {/* Participantes vinculados (Filtrado automaticamente via RLS no banco) */}
                         {eng.engagement_participants && eng.engagement_participants.length > 0 && (
                           <div className="mb-6">
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-1">
