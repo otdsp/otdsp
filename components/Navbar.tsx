@@ -40,7 +40,6 @@ const navItems = [
       { name: 'Meio Ambiente', href: '/em-construcao?s=MeioAmbiente' },
     ],
   },
-  { name: 'Contato', href: '#footer' },
   {
     name: 'Faça Parte',
     href: '#',
@@ -80,6 +79,7 @@ export default function Navbar() {
     await supabase.auth.signOut();
     setMobileMenuOpen(false);
     setMobileExpandedIndex(null);
+    setIsStaff(false);
     router.push('/');
     router.refresh();
   };
@@ -111,10 +111,14 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20">
           <div className="flex items-center">
-            {/* Logo */}
-            <Link href="/" className="flex-shrink-0 flex items-center gap-2">
-              <Image src={`${basePath}/logo.png`} alt="OTDSP Logo" width={200} height={40} className="h-10 w-auto object-contain" />
-            </Link>
+            {/* Logo Group */}
+            <div className="flex-shrink-0 flex items-center select-none max-w-[70vw] sm:max-w-none">
+              <Link href="/" className="flex items-center gap-2 md:gap-4">
+                <Image src={`${basePath}/logo.png`} alt="OTDSP Logo" width={200} height={40} className="h-8 md:h-10 w-auto object-contain" />
+                <div className="h-6 md:h-8 w-px bg-slate-200/80 shrink-0" />
+                <Image src={`${basePath}/inovausp.png`} alt="Inova USP Logo" width={280} height={56} className="h-10 md:h-14 w-auto object-contain" />
+              </Link>
+            </div>
           </div>
 
           {/* Desktop Menu */}

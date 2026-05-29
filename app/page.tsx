@@ -7,19 +7,152 @@ import Carousel from '../components/Carousel';
 import { Box, Layers, Activity, CheckCircle, MapPin, GraduationCap, Landmark, Microscope, Briefcase, Target, HeartPulse, BookOpen, ShieldCheck, Leaf, Pencil, Map, ChevronLeft, ChevronRight, Phone, Mail } from 'lucide-react';
 import Image from 'next/image';
 
-const basePath = process.env.__NEXT_ROUTER_BASEPATH || '';
+const basePath = '';
+
+interface AutoTrimmedPartnerLogoProps {
+  src: string;
+  name: string;
+  url: string;
+  targetHeight?: number;
+}
+
+function AutoTrimmedPartnerLogo({ src, name, url, targetHeight = 48 }: AutoTrimmedPartnerLogoProps) {
+  const [dimensions, setDimensions] = useState<{
+    W: number;
+    H: number;
+    minX: number;
+    minY: number;
+    visibleW: number;
+    visibleH: number;
+  } | null>(null);
+
+  const handleLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    const W = img.naturalWidth;
+    const H = img.naturalHeight;
+    if (!W || !H) return;
+
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas 2D context not available');
+
+      ctx.drawImage(img, 0, 0);
+      const imgData = ctx.getImageData(0, 0, W, H).data;
+
+      let minX = W;
+      let minY = H;
+      let maxX = 0;
+      let maxY = 0;
+      let found = false;
+
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const alpha = imgData[(y * W + x) * 4 + 3];
+          if (alpha > 5) {
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+            found = true;
+          }
+        }
+      }
+
+      if (!found) {
+        setDimensions({
+          W,
+          H,
+          minX: 0,
+          minY: 0,
+          visibleW: W,
+          visibleH: H
+        });
+      } else {
+        setDimensions({
+          W,
+          H,
+          minX,
+          minY,
+          visibleW: maxX - minX + 1,
+          visibleH: maxY - minY + 1
+        });
+      }
+    } catch (err) {
+      console.warn("Auto-trim failed for logo:", src, err);
+      // Fallback
+      setDimensions({
+        W,
+        H,
+        minX: 0,
+        minY: 0,
+        visibleW: W,
+        visibleH: H
+      });
+    }
+  };
+
+  const scale = dimensions ? targetHeight / dimensions.visibleH : 1;
+  const containerW = dimensions ? dimensions.visibleW * scale : 130;
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="relative shrink-0 select-none cursor-pointer block transition-all duration-500 ease-out transform outline-none group hover:scale-105"
+      style={{
+        width: `${containerW}px`,
+        height: `${targetHeight}px`,
+        transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+      }}
+      title={name}
+    >
+      <div 
+        className={`w-full h-full relative overflow-visible opacity-80 hover:opacity-100 transition-opacity duration-300 ${!dimensions ? 'opacity-0' : ''}`}
+      >
+        <Image
+          src={src.startsWith('/') ? src : `/${src}`}
+          alt={name}
+          onLoad={handleLoad}
+          width={dimensions ? dimensions.W * scale : 130}
+          height={dimensions ? dimensions.H * scale : targetHeight}
+          unoptimized
+          style={dimensions ? {
+            position: 'absolute',
+            left: `${-dimensions.minX * scale}px`,
+            top: `${-dimensions.minY * scale}px`,
+            maxWidth: 'none',
+          } : {
+            height: '100%',
+            width: 'auto',
+            objectFit: 'contain',
+          }}
+          className="select-none pointer-events-none"
+          referrerPolicy="no-referrer"
+        />
+      </div>
+    </a>
+  );
+}
+
 
 // -----------------------------------------------------------------------------
 // Soluções Strategy Block (using Case style)
 // -----------------------------------------------------------------------------
-function SolucaoBlock({ imageSrc, title, description, category, categoryColor, theme, align = 'left', className = '', Icon }: any) {
+function SolucaoBlock({ imageSrc, title, description, category, categoryColor, theme, align = 'bottom-left', className = '', Icon }: any) {
+  const isLeft = align.includes('left');
+  const isTop = align.includes('top');
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 30 }} 
       whileInView={{ opacity: 1, y: 0 }} 
       viewport={{ once: true, margin: "-50px" }} 
       transition={{ duration: 0.6 }}
-      className={`relative w-full md:w-11/12 xl:w-4/5 min-h-[500px] md:h-[500px] rounded-3xl overflow-hidden shadow-2xl flex flex-col justify-end md:flex-row md:items-center p-4 md:p-0 ${align === 'left' ? 'md:mr-auto' : 'md:ml-auto'} ${className}`}
+      className={`relative w-full md:w-11/12 xl:w-4/5 min-h-[500px] md:h-[500px] rounded-3xl overflow-hidden shadow-2xl flex flex-col justify-end p-4 md:p-0 ${isLeft ? 'md:mr-auto' : 'md:ml-auto'} ${className}`}
     >
       
       {/* Background Image */}
@@ -28,19 +161,23 @@ function SolucaoBlock({ imageSrc, title, description, category, categoryColor, t
         alt={title} 
         fill 
         style={{ objectFit: 'cover' }}
-        className="absolute inset-0 w-full h-full z-0 object-top md:object-center" 
+        className="absolute inset-0 w-full h-full z-0 object-bottom" 
       />
       {/* Overlay */}
       <div className="absolute inset-0 bg-slate-900/40 md:bg-slate-900/20 z-10" />
 
       {/* Floating Text Card */}
-      <div className={`case-text relative z-20 bg-white rounded-2xl shadow-xl p-5 md:p-8 w-full h-auto max-h-none md:max-w-xl md:mx-8 ${align === 'left' ? 'md:mr-auto' : 'md:ml-auto'}`}>
-        <div className={`flex items-center gap-2 font-semibold text-xs mb-3 md:mb-4 inline-flex px-3 py-1.5 rounded-full w-fit ${categoryColor}`}>
-          <Icon className="w-4 h-4" />
+      <div className={`case-text relative md:absolute z-20 bg-white rounded-2xl shadow-xl p-4 md:p-6 w-full h-auto max-h-none md:max-w-lg md:m-3 ${
+        isLeft ? 'md:left-0' : 'md:right-0'
+      } ${
+        isTop ? 'md:top-0' : 'md:bottom-0'
+      }`}>
+        <div className={`flex items-center gap-2 font-semibold text-[10px] md:text-xs mb-2 md:mb-3 inline-flex px-3 py-1.5 rounded-full w-fit ${categoryColor}`}>
+          <Icon className="w-3 h-3 md:w-3.5 md:h-3.5" />
           {category}
         </div>
-        <h3 className="text-lg md:text-xl lg:text-2xl font-semibold mb-2 md:mb-3 text-slate-900 leading-tight">{title}</h3>
-        <div className="text-[13px] md:text-sm lg:text-base text-slate-600 leading-snug md:leading-relaxed">{description}</div>
+        <h3 className="text-base md:text-lg lg:text-xl font-semibold mb-1.5 md:mb-2 text-slate-900 leading-tight">{title}</h3>
+        <div className="text-[11px] md:text-xs lg:text-sm text-slate-600 leading-snug md:leading-relaxed">{description}</div>
       </div>
     </motion.div>
   );
@@ -243,19 +380,18 @@ export default function Page() {
       <section className="relative w-full py-6 md:py-12 overflow-hidden z-20">
         <div className="flex w-fit">
           <motion.div
-            className="flex items-center min-w-max gap-32"
+            className="flex items-center min-w-max gap-24 md:gap-32"
             animate={{ x: ["0%", "-50%"] }}
-            transition={{ repeat: Infinity, ease: "linear", duration: 30 }}
+            transition={{ repeat: Infinity, ease: "linear", duration: 25 }}
           >
             {[
-              { img: "inovausp.png", url: "https://inova.usp.br/", name: "InovaUSP" },
               { img: "iea.png", url: "https://www.iea.usp.br/", name: "IEA" },
               { img: "citi.png", url: "https://www.lsi.usp.br/citi/", name: "CiTi" },
               { img: "abese.png", url: "https://www.abese.org.br/", name: "ABESE" },
               { img: "rede-nacional.png", url: "https://www.rncp.org.br/", name: "Rede Nacional de Consórcios Intermunicipais" },
               { img: "forum-iot.png", url: "https://iotbrasil.org.br/", name: "Fórum Brasileiro de IoT" },
               { img: "abes.png", url: "https://abes.org.br/", name: "ABES" },
-              { img: "inovausp.png", url: "https://inova.usp.br/", name: "InovaUSP" },
+              // Duplicados no DOM para ciclo infinito perfeito
               { img: "iea.png", url: "https://www.iea.usp.br/", name: "IEA" },
               { img: "citi.png", url: "https://www.lsi.usp.br/citi/", name: "CiTi" },
               { img: "abese.png", url: "https://www.abese.org.br/", name: "ABESE" },
@@ -263,22 +399,13 @@ export default function Page() {
               { img: "forum-iot.png", url: "https://iotbrasil.org.br/", name: "Fórum Brasileiro de IoT" },
               { img: "abes.png", url: "https://abes.org.br/", name: "ABES" }
             ].map((partner, index) => (
-              <a 
-                key={index} 
-                href={partner.url} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="transition-transform hover:scale-105"
-                title={partner.name}
-              >
-                <Image 
-                  src={`${basePath}/${partner.img}`} 
-                  alt={partner.name}
-                  width={200}
-                  height={64}
-                  className="h-16 w-auto object-contain transition-all"
-                />
-              </a>
+              <AutoTrimmedPartnerLogo
+                key={index}
+                src={`${basePath}/${partner.img}`}
+                name={partner.name}
+                url={partner.url}
+                targetHeight={partner.name === "ABES" ? 44 : 52}
+              />
             ))}
           </motion.div>
         </div>
@@ -313,7 +440,7 @@ export default function Page() {
               category="Saúde"
               categoryColor="text-cyan-600 bg-cyan-50"
               theme="dark"
-              align="left"
+              align="bottom-left"
               Icon={HeartPulse}
             />
           </div>
@@ -327,7 +454,7 @@ export default function Page() {
               category="Educação"
               categoryColor="text-orange-600 bg-orange-50"
               theme="light"
-              align="right"
+              align="bottom-right"
               Icon={BookOpen}
             />
           </div>
@@ -341,7 +468,7 @@ export default function Page() {
               category="Segurança"
               categoryColor="text-cyan-600 bg-cyan-50"
               theme="light"
-              align="left"
+              align="bottom-left"
               Icon={ShieldCheck}
             />
           </div>
@@ -355,7 +482,7 @@ export default function Page() {
               category="Meio Ambiente"
               categoryColor="text-[#0F172A] bg-slate-100"
               theme="dark"
-              align="right"
+              align="top-right"
               Icon={Leaf}
             />
           </div>

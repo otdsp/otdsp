@@ -16,6 +16,8 @@ import {
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
+const basePath = process.env.__NEXT_ROUTER_BASEPATH || '';
+
 export default function LoginPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -65,9 +67,10 @@ export default function LoginPage() {
 
     setLoading(true)
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/redefinir-senha`
-      })
+    const redirectToUrl = `${window.location.origin}${basePath}/redefinir-senha`
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectToUrl
+    })
       if (error) throw error
       setResetSuccess('E-mail de recuperação enviado! Verifique sua caixa de entrada para redefinir a senha.')
     } catch (err: any) {
@@ -100,7 +103,7 @@ export default function LoginPage() {
 
       setSuccess(true)
       setTimeout(() => {
-        router.push('/perfil')
+        router.push('/')
         router.refresh()
       }, 1500)
     } catch (err: any) {

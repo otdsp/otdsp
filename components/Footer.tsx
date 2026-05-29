@@ -1,9 +1,9 @@
+'use client';
+
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Mail, Phone, MapPin, Linkedin, Instagram } from 'lucide-react';
-
-const basePath = process.env.__NEXT_ROUTER_BASEPATH || '';
 
 export default function Footer() {
   return (
@@ -13,9 +13,13 @@ export default function Footer() {
           
           {/* Logo & Info */}
           <div className="md:col-span-4 lg:col-span-5">
-            <Link href="/" className="inline-block mb-6 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded-sm">
-              <Image src={`${basePath}/logo.png`} alt="OTDSP Logo" width={200} height={40} className="h-10 w-auto object-contain" />
-            </Link>
+            <div className="flex items-center gap-2 md:gap-4 mb-6 select-none max-w-full">
+              <Link href="/" className="flex items-center gap-2 md:gap-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded-sm shrink-0">
+                <Image src="/logo.png" alt="OTDSP Logo" width={200} height={40} className="h-8 md:h-10 w-auto object-contain" />
+                <div className="h-6 md:h-8 w-px bg-slate-200 shrink-0" />
+                <Image src="/inovausp.png" alt="Inova USP Logo" width={280} height={56} className="h-10 md:h-14 w-auto object-contain" />
+              </Link>
+            </div>
             <p className="text-sm font-medium leading-relaxed max-w-sm text-slate-500">
               Conectando inovação, dados e desenvolvimento para o avanço dos municípios no Estado de São Paulo.
             </p>
