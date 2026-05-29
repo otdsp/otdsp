@@ -1,9 +1,9 @@
+'use client';
+
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Mail, Phone, MapPin, Linkedin, Instagram, Shield } from 'lucide-react';
-
-const basePath = process.env.__NEXT_ROUTER_BASEPATH || '';
+import { Mail, Phone, MapPin, Linkedin, Instagram } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -13,9 +13,13 @@ export default function Footer() {
           
           {/* Logo & Info */}
           <div className="md:col-span-4 lg:col-span-5">
-            <Link href="/" className="inline-block mb-6 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded-sm">
-              <Image src={`${basePath}/logo.png`} alt="OTDSP Logo" width={200} height={40} className="h-10 w-auto object-contain" />
-            </Link>
+            <div className="flex items-center gap-2 md:gap-4 mb-6 select-none max-w-full">
+              <Link href="/" className="flex items-center gap-2 md:gap-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded-sm shrink-0">
+                <Image src="/logo.png" alt="OTDSP Logo" width={200} height={40} className="h-8 md:h-10 w-auto object-contain" />
+                <div className="h-6 md:h-8 w-px bg-slate-200 shrink-0" />
+                <Image src="/inovausp.png" alt="Inova USP Logo" width={280} height={56} className="h-10 md:h-14 w-auto object-contain" />
+              </Link>
+            </div>
             <p className="text-sm font-medium leading-relaxed max-w-sm text-slate-500">
               Conectando inovação, dados e desenvolvimento para o avanço dos municípios no Estado de São Paulo.
             </p>
@@ -76,30 +80,10 @@ export default function Footer() {
           </div>
         </div>
         
-        {/* Bottom Bar: Copyright & Legal */}
         <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-400">
-          <p className="text-center md:text-left tracking-wide">
-            © 2026 Observatório de Transformação Digital do Estado de São Paulo
-          </p>
-          
-          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
-            {/* Link da Política de Privacidade adicionado aqui */}
-            <Link 
-              href="/privacidade" 
-              className="flex items-center gap-1.5 text-slate-500 hover:text-cyan-600 transition-colors"
-            >
-              <Shield className="w-3.5 h-3.5" />
-              Política de Privacidade
-            </Link>
-            
-            <span className="hidden sm:inline text-slate-200">|</span>
-            
-            <p className="text-center md:text-right tracking-wide">
-              Todos os direitos reservados.
-            </p>
-          </div>
+          <p className="text-center md:text-left tracking-wide">© 2026 Observatório de Transformação Digital do Estado de São Paulo</p>
+          <p className="text-center md:text-right tracking-wide">Todos os direitos reservados.</p>
         </div>
-        
       </div>
     </footer>
   );
