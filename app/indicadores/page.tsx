@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { 
@@ -13,8 +13,6 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
-
-// --- INTERFACES PARA TIPAGEM ESTRITA (Remove os avisos de "any") ---
 
 interface UserAuth {
   id: string;
@@ -68,7 +66,6 @@ interface OrgGroup {
 const PIE_COLORS = ['#0891b2', '#059669', '#d97706', '#7c3aed', '#db2777', '#475569'];
 const ORG_COLORS = ['#4f46e5', '#ea580c', '#0284c7', '#16a34a', '#9333ea', '#64748b'];
 
-// Correção 1: Tipagem do Tooltip Customizado
 const CustomOrgTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
@@ -95,7 +92,7 @@ const CustomOrgTooltip = ({ active, payload }: { active?: boolean; payload?: any
 export default function IndicadoresStaff() {
   const router = useRouter();
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<any>(null); // Mapas costumam usar any para instâncias de bibliotecas externas sem types locais
+  const mapInstance = useRef<any>(null); 
   const geocodeCache = useRef<Record<string, [number, number]>>({});
 
   const [isLoading, setIsLoading] = useState(true);
@@ -118,15 +115,7 @@ export default function IndicadoresStaff() {
     geographies: [] as string[]
   });
 
-  const [stats, setStats] = useState<KPIStats>({ totalUsers: 0, activeUsers: 0, totalEngagements: 0, signedAgreements: 0 });
-  const [timelineData, setTimelineData] = useState<{ name: string; Membros?: number; Engajamentos?: number }[]>([]);
-  const [engagementTimelineData, setEngagementTimelineData] = useState<{ name: string; Engajamentos?: number }[]>([]);
-  const [geoData, setGeoData] = useState<{ name: string; count: number; coordinates: [number, number] }[]>([]);
-  const [referralData, setReferralData] = useState<{ name: string; value: number }[]>([]);
-  const [organizationData, setOrganizationData] = useState<{ name: string; value: number; orgType: string }[]>([]);
-  const [pillarsData, setPillarsData] = useState<{ category: string, items: { label: string, count: number }[] }[]>([]);
-
-  // Correção 2: fetchRawData movido para dentro do useEffect para evitar react-hooks/exhaustive-deps
+  // Busca e autenticação (Mantido intacto)
   useEffect(() => {
     const fetchRawData = async () => {
       const [ { data: authData }, { data: profileData }, { data: engData } ] = await Promise.all([
@@ -135,7 +124,6 @@ export default function IndicadoresStaff() {
         supabase.from('engagements').select('id, created_by, status, interests, technologies, public_policies, planned_activities, created_at')
       ]);
 
-      // Correção 3, 4 e 5: Castings com as interfaces corretas e seguras
       const safeAuth: UserAuth[] = authData || [];
       const safeProfiles: UserProfile[] = profileData || [];
       const safeEng: Engagement[] = engData || [];
@@ -203,10 +191,22 @@ export default function IndicadoresStaff() {
     authenticateAndFetch();
   }, [router]);
 
-  useEffect(() => {
-    if (!rawData.auth.length && !rawData.profiles.length) return;
-    const { auth, profiles, engagements } = rawData;
+  // CORREÇÃO AQUI: Substituímos múltiplos useState/useEffect por um único useMemo.
+  // Isso resolve os erros de Cascading Renders e de dependências circulares/ausentes.
+  const derivedData = useMemo(() => {
+    const emptyResult = {
+      stats: { totalUsers: 0, activeUsers: 0, totalEngagements: 0, signedAgreements: 0 },
+      timelineData: [] as { name: string; Membros: number }[],
+      engagementTimelineData: [] as { name: string; Engajamentos: number }[],
+      referralData: [] as { name: string; value: number }[],
+      organizationData: [] as { name: string; value: number; orgType: string }[],
+      geoData: [] as { name: string; count: number; coordinates: [number, number] }[],
+      pillarsData: [] as { category: string, items: { label: string, count: number }[] }[]
+    };
 
+    if (!rawData.auth.length && !rawData.profiles.length) return emptyResult;
+
+    const { auth, profiles, engagements } = rawData;
     const profileMap = new Map<string, UserProfile>();
     profiles.forEach(p => { profileMap.set(p.user_id || p.id, p); });
 
@@ -216,8 +216,9 @@ export default function IndicadoresStaff() {
     else if (filters.period === '30d') cutoffDate.setDate(now.getDate() - 30);
     else if (filters.period === '90d') cutoffDate.setDate(now.getDate() - 90);
     else if (filters.period === '12m') cutoffDate.setFullYear(now.getFullYear() - 1);
-    else cutoffDate.setFullYear(2000); 
+    else cutoffDate.setFullYear(2000);
 
+    // 1. Filtragens
     const filteredAuth = auth.filter(u => {
       const p = profileMap.get(u.id);
       const dateOk = new Date(u.date_joined) >= cutoffDate;
@@ -242,21 +243,15 @@ export default function IndicadoresStaff() {
       e.planned_activities.some(activity => activity?.trim() === "Reunião de Adesão ao Convênio")
     ).length;
 
-    setStats({
+    const stats = {
       totalUsers: filteredAuth.length,
       activeUsers: filteredAuth.filter(u => u.is_active).length,
       totalEngagements: filteredEngagements.length,
       signedAgreements: signedCount
-    });
+    };
 
-    buildCascadeCharts(filteredAuth, filteredProfiles, filteredEngagements, cutoffDate);
-
-  }, [rawData, filters]);
-
-  const buildCascadeCharts = (fAuth: UserAuth[], fProfiles: UserProfile[], fEngagements: Engagement[], cutoff: Date) => {
-    const now = new Date();
+    // 2. Gráficos de Linha (Timeline)
     const isShortPeriod = filters.period === '7d' || filters.period === '30d';
-
     let timelineArr: { name: string; Membros: number }[] = [];
     let engagementTimelineArr: { name: string; Engajamentos: number }[] = [];
 
@@ -276,10 +271,10 @@ export default function IndicadoresStaff() {
       const engDaily: Record<string, number> = {};
       dayList.forEach(d => { authDaily[d.key] = 0; engDaily[d.key] = 0; });
 
-      let authAcc = fAuth.filter(u => new Date(u.date_joined) < cutoff).length;
-      let engAcc = fEngagements.filter(e => new Date(e.created_at) < cutoff).length;
+      let authAcc = filteredAuth.filter(u => new Date(u.date_joined) < cutoffDate).length;
+      let engAcc = filteredEngagements.filter(e => new Date(e.created_at) < cutoffDate).length;
 
-      fAuth.forEach(u => {
+      filteredAuth.forEach(u => {
         if (u.date_joined) {
           const dt = new Date(u.date_joined);
           const k = `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`;
@@ -287,7 +282,7 @@ export default function IndicadoresStaff() {
         }
       });
 
-      fEngagements.forEach(e => {
+      filteredEngagements.forEach(e => {
         if (e.created_at) {
           const dt = new Date(e.created_at);
           const k = `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`;
@@ -310,10 +305,10 @@ export default function IndicadoresStaff() {
       const engMonthly: Record<string, number> = {};
       monthList.forEach(m => { authMonthly[m.key] = 0; engMonthly[m.key] = 0; });
 
-      let authAcc = fAuth.filter(u => new Date(u.date_joined) < cutoff).length;
-      let engAcc = fEngagements.filter(e => new Date(e.created_at) < cutoff).length;
+      let authAcc = filteredAuth.filter(u => new Date(u.date_joined) < cutoffDate).length;
+      let engAcc = filteredEngagements.filter(e => new Date(e.created_at) < cutoffDate).length;
 
-      fAuth.forEach(u => {
+      filteredAuth.forEach(u => {
         if (u.date_joined) {
           const dt = new Date(u.date_joined);
           const k = `${dt.getFullYear()}-${dt.getMonth()}`;
@@ -321,7 +316,7 @@ export default function IndicadoresStaff() {
         }
       });
 
-      fEngagements.forEach(e => {
+      filteredEngagements.forEach(e => {
         if (e.created_at) {
           const dt = new Date(e.created_at);
           const k = `${dt.getFullYear()}-${dt.getMonth()}`;
@@ -333,14 +328,12 @@ export default function IndicadoresStaff() {
       engagementTimelineArr = monthList.map(m => { engAcc += engMonthly[m.key]; return { name: m.label, Engajamentos: engAcc }; });
     }
 
-    setTimelineData(timelineArr);
-    setEngagementTimelineData(engagementTimelineArr);
-
+    // 3. Organizações e Origens
     const referralCounts: Record<string, number> = {};
     const orgGroups: Record<string, OrgGroup> = {};
     const cityGroups: Record<string, { count: number, name: string }> = {};
 
-    fProfiles.forEach(p => {
+    filteredProfiles.forEach(p => {
       if (p.referral_source) referralCounts[p.referral_source] = (referralCounts[p.referral_source] || 0) + 1;
       
       if (p.institution_organization) {
@@ -363,11 +356,10 @@ export default function IndicadoresStaff() {
       }
     });
 
-    setReferralData(Object.entries(referralCounts).map(([name, value]) => ({ name, value })));
+    const referralData = Object.entries(referralCounts).map(([name, value]) => ({ name, value }));
 
-    // Correção 6: Ordenação sem forçar "any"
     const sortedOrgs = Object.values(orgGroups).sort((a, b) => b.count - a.count);
-    const topOrgs = sortedOrgs.slice(0, 5).map((item) => ({
+    const organizationData = sortedOrgs.slice(0, 5).map((item) => ({
       name: item.prettyName, value: item.count, orgType: Object.entries(item.types).sort((a, b) => b[1] - a[1])[0][0]
     }));
     
@@ -380,22 +372,22 @@ export default function IndicadoresStaff() {
         Object.entries(item.types).forEach(([t, c]) => { rTypes[t] = (rTypes[t] || 0) + c; });
       });
       const topRTypes = Object.entries(rTypes).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]).join(', ');
-      topOrgs.push({ name: 'Outras', value: rCount, orgType: topRTypes || 'Diversos' });
+      organizationData.push({ name: 'Outras', value: rCount, orgType: topRTypes || 'Diversos' });
     }
-    setOrganizationData(topOrgs);
 
-    const geoPoints: { name: string; count: number; coordinates: [number, number] }[] = [];
+    // 4. Geografia (Mapa)
+    const geoData: { name: string; count: number; coordinates: [number, number] }[] = [];
     Object.values(cityGroups).forEach((c) => {
       const coords = geocodeCache.current[c.name];
-      if (coords) geoPoints.push({ name: c.name, count: c.count, coordinates: coords });
+      if (coords) geoData.push({ name: c.name, count: c.count, coordinates: coords });
     });
-    setGeoData(geoPoints);
 
+    // 5. Pilares
     const iCounts: Record<string, number> = {};
     const tCounts: Record<string, number> = {};
     const pCounts: Record<string, number> = {};
     
-    fEngagements.forEach(eng => {
+    filteredEngagements.forEach(eng => {
       if (Array.isArray(eng.interests)) eng.interests.forEach(i => { if (i) iCounts[i.trim()] = (iCounts[i.trim()] || 0) + 1; });
       if (Array.isArray(eng.technologies)) eng.technologies.forEach(t => { if (t) tCounts[t.trim()] = (tCounts[t.trim()] || 0) + 1; });
       if (Array.isArray(eng.public_policies)) eng.public_policies.forEach(p => { if (p) pCounts[p.trim()] = (pCounts[p.trim()] || 0) + 1; });
@@ -403,13 +395,19 @@ export default function IndicadoresStaff() {
 
     const formatGroup = (obj: Record<string, number>) => Object.entries(obj).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
     
-    setPillarsData([
+    const pillarsData = [
       { category: 'Áreas de Atuação', items: formatGroup(iCounts) },
       { category: 'Tecnologias', items: formatGroup(tCounts) },
       { category: 'Políticas Transversais', items: formatGroup(pCounts) }
-    ].filter(p => p.items.length > 0));
-  };
+    ].filter(p => p.items.length > 0);
 
+    return { stats, timelineData: timelineArr, engagementTimelineData: engagementTimelineArr, referralData, organizationData, geoData, pillarsData };
+  }, [rawData, filters]);
+
+  // Desestruturando os dados derivados (que antes ficavam no state)
+  const { stats, timelineData, engagementTimelineData, referralData, organizationData, geoData, pillarsData } = derivedData;
+
+  // Efeito do Mapa
   useEffect(() => {
     if (!isAuthorized || geoData.length === 0 || !mapRef.current) return;
     import('leaflet').then((L) => {
@@ -614,7 +612,6 @@ export default function IndicadoresStaff() {
   );
 }
 
-// Correção 7: Interface aplicada aos Filtros
 function FilterSelect({ icon: Icon, label, value, onChange, children }: FilterSelectProps) {
   return (
     <div className="flex flex-col space-y-1">

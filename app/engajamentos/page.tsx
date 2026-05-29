@@ -129,9 +129,11 @@ export default function EngajamentosPage() {
 
   useEffect(() => {
     if (!isStaff || emailInput.trim().length < 2) {
-      setEmailSuggestions([])
-      setShowSuggestions(false)
-      return
+      const timer = setTimeout(() => {
+        setEmailSuggestions([])
+        setShowSuggestions(false)
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
     const fetchSuggestions = async () => {
@@ -495,12 +497,11 @@ export default function EngajamentosPage() {
                     return matchesStatus && (!searchTerm || eng.title.toLowerCase().includes(searchLower) || eng.description.toLowerCase().includes(searchLower))
                   })
                   .map((eng) => {
-                    // Trava de Tempo: Verifica se a data atual passou do término do evento
+                    const [currentTime] = useState(() => Date.now());
                     const endTimeMs = eng.event_date 
                       ? new Date(eng.event_date).getTime() + ((eng.estimated_duration || 0) * 60 * 60 * 1000)
-                      : null;
-                    
-                    const isPast = endTimeMs ? endTimeMs < Date.now() : false;
+                      : null;                   
+                    const isPast = endTimeMs ? endTimeMs < currentTime : false;
                     const canEdit = isStaff || !isPast;
 
                     return (
