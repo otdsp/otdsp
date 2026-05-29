@@ -295,6 +295,8 @@ export default function EngajamentosPage() {
     })
   }
 
+  const currentTime = Date.now();
+
   return (
     <main className="min-h-screen bg-slate-50 pt-24 pb-20">
       {/* Header Section */}
@@ -497,7 +499,6 @@ export default function EngajamentosPage() {
                     return matchesStatus && (!searchTerm || eng.title.toLowerCase().includes(searchLower) || eng.description.toLowerCase().includes(searchLower))
                   })
                   .map((eng) => {
-                    const [currentTime] = useState(() => Date.now());
                     const endTimeMs = eng.event_date 
                       ? new Date(eng.event_date).getTime() + ((eng.estimated_duration || 0) * 60 * 60 * 1000)
                       : null;                   

@@ -93,7 +93,9 @@ export default function IndicadoresStaff() {
   const router = useRouter();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null); 
-  const geocodeCache = useRef<Record<string, [number, number]>>({});
+  
+  // CORREÇÃO: Cache de geolocalização agora é um State, não um Ref.
+  const [geocodeCache, setGeocodeCache] = useState<Record<string, [number, number]>>({});
 
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -115,7 +117,6 @@ export default function IndicadoresStaff() {
     geographies: [] as string[]
   });
 
-  // Busca e autenticação (Mantido intacto)
   useEffect(() => {
     const fetchRawData = async () => {
       const [ { data: authData }, { data: profileData }, { data: engData } ] = await Promise.all([
@@ -151,19 +152,24 @@ export default function IndicadoresStaff() {
         statuses: Array.from(uniqueStatuses).sort()
       });
 
+      // CORREÇÃO: Resolvemos a promessa de forma imutável e atualizamos o State
       const topCities = Object.entries(cityFreq).sort((a, b) => b[1] - a[1]).slice(0, 30).map(x => x[0]);
+      const newGeoData: Record<string, [number, number]> = {};
+      
       await Promise.all(topCities.map(async (city) => {
-        if (!geocodeCache.current[city]) {
-          try {
-            const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&format=json`);
-            const json = await res.json();
-            if (json.results && json.results.length > 0) {
-              geocodeCache.current[city] = [json.results[0].longitude, json.results[0].latitude];
-            }
-          } catch (e) { console.error(`Erro Geocache: ${city}`); }
+        try {
+          const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&format=json`);
+          const json = await res.json();
+          if (json.results && json.results.length > 0) {
+            newGeoData[city] = [json.results[0].longitude, json.results[0].latitude];
+          }
+        } catch (e) { 
+          console.error(`Erro Geocache: ${city}`); 
         }
       }));
 
+      // Atualiza o estado com as novas coordenadas encontradas
+      setGeocodeCache(prev => ({ ...prev, ...newGeoData }));
       setRawData({ auth: safeAuth, profiles: safeProfiles, engagements: safeEng });
     };
 
@@ -191,8 +197,7 @@ export default function IndicadoresStaff() {
     authenticateAndFetch();
   }, [router]);
 
-  // CORREÇÃO AQUI: Substituímos múltiplos useState/useEffect por um único useMemo.
-  // Isso resolve os erros de Cascading Renders e de dependências circulares/ausentes.
+  // CORREÇÃO: Adicionamos geocodeCache como dependência do useMemo
   const derivedData = useMemo(() => {
     const emptyResult = {
       stats: { totalUsers: 0, activeUsers: 0, totalEngagements: 0, signedAgreements: 0 },
@@ -218,7 +223,6 @@ export default function IndicadoresStaff() {
     else if (filters.period === '12m') cutoffDate.setFullYear(now.getFullYear() - 1);
     else cutoffDate.setFullYear(2000);
 
-    // 1. Filtragens
     const filteredAuth = auth.filter(u => {
       const p = profileMap.get(u.id);
       const dateOk = new Date(u.date_joined) >= cutoffDate;
@@ -250,7 +254,6 @@ export default function IndicadoresStaff() {
       signedAgreements: signedCount
     };
 
-    // 2. Gráficos de Linha (Timeline)
     const isShortPeriod = filters.period === '7d' || filters.period === '30d';
     let timelineArr: { name: string; Membros: number }[] = [];
     let engagementTimelineArr: { name: string; Engajamentos: number }[] = [];
@@ -328,7 +331,6 @@ export default function IndicadoresStaff() {
       engagementTimelineArr = monthList.map(m => { engAcc += engMonthly[m.key]; return { name: m.label, Engajamentos: engAcc }; });
     }
 
-    // 3. Organizações e Origens
     const referralCounts: Record<string, number> = {};
     const orgGroups: Record<string, OrgGroup> = {};
     const cityGroups: Record<string, { count: number, name: string }> = {};
@@ -375,14 +377,13 @@ export default function IndicadoresStaff() {
       organizationData.push({ name: 'Outras', value: rCount, orgType: topRTypes || 'Diversos' });
     }
 
-    // 4. Geografia (Mapa)
-    const geoData: { name: string; count: number; coordinates: [number, number] }[] = [];
+    // CORREÇÃO: Lendo diretamente do State de forma segura e síncrona com o render
+    const localGeoData: { name: string; count: number; coordinates: [number, number] }[] = [];
     Object.values(cityGroups).forEach((c) => {
-      const coords = geocodeCache.current[c.name];
-      if (coords) geoData.push({ name: c.name, count: c.count, coordinates: coords });
+      const coords = geocodeCache[c.name];
+      if (coords) localGeoData.push({ name: c.name, count: c.count, coordinates: coords });
     });
 
-    // 5. Pilares
     const iCounts: Record<string, number> = {};
     const tCounts: Record<string, number> = {};
     const pCounts: Record<string, number> = {};
@@ -401,13 +402,19 @@ export default function IndicadoresStaff() {
       { category: 'Políticas Transversais', items: formatGroup(pCounts) }
     ].filter(p => p.items.length > 0);
 
-    return { stats, timelineData: timelineArr, engagementTimelineData: engagementTimelineArr, referralData, organizationData, geoData, pillarsData };
-  }, [rawData, filters]);
+    return { 
+      stats, 
+      timelineData: timelineArr, 
+      engagementTimelineData: engagementTimelineArr, 
+      referralData, 
+      organizationData, 
+      geoData: localGeoData, 
+      pillarsData 
+    };
+  }, [rawData, filters, geocodeCache]); // Dependência atualizada para receber o state correto
 
-  // Desestruturando os dados derivados (que antes ficavam no state)
   const { stats, timelineData, engagementTimelineData, referralData, organizationData, geoData, pillarsData } = derivedData;
 
-  // Efeito do Mapa
   useEffect(() => {
     if (!isAuthorized || geoData.length === 0 || !mapRef.current) return;
     import('leaflet').then((L) => {
