@@ -79,6 +79,7 @@ export default function Navbar() {
     await supabase.auth.signOut();
     setMobileMenuOpen(false);
     setMobileExpandedIndex(null);
+    setIsStaff(false);
     router.push('/');
     router.refresh();
   };
