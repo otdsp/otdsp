@@ -113,7 +113,7 @@ export default function Navbar() {
     await supabase.auth.signOut();
     setMobileMenuOpen(false);
     setMobileExpandedIndex(null);
-    setIsStaff(false); // Reseta o estado ao deslogar
+    setIsStaff(false);
     router.push('/');
     router.refresh();
   };
