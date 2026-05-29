@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'motion/react'
 import { 
@@ -63,9 +63,6 @@ export default function EngajamentosPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('Todos')
   
-  // ✅ CORREÇÃO: Guardamos o tempo no estado de forma pura para evitar o erro do compilador
-  const [currentTime, setCurrentTime] = useState<number>(0)
-  
   const router = useRouter()
 
   const [formData, setFormData] = useState({
@@ -110,9 +107,6 @@ export default function EngajamentosPage() {
   }
 
   useEffect(() => {
-    // ✅ CORREÇÃO: Define o tempo atual apenas no lado do cliente com segurança
-    setCurrentTime(Date.now())
-
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
@@ -294,6 +288,14 @@ export default function EngajamentosPage() {
       day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
     })
   }
+
+  const checkIsPast = useMemo(() => {
+    return (eventDate: string, duration: number) => {
+      if (!eventDate) return false;
+      const endTimeMs = new Date(eventDate).getTime() + (duration * 60 * 60 * 1000);
+      return endTimeMs < Date.now();
+    };
+  }, []);
 
   return (
     <main className="min-h-screen bg-slate-50 pt-24 pb-20">
@@ -493,12 +495,7 @@ export default function EngajamentosPage() {
                     return matchesStatus && (!searchTerm || eng.title.toLowerCase().includes(searchLower) || eng.description.toLowerCase().includes(searchLower))
                   })
                   .map((eng) => {
-                    const endTimeMs = eng.event_date 
-                      ? new Date(eng.event_date).getTime() + ((eng.estimated_duration || 0) * 60 * 60 * 1000)
-                      : null;                   
-                    
-                    // ✅ Usando o estado de forma controlada e pura
-                    const isPast = (endTimeMs && currentTime > 0) ? endTimeMs < currentTime : false;
+                    const isPast = checkIsPast(eng.event_date, eng.estimated_duration || 0);
                     const canEdit = isStaff || !isPast;
 
                     return (
