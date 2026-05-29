@@ -3,32 +3,63 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+
 import Image from 'next/image';
 
 const basePath = process.env.__NEXT_ROUTER_BASEPATH || '';
 
 const slides = [
-  { id: 1, type: 'banner1' },
-  { id: 2, type: 'banner2' },
-  { id: 3, type: 'banner3' },
-  { id: 4, type: 'banner4' }
+  {
+    id: 1,
+    bg: 'bg-[#0F172A]',
+    img: `${basePath}/carousel-1.jpg`,
+    textColor: 'text-white',
+    title: 'OTDSP ajuda o município na <span class="text-cyan-400">transformação digital</span>',
+    tag: '01 / HUB',
+    tagBg: 'bg-cyan-500/20 text-cyan-400 border border-cyan-400/30',
+    boxBg: 'bg-slate-900/95 backdrop-blur-md'
+  },
+  {
+    id: 2,
+    bg: 'bg-cyan-500',
+    img: `${basePath}/carousel-2.jpg`,
+    textColor: 'text-white',
+    title: 'Seja <span class="text-orange-500">Protagonista</span> de inovação na sua região',
+    tag: '02 / INNOVATION',
+    tagBg: 'bg-[#0F172A]/10 text-orange-400 border border-[#0F172A]/30',
+    boxBg: 'bg-slate-900/95 border border-orange-500/50 backdrop-blur-md'
+  },
+  {
+    id: 3,
+    bg: 'bg-white',
+    img: `${basePath}/carousel-3.jpg`,
+    textColor: 'text-white',
+    title: 'Tenha <span class="text-slate-900">tecnologia USP</span> no seu município',
+    tag: '03 / TECH',
+    tagBg: 'bg-white/20 text-white border border-white/30',
+    boxBg: 'bg-[#00A6FF]/95 backdrop-blur-md'
+  }
 ];
 
 const variants = {
-  enter: (direction: number) => ({
-    x: direction > 0 ? 1000 : -1000,
-    opacity: 0
-  }),
+  enter: (direction: number) => {
+    return {
+      x: direction > 0 ? 1000 : -1000,
+      opacity: 0
+    };
+  },
   center: {
     zIndex: 1,
     x: 0,
     opacity: 1
   },
-  exit: (direction: number) => ({
-    zIndex: 0,
-    x: direction < 0 ? 1000 : -1000,
-    opacity: 0
-  })
+  exit: (direction: number) => {
+    return {
+      zIndex: 0,
+      x: direction < 0 ? 1000 : -1000,
+      opacity: 0
+    };
+  }
 };
 
 const swipeConfidenceThreshold = 10000;
@@ -53,129 +84,8 @@ export default function Carousel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  const renderSlide = (slide: typeof slides[0]) => {
-    switch (slide.type) {
-      case 'banner1':
-        return (
-          <div className="absolute inset-0 flex flex-col md:block overflow-hidden bg-slate-900">
-            <div className="relative w-full h-[320px] md:h-full md:absolute md:inset-0 z-0 p-4 md:p-0">
-              <Image 
-                src={`${basePath}/banner1-bg.jpg`} 
-                alt="Alunos Atípicos Background" 
-                fill 
-                className="object-contain md:object-cover object-center z-0"
-                referrerPolicy="no-referrer"
-                priority
-              />
-            </div>
-            {/* Box: Canto Inferior Esquerdo */}
-            <div className="absolute bottom-4 left-0 right-0 px-4 z-10 md:w-auto md:h-auto md:bottom-12 md:left-12 flex items-center justify-center md:p-0 md:block">
-              <div className="-translate-y-[15%] md:translate-y-0 w-full bg-cyan-400/95 backdrop-blur-md p-8 py-10 md:p-12 rounded-3xl shadow-2xl md:max-w-md border border-cyan-300/50">
-                 <h2 className="text-3xl md:text-5xl lg:text-6xl font-extrabold text-slate-900 leading-tight tracking-tight">
-                   Projetos pensados para alunos atípicos
-                 </h2>
-              </div>
-            </div>
-          </div>
-        );
-      case 'banner2':
-        return (
-          <div className="absolute inset-0 flex flex-col md:block overflow-hidden bg-cyan-700 md:bg-cyan-500">
-            <div className="relative w-full h-[320px] md:h-full md:absolute md:inset-0 z-0 p-4 md:p-0">
-              <Image 
-                src={`${basePath}/banner2-photo.jpg`} 
-                alt="Letramento Digital Fotografia" 
-                fill 
-                className="object-contain md:object-cover object-center z-0" 
-                referrerPolicy="no-referrer" 
-              />
-              {/* Watermark */}
-              <div className="absolute inset-0 opacity-10 z-0 pointer-events-none">
-                 <Image src={`${basePath}/watermark.png`} alt="Watermark pattern" fill className="object-cover" referrerPolicy="no-referrer" />
-              </div>
-            </div>
-
-            {/* Logo: Canto Superior Esquerdo */}
-            <div className="absolute top-6 left-6 md:top-8 md:left-12 z-20 bg-orange-500 p-2 md:px-4 md:py-2 font-bold text-white rounded-xl shadow-lg border border-orange-400/50">
-               <Image src={`${basePath}/inova-logo.png`} alt="Inova Logo" width={140} height={45} className="w-20 md:w-[140px] h-auto md:h-[45px] object-contain" referrerPolicy="no-referrer" />
-            </div>
-            
-            {/* Box: Canto Inferior Esquerdo */}
-            <div className="absolute bottom-4 left-0 right-0 px-4 z-10 md:w-auto md:h-auto md:bottom-12 md:left-12 flex items-center justify-center md:p-0 md:block">
-              <div className="-translate-y-[15%] md:translate-y-0 w-full bg-blue-950 p-6 md:p-10 lg:p-12 rounded-3xl shadow-2xl md:max-w-md">
-                <h2 className="text-xl md:text-4xl lg:text-5xl font-extrabold text-white mb-3 md:mb-6 leading-tight">
-                  Inclusão e Letramento Digital <span className="text-cyan-400">para Municípios</span>
-                </h2>
-                <p className="text-slate-300 text-sm md:text-lg lg:text-xl font-medium leading-relaxed">
-                  Projeto da USP voltado para o acesso à tecnologia e desenvolvimento de jovens em municípios.
-                </p>
-              </div>
-            </div>
-          </div>
-        );
-      case 'banner3':
-        return (
-          <div className="absolute inset-0 flex flex-col md:block overflow-hidden bg-slate-200 md:bg-slate-100">
-            <div className="relative w-full h-[320px] md:h-full md:absolute md:inset-0 z-0 p-4 md:p-0">
-              <Image 
-                src={`${basePath}/banner3-photo.jpg`} 
-                alt="Ventilador USP Fotografia" 
-                fill 
-                className="object-contain md:object-cover object-center md:object-bottom z-0" 
-                referrerPolicy="no-referrer" 
-              />
-              {/* Watermark */}
-              <div className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none">
-                 <Image src={`${basePath}/watermark.png`} alt="Watermark pattern" fill className="object-cover mix-blend-multiply" referrerPolicy="no-referrer" />
-              </div>
-            </div>
-
-            {/* Logo: Canto Superior Direito */}
-            <div className="absolute top-6 right-6 md:top-8 md:right-12 z-20 bg-orange-500 text-white font-bold p-2 md:px-4 md:py-2 rounded-xl shadow-lg border border-orange-400/50">
-               <Image src={`${basePath}/inova-logo.png`} alt="Inova Logo" width={140} height={45} className="w-20 md:w-[140px] h-auto md:h-[45px] object-contain" referrerPolicy="no-referrer" />
-            </div>
-            
-            {/* Box: Canto Inferior Esquerdo */}
-            <div className="absolute bottom-4 left-0 right-0 px-4 z-10 md:w-auto md:h-auto md:bottom-12 md:left-12 flex items-center justify-center md:p-0 md:block">
-              <div className="-translate-y-[15%] md:translate-y-0 w-full bg-blue-950/95 backdrop-blur-md p-6 md:p-8 lg:p-10 rounded-3xl shadow-2xl md:max-w-2xl lg:max-w-4xl border border-blue-800/50 max-h-full overflow-y-auto custom-scrollbar">
-                <h2 className="text-xl md:text-3xl lg:text-4xl font-extrabold text-white leading-tight">
-                  Este Ventilador, desenvolvido aqui na USP, impactou <span className="text-cyan-400">219 Municípios</span> e custou <span className="text-orange-400">1/7 dos ventiladores do mercado</span>
-                </h2>
-              </div>
-            </div>
-          </div>
-        );
-      case 'banner4':
-        return (
-          <div className="absolute inset-0 flex flex-col md:block overflow-hidden bg-slate-900">
-            <div className="relative w-full h-[320px] md:h-full md:absolute md:inset-0 z-0 p-4 md:p-0">
-              <Image 
-                src={`${basePath}/banner4-bg.jpg`} 
-                alt="SciBiz Event Background" 
-                fill 
-                className="object-contain md:object-cover md:object-[center_20%] z-0" 
-                referrerPolicy="no-referrer"
-              />
-            </div>
-
-            {/* Box de Texto */}
-            <div className="absolute bottom-4 left-0 right-0 px-4 z-10 md:w-auto md:h-auto md:bottom-12 md:left-12 flex items-center justify-center md:p-0 md:block">
-              <div className="-translate-y-[15%] md:translate-y-0 w-full bg-blue-950/95 backdrop-blur-md p-6 md:p-8 lg:p-10 rounded-3xl shadow-2xl md:max-w-2xl lg:max-w-4xl border border-blue-800/50 max-h-full overflow-y-auto custom-scrollbar">
-                <h2 className="text-xl md:text-3xl lg:text-4xl font-extrabold text-white mb-2 lg:mb-4 leading-tight tracking-tight">
-                  Nossa participação na SciBiz 26
-                </h2>
-                <p className="text-slate-300 text-sm md:text-base lg:text-lg font-medium leading-relaxed">
-                  Uma iniciativa para unir Ciência e Empreendedorismo, conectando Startups, Indústria, USP e Investidores em um só lugar.
-                </p>
-              </div>
-            </div>
-          </div>
-        );
-    }
-  };
-
   return (
-    <div className="relative w-full max-w-7xl mx-auto h-[520px] md:min-h-[600px] md:h-[70vh] lg:h-[75vh] rounded-none md:rounded-[2.5rem] overflow-hidden shadow-2xl shadow-[#0F172A]/10 mt-0 z-10 group bg-slate-100">
+    <div className="relative w-full max-w-7xl mx-auto min-h-[85vh] md:min-h-[600px] md:h-[70vh] rounded-none md:rounded-[2.5rem] overflow-hidden shadow-2xl shadow-[#0F172A]/10 mt-0 md:mt-6 z-10 group bg-slate-100 flex items-center justify-center">
       <AnimatePresence initial={false} custom={direction}>
         <motion.div
           key={page}
@@ -193,39 +103,66 @@ export default function Carousel() {
           dragElastic={1}
           onDragEnd={(e, { offset, velocity }) => {
             const swipe = swipePower(offset.x, velocity.x);
+
             if (swipe < -swipeConfidenceThreshold) {
               paginate(1);
             } else if (swipe > swipeConfidenceThreshold) {
               paginate(-1);
             }
           }}
-          className="absolute inset-0"
-          style={{ height: '100%' }}
+          className={`absolute inset-0 flex flex-col justify-end md:justify-center pb-24 md:pb-0 px-5 md:px-24 ${slides[currentIndex].bg}`}
         >
-          {renderSlide(slides[currentIndex])}
+          {slides[currentIndex].img && (
+            <Image
+              src={slides[currentIndex].img}
+              alt="Slide Background"
+              fill
+              className="object-cover object-top md:object-center z-0"
+              referrerPolicy="no-referrer"
+            />
+          )}
+
+          <div className={`relative z-10 p-5 md:p-8 rounded-2xl shadow-2xl max-w-2xl h-auto ${slides[currentIndex].boxBg}`}>
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
+              className={`inline-block px-3 py-1.5 md:px-4 md:py-1.5 rounded-full text-xs md:text-sm font-bold uppercase tracking-wider mb-4 md:mb-6 ${slides[currentIndex].tagBg}`}
+            >
+              {slides[currentIndex].tag}
+            </motion.div>
+            
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.6 }}
+              className={`text-2xl md:text-5xl lg:text-6xl font-extrabold max-w-4xl leading-tight tracking-tight ${slides[currentIndex].textColor}`}
+              dangerouslySetInnerHTML={{ __html: slides[currentIndex].title }}
+            />
+          </div>
+          
+          {/* Decorative shapes to maintain an immersive feel without being aggressive */}
+          <div className="absolute right-[-10%] top-[-20%] w-96 h-96 rounded-full bg-white opacity-[0.03] blur-3xl pointer-events-none" />
+          <div className="absolute bottom-[-10%] left-[20%] w-64 h-64 rounded-full bg-black opacity-[0.03] blur-3xl pointer-events-none" />
         </motion.div>
       </AnimatePresence>
 
-      {/* NAVEGAÇÃO: SETAS LATERAIS (Mapeadas no centro vertical para não cobrir os textos) */}
-      <div className="absolute inset-y-0 w-full flex items-center justify-between px-4 md:px-6 z-20 pointer-events-none">
+      <div className="absolute right-6 bottom-6 md:right-12 md:bottom-12 flex gap-4 z-20">
         <button
-          className="pointer-events-auto bg-slate-900/20 hover:bg-slate-900/50 backdrop-blur-md border border-white/20 text-white w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all shadow-lg"
+          className="bg-white/20 hover:bg-white/40 backdrop-blur-md border border-white/30 text-white w-12 h-12 rounded-full flex items-center justify-center transition-colors shadow-lg"
           onClick={() => paginate(-1)}
-          aria-label="Slide anterior"
         >
-          <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
+          <ChevronLeft className="w-6 h-6" />
         </button>
         <button
-          className="pointer-events-auto bg-slate-900/20 hover:bg-slate-900/50 backdrop-blur-md border border-white/20 text-white w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all shadow-lg"
+          className="bg-white/20 hover:bg-white/40 backdrop-blur-md border border-white/30 text-white w-12 h-12 rounded-full flex items-center justify-center transition-colors shadow-lg"
           onClick={() => paginate(1)}
-          aria-label="Próximo slide"
         >
-          <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
+          <ChevronRight className="w-6 h-6" />
         </button>
       </div>
 
-      {/* NAVEGAÇÃO: DOTS (Centralizados na base para não conflitar com os textos nos cantos) */}
-      <div className="absolute left-1/2 -translate-x-1/2 bottom-6 md:bottom-8 flex gap-2 md:gap-3 z-20">
+      <div className="absolute left-6 bottom-6 md:left-12 md:bottom-12 flex gap-2 z-20">
         {slides.map((_, index) => (
           <button
             key={index}
@@ -233,9 +170,8 @@ export default function Carousel() {
               const direction = index > currentIndex ? 1 : -1;
               setPage([index, direction]);
             }}
-            aria-label={`Ir para o slide ${index + 1}`}
-            className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full transition-all duration-300 shadow-sm ${
-              index === currentIndex ? "bg-white scale-125 border border-slate-200" : "bg-white/40 hover:bg-white/60"
+            className={`w-3 h-3 rounded-full transition-all duration-300 ${
+              index === currentIndex ? "bg-white scale-125" : "bg-white/40 hover:bg-white/60"
             }`}
           />
         ))}
