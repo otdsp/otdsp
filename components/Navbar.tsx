@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X, ChevronDown, UserPlus, User, LogOut, Calendar, ChartColumn} from 'lucide-react';
+import { Menu, X, ChevronDown, UserPlus, User, LogOut, Calendar, ChartColumn } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
@@ -44,8 +44,7 @@ const navItems = [
   {
     name: 'Acessos',
     href: '#',
-    dropdown: [
-    ],
+    dropdown: [],
   },
 ];
 
@@ -54,7 +53,7 @@ export default function Navbar() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [mobileExpandedIndex, setMobileExpandedIndex] = useState<number | null>(null);
   const [user, setUser] = useState<any>(null);
-  const [isStaff, setIsStaff] = useState<boolean>(false); // NOVO: Estado para controlar se é Staff
+  const [isStaff, setIsStaff] = useState<boolean>(false);
   
   const router = useRouter();
 
@@ -149,10 +148,14 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20">
           <div className="flex items-center">
-            {/* Logo */}
-            <Link href="/" className="flex-shrink-0 flex items-center gap-2">
-              <Image src={`${basePath}/logo.png`} alt="OTDSP Logo" width={200} height={40} className="h-10 w-auto object-contain" />
-            </Link>
+            {/* Logo Group */}
+            <div className="flex-shrink-0 flex items-center select-none max-w-[70vw] sm:max-w-none">
+              <Link href="/" className="flex items-center gap-2 md:gap-4">
+                <Image src={`${basePath}/logo.png`} alt="OTDSP Logo" width={200} height={40} className="h-8 md:h-10 w-auto object-contain" />
+                <div className="h-6 md:h-8 w-px bg-slate-200/80 shrink-0" />
+                <Image src={`${basePath}/inovausp.png`} alt="Inova USP Logo" width={280} height={56} className="h-10 md:h-14 w-auto object-contain" />
+              </Link>
+            </div>
           </div>
 
           {/* Desktop Menu */}
@@ -247,6 +250,7 @@ export default function Navbar() {
             transition={{ duration: 0.3 }}
             className="lg:hidden bg-white border-b border-slate-200 overflow-hidden"
           >
+            {/* ADICIONANDO ALTURA MÁXIMA E SCROLL */}
             <div className="px-4 pt-2 pb-6 space-y-1 sm:px-6 max-h-[calc(100vh-5rem)] overflow-y-auto">
               {dynamicNavItems.map((item, index) => (
                 <div key={item.name} className="py-1">
