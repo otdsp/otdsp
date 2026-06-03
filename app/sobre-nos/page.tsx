@@ -8,6 +8,8 @@ import {
   Users, Landmark, GraduationCap, Factory, Leaf 
 } from 'lucide-react'
 
+const basePath = process.env.__NEXT_ROUTER_BASEPATH || '';
+
 const pillars = [
   { 
     name: "Sociedade Civil", 
@@ -96,7 +98,7 @@ export default function SobreNosPage() {
         <div className="hidden lg:block absolute top-0 bottom-0 right-0 w-[41%] z-0 select-none overflow-hidden pointer-events-none">
           <div className="relative w-full h-full">
             <Image
-              src="/universidade.jpg"
+             src={`${basePath}/universidade.jpg`}
               alt="Universidade USP"
               fill
               className="object-cover object-[40%_center]" 
@@ -173,7 +175,7 @@ export default function SobreNosPage() {
             >
               <div className="relative w-full max-w-[420px] aspect-square rounded-[2rem] overflow-hidden shadow-2xl border-4 border-slate-700/30 bg-slate-800">
                 <Image
-                  src="/universidade.jpg"
+                  src={`${basePath}/universidade.jpg`}
                   alt="Universidade USP"
                   fill
                   className="object-cover object-[65%_center]"
@@ -299,7 +301,7 @@ export default function SobreNosPage() {
                 {/* Robust Center Circle with Logo (Anchor visual: 33% smaller for elegant breathing room) */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-full z-20 flex items-center justify-center shadow-xl border-4 border-slate-100 p-2.5 sm:p-3 md:p-4 lg:p-4.5 w-[65px] h-[65px] sm:w-[75px] sm:h-[75px] md:w-[86px] md:h-[86px] lg:w-[107px] lg:h-[107px]">
                   <div className="relative w-full h-full">
-                    <Image src="/logo-quadrado.png" alt="OTDSP Logo" fill className="object-contain" />
+                    <Image src={`${basePath}/logo-quadrado.png`} alt="OTDSP Logo" fill className="object-contain" />
                   </div>
                 </div>
 
