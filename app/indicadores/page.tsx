@@ -37,6 +37,12 @@ export default function IndicadoresStaff() {
     derivedData
   } = useIndicadores();
 
+  const activeFiltersSummary = [
+    `Segmento: ${filters.orgType === 'all' ? 'Todos' : filters.orgType}`,
+    `Status: ${filters.status === 'all' ? 'Todos' : filters.status}`,
+    `Região: ${filters.geography === 'all' ? 'Todas' : filters.geography}`,
+  ].join(' • ');
+
   const { stats, timelineData, engagementTimelineData, referralData, organizationData, geoData, pillarsData } = derivedData;
 
   // NOVO: Estados para controle do Modal de Exportação
@@ -70,7 +76,6 @@ export default function IndicadoresStaff() {
     });
   }, [geoData, isAuthorized]);
 
-  // NOVO: Função para lidar com o clique final de exportar
   const handleExport = async () => {
     setIsExporting(true);
     await exportToPDF('pdf-content', eventName);
@@ -173,23 +178,40 @@ export default function IndicadoresStaff() {
         {/* NOVO: Wrapper do PDF. Tudo dentro desta div será printado */}
         <div id="pdf-content" className="space-y-8 bg-slate-50 p-2">
           
-          {/* NOVO: Cabeçalho Oculto (Só aparece no PDF) */}
+          {/* NOVO: Cabeçalho Oculto (Só aparece no PDF) atualizado com as Logos */}
           <div id="pdf-header" style={{ display: 'none' }} className="mb-6 pb-4 border-b border-slate-200">
+            {/* Bloco de Logos */}
+            <div className="flex items-center gap-6 mb-6">
+              <img 
+                src={`${process.env.__NEXT_ROUTER_BASEPATH || ''}/logo.png`} 
+                alt="OTDSP Logo" 
+                style={{ height: '40px', objectFit: 'contain' }} 
+              />
+              <div style={{ width: '2px', height: '32px', backgroundColor: '#e2e8f0' }} />
+              <img 
+                src={`${process.env.__NEXT_ROUTER_BASEPATH || ''}/inovausp.png`} 
+                alt="Inova USP Logo" 
+                style={{ height: '56px', objectFit: 'contain' }} 
+              />
+            </div>
+            
+            {/* Títulos e Metadados */}
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">OTDSP - Relatório de Indicadores Gerenciais</h1>
             <p className="text-slate-600 text-lg mt-2">Evento / Contexto: <strong className="text-cyan-700">{eventName || 'Geral'}</strong></p>
             <p className="text-slate-500 mt-1">Período consultado: {filters.startDate ? new Date(filters.startDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Início'} até {filters.endDate ? new Date(filters.endDate + 'T23:59:59').toLocaleDateString('pt-BR') : 'Hoje'}</p>
+            <p className="text-slate-500 mt-1">Filtros utilizados:{activeFiltersSummary}</p>
           </div>
 
           {/* Cards de Métricas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="avoid-break grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <KpiCard title="Total de Membros" value={stats.totalUsers} icon={Users} bgColor="bg-cyan-50" iconColor="text-cyan-600" />
             <KpiCard title="Membros Ativos" value={stats.activeUsers} icon={Activity} bgColor="bg-emerald-50" iconColor="text-emerald-600" />
             <KpiCard title="Engajamentos" value={stats.totalEngagements} icon={Target} bgColor="bg-amber-50" iconColor="text-amber-600" />
             <KpiCard title="Convênios Firmados" value={stats.signedAgreements} icon={Handshake} bgColor="bg-indigo-50" iconColor="text-indigo-600" />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-96 flex flex-col">
+          <div className="avoid-break grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="avoid-break lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-96 flex flex-col">
               <div className="flex items-center gap-3 mb-4">
                 <BarChart3 className="text-cyan-600 w-6 h-6" />
                 <h2 className="text-lg font-bold tracking-tight text-slate-800">Crescimento de Membros</h2>
@@ -234,7 +256,7 @@ export default function IndicadoresStaff() {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col">
+          <div className="avoid-break bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col">
             <div className="flex items-center gap-3 mb-4">
               <Globe2 className="text-amber-600 w-6 h-6" />
               <h2 className="text-lg font-bold tracking-tight text-slate-800">Distribuição de Membros</h2>
@@ -244,7 +266,7 @@ export default function IndicadoresStaff() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="avoid-break grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-96 flex flex-col">
               <div className="flex items-center gap-3 mb-4">
                 <Target className="text-emerald-500 w-6 h-6" />
@@ -290,7 +312,7 @@ export default function IndicadoresStaff() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="avoid-break grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6">
             {pillarsData.map((pillar, idx) => (
               <MiniPilarCard key={idx} title={pillar.category} data={pillar.items} />
             ))}
