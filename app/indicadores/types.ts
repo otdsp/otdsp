@@ -17,6 +17,9 @@ export interface Engagement {
   id: string;
   created_by: string;
   status?: string;
+  horizontal?: string[];
+  vertical?: string[];
+  transversal?: string[];
   interests?: string[];
   technologies?: string[];
   public_policies?: string[];

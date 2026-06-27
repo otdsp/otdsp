@@ -5,6 +5,19 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { UserAuth, UserProfile, Engagement, OrgGroup } from './types';
 
+type DimensionFilter = {
+  enabled: boolean;
+  values: string[];
+};
+
+type IndicatorFilters = {
+  startDate: string;
+  endDate: string;
+  vertical: DimensionFilter;
+  horizontal: DimensionFilter;
+  transversal: DimensionFilter;
+};
+
 export function useIndicadores() {
   const router = useRouter();
   const [geocodeCache, setGeocodeCache] = useState<Record<string, [number, number]>>({});
@@ -15,19 +28,18 @@ export function useIndicadores() {
     auth: [], profiles: [], engagements: []
   });
 
-  // Alterado: O estado agora controla as datas limites explicitamente
-  const [filters, setFilters] = useState({
-    startDate: '2026-04-01', // String em formato YYYY-MM-DD ou vazio
-    endDate: '',             // String em formato YYYY-MM-DD ou vazio
-    orgType: 'all',
-    status: 'all',
-    geography: 'all'
+  const [filters, setFilters] = useState<IndicatorFilters>({
+    startDate: '2026-04-01',
+    endDate: '',
+    vertical: { enabled: false, values: [] },
+    horizontal: { enabled: false, values: [] },
+    transversal: { enabled: false, values: [] }
   });
 
   const [filterOptions, setFilterOptions] = useState({
-    orgTypes: [] as string[],
-    statuses: [] as string[],
-    geographies: [] as string[]
+    verticals: [] as string[],
+    horizontals: [] as string[],
+    transversals: [] as string[]
   });
 
   useEffect(() => {
@@ -35,34 +47,49 @@ export function useIndicadores() {
       const [ { data: authData }, { data: profileData }, { data: engData } ] = await Promise.all([
         supabase.from('user_auth').select('id, is_active, date_joined'),
         supabase.from('user_profile').select('id, user_id, municipality, referral_source, institution_organization, organization_type'),
-        supabase.from('engagements').select('id, created_by, status, interests, technologies, public_policies, planned_activities, created_at')
+        supabase.from('engagements').select('id, created_by, status, horizontal, vertical, transversal, planned_activities, created_at')
       ]);
 
       const safeAuth: UserAuth[] = authData || [];
       const safeProfiles: UserProfile[] = profileData || [];
       const safeEng: Engagement[] = engData || [];
 
-      const uniqueOrgTypes = new Set<string>();
-      const uniqueGeographies = new Set<string>();
-      const uniqueStatuses = new Set<string>();
+      const uniqueVerticals = new Set<string>();
+      const uniqueHorizontals = new Set<string>();
+      const uniqueTransversals = new Set<string>();
       const cityFreq: Record<string, number> = {};
 
       safeProfiles.forEach((p) => {
-        if (p.organization_type) uniqueOrgTypes.add(p.organization_type.trim());
         if (p.municipality) {
           const city = p.municipality.trim().charAt(0).toUpperCase() + p.municipality.trim().slice(1);
-          uniqueGeographies.add(city);
           cityFreq[city] = (cityFreq[city] || 0) + 1;
         }
       });
       safeEng.forEach((e) => {
-        if (e.status) uniqueStatuses.add(e.status.trim());
+        if (Array.isArray(e.vertical)) {
+          e.vertical.forEach((value) => {
+            const normalized = value?.trim();
+            if (normalized) uniqueVerticals.add(normalized);
+          });
+        }
+        if (Array.isArray(e.horizontal)) {
+          e.horizontal.forEach((value) => {
+            const normalized = value?.trim();
+            if (normalized) uniqueHorizontals.add(normalized);
+          });
+        }
+        if (Array.isArray(e.transversal)) {
+          e.transversal.forEach((value) => {
+            const normalized = value?.trim();
+            if (normalized) uniqueTransversals.add(normalized);
+          });
+        }
       });
 
       setFilterOptions({
-        orgTypes: Array.from(uniqueOrgTypes).sort(),
-        geographies: Array.from(uniqueGeographies).sort(),
-        statuses: Array.from(uniqueStatuses).sort()
+        verticals: Array.from(uniqueVerticals).sort(),
+        horizontals: Array.from(uniqueHorizontals).sort(),
+        transversals: Array.from(uniqueTransversals).sort()
       });
 
       const topCities = Object.entries(cityFreq).sort((a, b) => b[1] - a[1]).slice(0, 30).map(x => x[0]);
@@ -129,27 +156,43 @@ export function useIndicadores() {
     const startCutoff = filters.startDate ? new Date(filters.startDate + 'T00:00:00') : new Date(2000, 0, 1);
     const endCutoff = filters.endDate ? new Date(filters.endDate + 'T23:59:59') : new Date();
 
-    // Filtros aplicados baseados no range selecionado
-    const filteredAuth = auth.filter(u => {
-      const p = profileMap.get(u.id);
+    // Considere o filtro ativo apenas pelo booleano 'enabled'
+    const activeDimensionFilters = [
+      { key: 'vertical' as const, filter: filters.vertical },
+      { key: 'horizontal' as const, filter: filters.horizontal },
+      { key: 'transversal' as const, filter: filters.transversal }
+    ].filter(({ filter }) => filter.enabled);
+
+    const matchesDimensionFilters = (engagement: Engagement) => {
+      return activeDimensionFilters.every(({ key, filter }) => {
+
+        if (filter.values.length === 0) return true;
+
+        const selectedValues = filter.values.map((value) => value.trim());
+        const engagementValues = ((engagement as unknown as Record<string, unknown>)[key] as string[] || []).map((value) => value.trim());
+        
+        return engagementValues.some((value) => selectedValues.includes(value));
+      });
+    };
+
+    const baseAuth = auth.filter(u => {
       const userDate = new Date(u.date_joined);
-      const dateOk = userDate >= startCutoff && userDate <= endCutoff;
-      const orgOk = filters.orgType === 'all' || p?.organization_type?.trim() === filters.orgType;
-      const geoOk = filters.geography === 'all' || (p?.municipality && p.municipality.trim().charAt(0).toUpperCase() + p.municipality.trim().slice(1) === filters.geography);
-      return dateOk && orgOk && geoOk;
+      return userDate >= startCutoff && userDate <= endCutoff;
     });
 
-    const validUserIds = new Set(filteredAuth.map(u => u.id));
+    const baseUserIds = new Set(baseAuth.map(u => u.id));
 
     const filteredEngagements = engagements.filter(e => {
       const engDate = new Date(e.created_at);
       const dateOk = engDate >= startCutoff && engDate <= endCutoff;
-      const statusOk = filters.status === 'all' || e.status?.trim() === filters.status;
-      const userOk = validUserIds.has(e.created_by);
-      return dateOk && statusOk && userOk;
+      const userOk = baseUserIds.has(e.created_by);
+      const dimensionOk = activeDimensionFilters.length === 0 || matchesDimensionFilters(e);
+      return dateOk && userOk && dimensionOk;
     });
 
-    const filteredProfiles = profiles.filter(p => validUserIds.has(p.user_id || p.id));
+    const filteredUserIds = new Set(filteredEngagements.map(e => e.created_by));
+    const filteredAuth = baseAuth.filter(u => filteredUserIds.has(u.id));
+    const filteredProfiles = profiles.filter(p => filteredUserIds.has(p.user_id || p.id));
 
     const signedCount = filteredEngagements.filter(e => 
       Array.isArray(e.planned_activities) && 
@@ -307,9 +350,9 @@ export function useIndicadores() {
     const pCounts: Record<string, number> = {};
     
     filteredEngagements.forEach(eng => {
-      if (Array.isArray(eng.interests)) eng.interests.forEach(i => { if (i) iCounts[i.trim()] = (iCounts[i.trim()] || 0) + 1; });
-      if (Array.isArray(eng.technologies)) eng.technologies.forEach(t => { if (t) tCounts[t.trim()] = (tCounts[t.trim()] || 0) + 1; });
-      if (Array.isArray(eng.public_policies)) eng.public_policies.forEach(p => { if (p) pCounts[p.trim()] = (pCounts[p.trim()] || 0) + 1; });
+      if (Array.isArray(eng.horizontal)) eng.horizontal.forEach(i => { if (i) iCounts[i.trim()] = (iCounts[i.trim()] || 0) + 1; });
+      if (Array.isArray(eng.vertical)) eng.vertical.forEach(t => { if (t) tCounts[t.trim()] = (tCounts[t.trim()] || 0) + 1; });
+      if (Array.isArray(eng.transversal)) eng.transversal.forEach(p => { if (p) pCounts[p.trim()] = (pCounts[p.trim()] || 0) + 1; });
     });
 
     const formatGroup = (obj: Record<string, number>) => Object.entries(obj).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
@@ -331,8 +374,15 @@ export function useIndicadores() {
     };
   }, [rawData, filters, geocodeCache]);
 
-  const handleFilterChange = (key: string, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+  const handleFilterChange = (filterKey: string, newValue: any) => {
+    setFilters((prev) => {
+      // 1. Cria uma cópia superficial do estado anterior
+      const nextFilters = { ...prev };      
+      // 2. Atualiza a chave específica (ex: 'vertical') com o novo objeto completo
+      nextFilters[filterKey as keyof IndicatorFilters] = newValue;     
+      // 3. Retorna o novo estado. O React VAI notar a diferença de referência e atualizar a tela!
+      return nextFilters;
+    });
   };
 
   return {

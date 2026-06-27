@@ -97,6 +97,9 @@ export default function EngajamentosPage() {
     } else {
       const formattedData = (data || []).map((eng: any) => ({
         ...eng,
+        interests: Array.isArray(eng.horizontal) ? eng.horizontal : (Array.isArray(eng.interests) ? eng.interests : []),
+        technologies: Array.isArray(eng.vertical) ? eng.vertical : (Array.isArray(eng.technologies) ? eng.technologies : []),
+        public_policies: Array.isArray(eng.transversal) ? eng.transversal : (Array.isArray(eng.public_policies) ? eng.public_policies : []),
         engagement_staff_notes: Array.isArray(eng.engagement_staff_notes) 
           ? eng.engagement_staff_notes[0] 
           : eng.engagement_staff_notes
@@ -225,9 +228,9 @@ export default function EngajamentosPage() {
       event_date: formData.event_date || null,
       location: formData.location,
       estimated_duration: formData.estimated_duration ? parseFloat(formData.estimated_duration) : null,
-      interests: formData.interests,
-      technologies: formData.technologies,
-      public_policies: formData.public_policies,
+      horizontal: formData.interests,
+      vertical: formData.technologies,
+      transversal: formData.public_policies,
       planned_activities: formData.planned_activities,
     }
 

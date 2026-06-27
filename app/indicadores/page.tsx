@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { 
   Users, Activity, Target, Handshake, Globe2, BarChart3, ShieldAlert, Loader2, 
-  PieChart as PieIcon, Briefcase, Filter, Calendar as CalendarIcon, MapPin, Tag, Download, X
+  PieChart as PieIcon, Briefcase, Filter, Calendar as CalendarIcon, Download, X, Layers3, Rows3, Waypoints
 } from 'lucide-react';
 import { 
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -11,12 +11,10 @@ import {
 } from 'recharts';
 
 import { useIndicadores } from './useIndicadores';
-import { FilterSelect } from './components/FilterSelect';
 import { KpiCard } from './components/KpiCard';
 import { CustomOrgTooltip } from './components/CustomOrgTooltip';
 import { MiniPilarCard } from './components/MiniPilarCard';
-
-// NOVO: Importando a função de PDF
+import { MultiSelectFilter } from './components/MultiSelectFilter';
 import { exportToPDF } from './utils/exportPdf'; 
 
 const PIE_COLORS = ['#0891b2', '#059669', '#d97706', '#7c3aed', '#db2777', '#475569'];
@@ -38,9 +36,9 @@ export default function IndicadoresStaff() {
   } = useIndicadores();
 
   const activeFiltersSummary = [
-    `Segmento: ${filters.orgType === 'all' ? 'Todos' : filters.orgType}`,
-    `Status: ${filters.status === 'all' ? 'Todos' : filters.status}`,
-    `Região: ${filters.geography === 'all' ? 'Todas' : filters.geography}`,
+    `Vertical: ${filters.vertical.enabled ? (filters.vertical.values.length ? filters.vertical.values.join(', ') : 'Nenhum item selecionado') : 'Desativado'}`,
+    `Horizontal: ${filters.horizontal.enabled ? (filters.horizontal.values.length ? filters.horizontal.values.join(', ') : 'Nenhum item selecionado') : 'Desativado'}`,
+    `Transversal: ${filters.transversal.enabled ? (filters.transversal.values.length ? filters.transversal.values.join(', ') : 'Nenhum item selecionado') : 'Desativado'}`,
   ].join(' • ');
 
   const { stats, timelineData, engagementTimelineData, referralData, organizationData, geoData, pillarsData } = derivedData;
@@ -121,57 +119,95 @@ export default function IndicadoresStaff() {
           </button>
         </header>
 
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-4 lg:items-center relative z-20">
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-4 lg:items-center relative z-50">
           <div className="flex items-center gap-2 lg:border-r border-slate-100 pr-4">
             <Filter className="w-5 h-5 text-slate-400" />
             <span className="font-semibold text-slate-700 text-sm tracking-wide uppercase">Filtros</span>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 flex-1">
-            <div className="flex flex-col space-y-1">
-              <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-1">Data Inicial</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <CalendarIcon className="h-4 w-4 text-cyan-600" />
+          <div className="flex-1 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col space-y-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-1">Data Inicial</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <CalendarIcon className="h-4 w-4 text-cyan-600" />
+                  </div>
+                  <input 
+                    type="date"
+                    value={filters.startDate}
+                    onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                    className="block w-full pl-9 pr-3 py-2 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 hover:bg-slate-100 transition-colors cursor-pointer"
+                  />
                 </div>
-                <input 
-                  type="date"
-                  value={filters.startDate}
-                  onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                  className="block w-full pl-9 pr-3 py-2 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 hover:bg-slate-100 transition-colors cursor-pointer"
-                />
+              </div>
+
+              <div className="flex flex-col space-y-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-1">Data Final</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <CalendarIcon className="h-4 w-4 text-cyan-600" />
+                  </div>
+                  <input 
+                    type="date"
+                    value={filters.endDate}
+                    onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                    className="block w-full pl-9 pr-3 py-2 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 hover:bg-slate-100 transition-colors cursor-pointer"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-col space-y-1">
-              <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-1">Data Final</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <CalendarIcon className="h-4 w-4 text-cyan-600" />
-                </div>
-                <input 
-                  type="date"
-                  value={filters.endDate}
-                  onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                  className="block w-full pl-9 pr-3 py-2 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 hover:bg-slate-100 transition-colors cursor-pointer"
-                />
-              </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <MultiSelectFilter
+                label="Vertical"
+                icon={Layers3}
+                enabled={filters.vertical.enabled}
+                values={filters.vertical.values}
+                options={filterOptions.verticals}
+                onEnabledChange={(nextEnabled) => 
+                  handleFilterChange('vertical', { 
+                    enabled: nextEnabled, 
+                    values: nextEnabled ? [...filterOptions.verticals] : [] 
+                  })
+                }
+                onValuesChange={(nextValues) => 
+                  handleFilterChange('vertical', { ...filters.vertical, values: nextValues })
+                }
+              />
+              <MultiSelectFilter
+                label="Horizontal"
+                icon={Rows3}
+                enabled={filters.horizontal.enabled}
+                values={filters.horizontal.values}
+                options={filterOptions.horizontals}
+                onEnabledChange={(nextEnabled) => 
+                  handleFilterChange('horizontal', { 
+                    enabled: nextEnabled, 
+                    values: nextEnabled ? [...filterOptions.horizontals] : [] 
+                  })
+                }
+                onValuesChange={(nextValues) => 
+                  handleFilterChange('horizontal', { ...filters.horizontal, values: nextValues })
+                }
+              />
+              <MultiSelectFilter
+                label="Transversal"
+                icon={Waypoints}
+                enabled={filters.transversal.enabled}
+                values={filters.transversal.values}
+                options={filterOptions.transversals}
+                onEnabledChange={(nextEnabled) => 
+                  handleFilterChange('transversal', { 
+                    enabled: nextEnabled, 
+                    values: nextEnabled ? [...filterOptions.transversals] : [] 
+                  })
+                }
+                onValuesChange={(nextValues) => 
+                  handleFilterChange('transversal', { ...filters.transversal, values: nextValues })
+                }
+              />
             </div>
-
-            <FilterSelect icon={Briefcase} label="Segmento" value={filters.orgType} onChange={(e) => handleFilterChange('orgType', e.target.value)}>
-              <option value="all">Todos os Segmentos</option>
-              {filterOptions.orgTypes.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </FilterSelect>
-
-            <FilterSelect icon={Tag} label="Status (Engajamento)" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)}>
-              <option value="all">Todos os Status</option>
-              {filterOptions.statuses.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </FilterSelect>
-
-            <FilterSelect icon={MapPin} label="Região" value={filters.geography} onChange={(e) => handleFilterChange('geography', e.target.value)}>
-              <option value="all">Todas as Cidades</option>
-              {filterOptions.geographies.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </FilterSelect>
           </div>
         </div>
 
@@ -261,7 +297,7 @@ export default function IndicadoresStaff() {
               <Globe2 className="text-amber-600 w-6 h-6" />
               <h2 className="text-lg font-bold tracking-tight text-slate-800">Distribuição de Membros</h2>
             </div>
-            <div className="w-full h-[450px] rounded-xl overflow-hidden border border-slate-200 bg-slate-100 z-10">
+            <div className="w-full h-[450px] rounded-xl overflow-hidden border border-slate-200 bg-slate-100 z-0">
               <div ref={mapRef} className="w-full h-full" />
             </div>
           </div>
