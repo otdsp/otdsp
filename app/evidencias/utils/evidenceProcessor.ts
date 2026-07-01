@@ -1,14 +1,14 @@
-import { UserAuth, UserProfile, Engagement, IndicatorFilters, OrgGroup } from '../types';
+import { UserAuth, UserProfile, Engagement, EvidenceFilters, OrgGroup } from '../types';
 
-export type RawIndicatorData = {
+export type RawEvidenceData = {
   auth: UserAuth[];
   profiles: UserProfile[];
   engagements: Engagement[];
 };
 
 export function processDerivedData(
-  rawData: RawIndicatorData,
-  filters: IndicatorFilters,
+  rawData: RawEvidenceData,
+  filters: EvidenceFilters,
   geocodeCache: Record<string, [number, number]>
 ) {
   const emptyResult = {
@@ -82,8 +82,13 @@ export function processDerivedData(
 
   const baseUserIds = new Set(baseAuth.map(u => u.id));
 
+  const getEngagementPeriodDate = (engagement: Engagement) => {
+    const rawDate = engagement.event_date;
+    return rawDate ? new Date(rawDate) : new Date(0);
+  };
+
   const filteredEngagements = engagements.filter(e => {
-    const engDate = new Date(e.created_at);
+    const engDate = getEngagementPeriodDate(e);
     const dateOk = engDate >= startCutoff && engDate <= endCutoff;
     const userOk = baseUserIds.has(e.created_by);
     const dimensionOk = activeDimensionFilters.length === 0 || matchesDimensionFilters(e);
@@ -131,7 +136,7 @@ export function processDerivedData(
     dayList.forEach(d => { authDaily[d.key] = 0; engDaily[d.key] = 0; });
 
     let authAcc = auth.filter(u => new Date(u.date_joined) < startCutoff).length;
-    let engAcc = engagements.filter(e => new Date(e.created_at) < startCutoff).length;
+    let engAcc = engagements.filter(e => getEngagementPeriodDate(e) < startCutoff).length;
 
     filteredAuth.forEach(u => {
       if (u.date_joined) {
@@ -142,8 +147,9 @@ export function processDerivedData(
     });
 
     filteredEngagements.forEach(e => {
-      if (e.created_at) {
-        const dt = new Date(e.created_at);
+      const rawDate = e.event_date;
+      if (rawDate) {
+        const dt = new Date(rawDate);
         const k = `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`;
         if (engDaily[k] !== undefined) engDaily[k]++;
       }
@@ -170,7 +176,7 @@ export function processDerivedData(
     monthList.forEach(m => { authMonthly[m.key] = 0; engMonthly[m.key] = 0; });
 
     let authAcc = auth.filter(u => new Date(u.date_joined) < startCutoff).length;
-    let engAcc = engagements.filter(e => new Date(e.created_at) < startCutoff).length;
+    let engAcc = engagements.filter(e => getEngagementPeriodDate(e) < startCutoff).length;
 
     filteredAuth.forEach(u => {
       if (u.date_joined) {
@@ -181,8 +187,9 @@ export function processDerivedData(
     });
 
     filteredEngagements.forEach(e => {
-      if (e.created_at) {
-        const dt = new Date(e.created_at);
+      const rawDate = e.event_date;
+      if (rawDate) {
+        const dt = new Date(rawDate);
         const k = `${dt.getFullYear()}-${dt.getMonth()}`;
         if (engMonthly[k] !== undefined) engMonthly[k]++;
       }

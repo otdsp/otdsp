@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import { UserAuth, UserProfile, Engagement, IndicatorFilters } from './types';
+import { UserAuth, UserProfile, Engagement, EvidenceFilters } from './types';
 import { useAdminAuth } from './useAdminAuth';
 import { fetchCityCoordinates } from './services/geocoding';
-import { processDerivedData } from './utils/indicatorsProcessor';
+import { processDerivedData } from './utils/evidenceProcessor';
 
-export function useIndicadores() {
+export function useEvidence() {
   const { isAuthorized, isAuthLoading } = useAdminAuth();
   
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -21,7 +21,7 @@ export function useIndicadores() {
     verticals: [], horizontals: [], transversals: [] 
   });
   
-  const [filters, setFilters] = useState<IndicatorFilters>({
+  const [filters, setFilters] = useState<EvidenceFilters>({
     startDate: '2026-04-01',
     endDate: '',
     vertical: { enabled: false, values: [] },

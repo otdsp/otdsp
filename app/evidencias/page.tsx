@@ -9,8 +9,8 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
-
-import { useIndicadores } from './useIndicadores';
+  
+import { useEvidence } from './useEvidence';
 import { KpiCard } from './components/KpiCard';
 import { CustomOrgTooltip } from './components/CustomOrgTooltip';
 import { MiniPilarCard } from './components/MiniPilarCard';
@@ -24,7 +24,7 @@ const ORG_COLORS = ['#4f46e5', '#ea580c', '#0284c7', '#16a34a', '#9333ea', '#647
 
 const LEAFLET_TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 
-export default function IndicadoresStaff() {
+export default function EvidenciasStaff() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
 
@@ -35,7 +35,7 @@ export default function IndicadoresStaff() {
     filterOptions,
     handleFilterChange,
     derivedData
-  } = useIndicadores();
+  } = useEvidence();
 
   const activeFiltersSummary = [
     `Vertical: ${filters.vertical.enabled ? (filters.vertical.values.length ? filters.vertical.values.join(', ') : 'Nenhum item selecionado') : 'Desativado'}`,
@@ -88,7 +88,7 @@ export default function IndicadoresStaff() {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center space-y-4">
         <Loader2 className="w-12 h-12 text-cyan-600 animate-spin" />
-        <p className="text-slate-600 font-medium tracking-wide text-sm animate-pulse">Sincronizando cascata reativa de indicadores...</p>
+        <p className="text-slate-600 font-medium tracking-wide text-sm animate-pulse">Sincronizando...</p>
       </div>
     );
   }
@@ -107,7 +107,7 @@ export default function IndicadoresStaff() {
         
         <header className="border-b border-slate-200 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-4xl md:text-5xl font-extrabold text-[#0F172A] tracking-tight mb-2">Painel de Indicadores</h1>
+            <h1 className="text-4xl md:text-5xl font-extrabold text-[#0F172A] tracking-tight mb-2">Painel de Evidências</h1>
             <p className="text-slate-500 text-lg font-light tracking-wide">Inteligência operacional e métricas da comunidade <span className="text-cyan-600 font-medium">OTDSP</span></p>
           </div>
           
@@ -234,7 +234,7 @@ export default function IndicadoresStaff() {
             </div>
             
             {/* Títulos e Metadados */}
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">OTDSP - Relatório de Indicadores Gerenciais</h1>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">OTDSP - Relatório de Evidências</h1>
             <p className="text-slate-600 text-lg mt-2">Evento / Contexto: <strong className="text-cyan-700">{eventName || 'Geral'}</strong></p>
             <p className="text-slate-500 mt-1">Período consultado: {filters.startDate ? new Date(filters.startDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Início'} até {filters.endDate ? new Date(filters.endDate + 'T23:59:59').toLocaleDateString('pt-BR') : 'Hoje'}</p>
             <p className="text-slate-500 mt-1">Filtros utilizados:{activeFiltersSummary}</p>

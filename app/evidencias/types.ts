@@ -34,6 +34,7 @@ export interface Engagement {
   estimated_duration?: number;
   engagement_participants?: EngagementParticipant[];
   created_at: string;
+  event_date?: string | null;
 }
 
 export interface MunicipalityParticipant {
@@ -71,7 +72,7 @@ export interface DimensionFilter {
   values: string[];
 };
 
-export interface IndicatorFilters {
+export interface EvidenceFilters {
   startDate: string;
   endDate: string;
   vertical: DimensionFilter;

@@ -138,7 +138,7 @@ export default function Navbar() {
 
       const loggedInDropdown = [
         { name: 'Meu Perfil', href: '/perfil', icon: User },
-        ...(isStaff ? [{ name: 'Indicadores', href: '/indicadores', icon: ChartColumn }] : []),
+        ...(isStaff ? [{ name: 'Evidências', href: '/evidencias', icon: ChartColumn }] : []),
         { name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
         { name: 'Sair', href: '#', isLogout: true, icon: LogOut },
       ];

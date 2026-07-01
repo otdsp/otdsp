@@ -32,9 +32,9 @@ interface Engagement {
   event_date: string
   location: string
   status: string
-  interests: string[]
-  technologies: string[]
-  public_policies: string[]
+  horizontal: string[]
+  vertical: string[]
+  transversal: string[]
   planned_activities: string[]
   estimated_duration: number
   created_by: string
@@ -73,9 +73,9 @@ export default function EngajamentosPage() {
     status: 'Planejado',
     feedback: '',
     estimated_duration: '',
-    interests: [] as string[],
-    technologies: [] as string[],
-    public_policies: [] as string[],
+    horizontal: [] as string[],
+    vertical: [] as string[],
+    transversal: [] as string[],
     planned_activities: [] as string[],
     participants: [] as string[]
   })
@@ -97,9 +97,9 @@ export default function EngajamentosPage() {
     } else {
       const formattedData = (data || []).map((eng: any) => ({
         ...eng,
-        interests: Array.isArray(eng.horizontal) ? eng.horizontal : (Array.isArray(eng.interests) ? eng.interests : []),
-        technologies: Array.isArray(eng.vertical) ? eng.vertical : (Array.isArray(eng.technologies) ? eng.technologies : []),
-        public_policies: Array.isArray(eng.transversal) ? eng.transversal : (Array.isArray(eng.public_policies) ? eng.public_policies : []),
+        horizontal: Array.isArray(eng.horizontal) ? eng.horizontal : (Array.isArray(eng.horizontal) ? eng.horizontal : []),
+        vertical: Array.isArray(eng.vertical) ? eng.vertical : (Array.isArray(eng.vertical) ? eng.vertical : []),
+        transversal: Array.isArray(eng.transversal) ? eng.transversal : (Array.isArray(eng.transversal) ? eng.transversal : []),
         engagement_staff_notes: Array.isArray(eng.engagement_staff_notes) 
           ? eng.engagement_staff_notes[0] 
           : eng.engagement_staff_notes
@@ -166,7 +166,7 @@ export default function EngajamentosPage() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const toggleArrayItem = (field: 'interests' | 'technologies' | 'public_policies' | 'planned_activities', item: string) => {
+  const toggleArrayItem = (field: 'horizontal' | 'vertical' | 'transversal' | 'planned_activities', item: string) => {
     setFormData(prev => {
       const currentArray = prev[field]
       if (currentArray.includes(item)) {
@@ -198,9 +198,9 @@ export default function EngajamentosPage() {
       status: eng.status || 'Planejado',
       feedback: eng.engagement_staff_notes?.notes || '',
       estimated_duration: eng.estimated_duration ? eng.estimated_duration.toString() : '',
-      interests: eng.interests || [],
-      technologies: eng.technologies || [],
-      public_policies: eng.public_policies || [],
+      horizontal: eng.horizontal || [],
+      vertical: eng.vertical || [],
+      transversal: eng.transversal || [],
       planned_activities: eng.planned_activities || [],
       participants: []
     })
@@ -222,67 +222,77 @@ export default function EngajamentosPage() {
     setIsSubmitting(true)
     setMessage(null)
 
-    const payload: any = {
-      title: formData.title,
-      description: formData.description,
-      event_date: formData.event_date || null,
-      location: formData.location,
-      estimated_duration: formData.estimated_duration ? parseFloat(formData.estimated_duration) : null,
-      horizontal: formData.interests,
-      vertical: formData.technologies,
-      transversal: formData.public_policies,
-      planned_activities: formData.planned_activities,
-    }
-
-    if (isStaff || !editingId) {
-      payload.status = formData.status
-    }
-
-    let result;
-    let currentEngagementId = editingId;
-
-    if (editingId) {
-      result = await supabase.from('engagements').update(payload).eq('id', editingId).select()
-    } else {
-      result = await supabase.from('engagements').insert([payload]).select()
-      if (result.data) currentEngagementId = result.data[0].id
-    }
-
-    if (result.error) {
-      setMessage({ type: 'error', text: 'Erro ao salvar: ' + result.error.message })
-    } else {
-      if (isStaff && currentEngagementId) {
-        await supabase
-          .from('engagement_staff_notes')
-          .upsert({ engagement_id: currentEngagementId, notes: formData.feedback })
+    try {
+      const payload: any = {
+        title: formData.title,
+        description: formData.description,
+        event_date: formData.event_date || null,
+        location: formData.location,
+        estimated_duration: formData.estimated_duration ? parseFloat(formData.estimated_duration) : null,
+        horizontal: formData.horizontal,
+        vertical: formData.vertical,
+        transversal: formData.transversal,
+        planned_activities: formData.planned_activities,
       }
 
-      if (formData.participants.length > 0 && currentEngagementId) {
-        const participantsData = formData.participants.map(email => ({
-          engagement_id: currentEngagementId,
-          user_email: email.trim().toLowerCase()
-        }))
+      if (isStaff || !editingId) {
+        payload.status = formData.status
+      }
 
-        const { error: partError } = await supabase
-          .from('engagement_participants')
-          .insert(participantsData)
+      let result;
+      let currentEngagementId = editingId;
 
-        if (partError) {
-          console.error("Erro ao vincular e-mails dos participantes:", partError.message)
+      if (editingId) {
+        result = await supabase.from('engagements').update(payload).eq('id', editingId).select()
+      } else {
+        result = await supabase.from('engagements').insert([payload]).select()
+        if (result.data && result.data.length > 0) {
+          currentEngagementId = result.data[0].id
         }
       }
 
-      setMessage({ type: 'success', text: editingId ? 'Engajamento atualizado!' : 'Engajamento criado!' })
-      setFormData({
-        title: '', description: '', event_date: '', location: '', status: 'Planejado',
-        feedback: '', estimated_duration: '', interests: [], technologies: [],
-        public_policies: [], planned_activities: [], participants: []
-      })
-      setEditingId(null)
-      setTimeout(() => setShowForm(false), 2000)
-      fetchEngajamentos()
+      if (result.error) {
+        setMessage({ type: 'error', text: 'Erro ao salvar: ' + result.error.message })
+      } else {
+        if (isStaff && currentEngagementId) {
+          await supabase
+            .from('engagement_staff_notes')
+            .upsert({ engagement_id: currentEngagementId, notes: formData.feedback })
+        }
+
+        if (formData.participants.length > 0 && currentEngagementId) {
+          const participantsData = formData.participants.map(email => ({
+            engagement_id: currentEngagementId,
+            user_email: email.trim().toLowerCase()
+          }))
+
+          const { error: partError } = await supabase
+            .from('engagement_participants')
+            .insert(participantsData)
+
+          if (partError) {
+            console.error("Erro ao vincular e-mails dos participantes:", partError.message)
+          }
+        }
+
+        setMessage({ type: 'success', text: editingId ? 'Engajamento atualizado!' : 'Engajamento criado!' })
+        
+        // Limpa completamente os estados do formulário para permitir o próximo
+        setFormData({
+          title: '', description: '', event_date: '', location: '', status: 'Planejado',
+          feedback: '', estimated_duration: '', horizontal: [], vertical: [],
+          transversal: [], planned_activities: [], participants: []
+        })
+        setEditingId(null)
+        setShowForm(false)
+        fetchEngajamentos()
+      }
+    } catch (error: any) {
+      console.error("Erro inesperado:", error)
+      setMessage({ type: 'error', text: 'Erro inesperado ao processar a requisição.' })
+    } finally {
+      setIsSubmitting(false)
     }
-    setIsSubmitting(false)
   }
 
   const formatDate = (dateString: string) => {
@@ -314,13 +324,15 @@ export default function EngajamentosPage() {
               Seus <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-cyan-200">Engajamentos</span>
             </h1>
           </div>
-          <button
-            onClick={() => { setShowForm(!showForm); setEditingId(null); }}
-            className="bg-white text-[#0F172A] font-bold py-4 px-8 rounded-2xl shadow-xl flex items-center gap-3 transition-all hover:bg-cyan-50"
-          >
-            {showForm ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-            {showForm ? 'Cancelar' : 'Novo Engajamento'}
-          </button>
+          {isStaff && (
+            <button
+              onClick={() => { setShowForm(!showForm); setEditingId(null); }}
+              className="bg-white text-[#0F172A] font-bold py-4 px-8 rounded-2xl shadow-xl flex items-center gap-3 transition-all hover:bg-cyan-50"
+            >
+              {showForm ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+              {showForm ? 'Cancelar' : 'Novo Engajamento'}
+            </button>
+          )}
         </div>
       </section>
 
@@ -445,9 +457,9 @@ export default function EngajamentosPage() {
 
                   {/* Multi-selection Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 py-8 border-y border-slate-100">
-                    <BadgeToggleList label="Áreas de Interesse" icon={Heart} options={INTEREST_OPTIONS} selected={formData.interests} onToggle={(item: string) => toggleArrayItem('interests', item)} />
-                    <BadgeToggleList label="Tecnologias" icon={Monitor} options={TECH_OPTIONS} selected={formData.technologies} onToggle={(item: string) => toggleArrayItem('technologies', item)} />
-                    <BadgeToggleList label="Políticas Públicas" icon={Briefcase} options={POLICY_OPTIONS} selected={formData.public_policies} onToggle={(item: string) => toggleArrayItem('public_policies', item)} />
+                    <BadgeToggleList label="Áreas de Interesse" icon={Heart} options={INTEREST_OPTIONS} selected={formData.horizontal} onToggle={(item: string) => toggleArrayItem('horizontal', item)} />
+                    <BadgeToggleList label="Tecnologias" icon={Monitor} options={TECH_OPTIONS} selected={formData.vertical} onToggle={(item: string) => toggleArrayItem('vertical', item)} />
+                    <BadgeToggleList label="Políticas Públicas" icon={Briefcase} options={POLICY_OPTIONS} selected={formData.transversal} onToggle={(item: string) => toggleArrayItem('transversal', item)} />
                     <BadgeToggleList label="Atividades" icon={Users} options={ACTIVITY_OPTIONS} selected={formData.planned_activities} onToggle={(item: string) => toggleArrayItem('planned_activities', item)} />
                   </div>
 
