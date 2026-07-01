@@ -343,7 +343,7 @@ export default function ProfilePage() {
             </motion.div>
 
             {/* Quick Stats or Tips Card */}
-            <div className="bg-[#0F172A] rounded-2xl p-6 text-white overflow-hidden relative group">
+            {/* <div className="bg-[#0F172A] rounded-2xl p-6 text-white overflow-hidden relative group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-cyan-500/20 transition-all duration-700" />
               <div className="relative z-10">
                 <div className="flex items-center gap-3 mb-4">
@@ -356,7 +356,7 @@ export default function ProfilePage() {
                   Seus dados são protegidos por criptografia de ponta e usados apenas para fins de cooperação técnica institucional.
                 </p>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Main Content / Right Column */}

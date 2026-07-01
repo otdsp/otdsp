@@ -16,6 +16,8 @@ import { CustomOrgTooltip } from './components/CustomOrgTooltip';
 import { MiniPilarCard } from './components/MiniPilarCard';
 import { MultiSelectFilter } from './components/MultiSelectFilter';
 import { exportToPDF } from './utils/exportPdf'; 
+import DurationChart from './components/DurationChart';
+import MunicipalityChart from './components/MunicipalityChart';
 
 const PIE_COLORS = ['#0891b2', '#059669', '#d97706', '#7c3aed', '#db2777', '#475569'];
 const ORG_COLORS = ['#4f46e5', '#ea580c', '#0284c7', '#16a34a', '#9333ea', '#64748b'];
@@ -41,7 +43,7 @@ export default function IndicadoresStaff() {
     `Transversal: ${filters.transversal.enabled ? (filters.transversal.values.length ? filters.transversal.values.join(', ') : 'Nenhum item selecionado') : 'Desativado'}`,
   ].join(' • ');
 
-  const { stats, timelineData, engagementTimelineData, referralData, organizationData, geoData, pillarsData } = derivedData;
+  const { stats, timelineData, engagementTimelineData, referralData, organizationData, geoData, pillarsData, durationChart, municipalityChartData } = derivedData;
 
   // NOVO: Estados para controle do Modal de Exportação
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -119,7 +121,7 @@ export default function IndicadoresStaff() {
           </button>
         </header>
 
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-4 lg:items-center relative z-50">
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-4 lg:items-center relative z-40">
           <div className="flex items-center gap-2 lg:border-r border-slate-100 pr-4">
             <Filter className="w-5 h-5 text-slate-400" />
             <span className="font-semibold text-slate-700 text-sm tracking-wide uppercase">Filtros</span>
@@ -299,6 +301,26 @@ export default function IndicadoresStaff() {
             </div>
             <div className="w-full h-[450px] rounded-xl overflow-hidden border border-slate-200 bg-slate-100 z-0">
               <div ref={mapRef} className="w-full h-full" />
+            </div>
+          </div>
+
+          <div className="avoid-break bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <BarChart3 className="text-cyan-600 w-6 h-6" />
+              <h2 className="text-lg font-bold tracking-tight text-slate-800">Duração Estimada por Dimensão</h2>
+            </div>
+            <div className="w-full h-80">
+              <DurationChart series={durationChart} />
+            </div>
+          </div>
+
+          <div className="avoid-break bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <Globe2 className="text-amber-600 w-6 h-6" />
+              <h2 className="text-lg font-bold tracking-tight text-slate-800">Municípios Envolvidos</h2>
+            </div>
+            <div className="w-full h-[420px]">
+              <MunicipalityChart data={municipalityChartData} />
             </div>
           </div>
 
