@@ -36,15 +36,15 @@ export function useEvidence() {
     const fetchRawData = async () => {
       setIsLoadingData(true);
       
-      const [ { data: authData }, { data: profileData }, { data: engData } ] = await Promise.all([
+      const [authRes, profileRes, engRes] = await Promise.all([
         supabase.from('user_auth').select('id, email, is_active, date_joined'),
         supabase.from('user_profile').select('id, user_id, full_name, municipality, referral_source, institution_organization, organization_type, job_title'),
-        supabase.from('engagements').select('id, created_by, status, horizontal, vertical, transversal, planned_activities, estimated_duration, created_at, engagement_participants(user_email)')
+        supabase.from('engagements').select('id, created_by, status, horizontal, vertical, transversal, planned_activities, estimated_duration, created_at, event_date, engagement_participants(user_email)')
       ]);
 
-      const safeAuth: UserAuth[] = authData || [];
-      const safeProfiles: UserProfile[] = profileData || [];
-      const safeEng: Engagement[] = engData || [];
+      const safeAuth: UserAuth[] = authRes.data || [];
+      const safeProfiles: UserProfile[] = profileRes.data || [];
+      const safeEng: Engagement[] = engRes.data || [];
 
       const uniqueVerticals = new Set<string>();
       const uniqueHorizontals = new Set<string>();

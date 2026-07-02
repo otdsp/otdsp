@@ -17,7 +17,7 @@ export function MiniPilarCard({ title, data }: MiniPilarCardProps) {
             <div key={i}>
               <div className="flex justify-between text-xs mb-1.5">
                 <span className="text-slate-600 font-medium">{item.label}</span>
-                <span className="text-slate-900 font-bold font-mono">{item.count} {item.count === 1 ? 'eng' : 'engs'}</span>
+                <span className="text-slate-900 font-bold font-mono">{item.count} {item.count === 1 ? 'engajamento' : 'engajamentos'}</span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                 <div className="bg-cyan-600 h-2 rounded-full transition-all duration-500" style={{ width: `${widthPercentage}%` }}></div>

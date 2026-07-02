@@ -83,7 +83,7 @@ export function processDerivedData(
   const baseUserIds = new Set(baseAuth.map(u => u.id));
 
   const getEngagementPeriodDate = (engagement: Engagement) => {
-    const rawDate = engagement.event_date;
+    const rawDate = engagement.event_date || engagement.created_at;
     return rawDate ? new Date(rawDate) : new Date(0);
   };
 
@@ -147,7 +147,7 @@ export function processDerivedData(
     });
 
     filteredEngagements.forEach(e => {
-      const rawDate = e.event_date;
+      const rawDate = e.event_date || e.created_at;
       if (rawDate) {
         const dt = new Date(rawDate);
         const k = `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`;
@@ -187,7 +187,7 @@ export function processDerivedData(
     });
 
     filteredEngagements.forEach(e => {
-      const rawDate = e.event_date;
+      const rawDate = e.event_date || e.created_at;
       if (rawDate) {
         const dt = new Date(rawDate);
         const k = `${dt.getFullYear()}-${dt.getMonth()}`;
@@ -275,6 +275,7 @@ export function processDerivedData(
   const iCounts: Record<string, number> = {};
   const tCounts: Record<string, number> = {};
   const pCounts: Record<string, number> = {};
+  const paCounts: Record<string, number> = {};
   
   const horizDurMap: Record<string, { total: number; count: number }> = {};
   const vertDurMap: Record<string, { total: number; count: number }> = {};
@@ -319,6 +320,7 @@ export function processDerivedData(
     if (Array.isArray(eng.horizontal)) eng.horizontal.forEach(i => { if (i) { const k = i.trim(); iCounts[k] = (iCounts[k] || 0) + 1; const cur = horizDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; horizDurMap[k] = cur; } });
     if (Array.isArray(eng.vertical)) eng.vertical.forEach(t => { if (t) { const k = t.trim(); tCounts[k] = (tCounts[k] || 0) + 1; const cur = vertDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; vertDurMap[k] = cur; } });
     if (Array.isArray(eng.transversal)) eng.transversal.forEach(p => { if (p) { const k = p.trim(); pCounts[k] = (pCounts[k] || 0) + 1; const cur = transDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; transDurMap[k] = cur; } });
+    if (Array.isArray(eng.planned_activities)) eng.planned_activities.forEach(activity => { if (activity) { const k = activity.trim(); paCounts[k] = (paCounts[k] || 0) + 1; } });
 
     const hasHorizontal = Array.isArray(eng.horizontal) && eng.horizontal.some((value) => value?.trim());
     const hasVertical = Array.isArray(eng.vertical) && eng.vertical.some((value) => value?.trim());
@@ -382,7 +384,8 @@ export function processDerivedData(
   const pillarsData = [
     { category: 'Áreas de Atuação', items: formatGroup(iCounts) },
     { category: 'Tecnologias', items: formatGroup(tCounts) },
-    { category: 'Políticas Transversais', items: formatGroup(pCounts) }
+    { category: 'Políticas Transversais', items: formatGroup(pCounts) },
+    { category: 'Atividades Planejadas', items: formatGroup(paCounts) }
   ].filter(p => p.items.length > 0);
 
   const formatAvg = (map: Record<string, { total: number; count: number }>, enabled: boolean, allowed: string[]) => {
@@ -394,7 +397,7 @@ export function processDerivedData(
 
   let durationChart = [
     { dimension: 'Horizontal', color: '#1f77b4', data: formatAvg(horizDurMap, filters.horizontal.enabled, filters.horizontal.values) },
-    { dimension: 'Vertical', color: '#2ca02c', data: formatAvg(vertDurMap, filters.vertical.enabled, filters.vertical.values) },
+    { dimension: 'Vertical', color: '#10b981', data: formatAvg(vertDurMap, filters.vertical.enabled, filters.vertical.values) },
     { dimension: 'Transversal', color: '#ff7f0e', data: formatAvg(transDurMap, filters.transversal.enabled, filters.transversal.values) }
   ];
 

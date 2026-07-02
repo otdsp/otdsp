@@ -45,7 +45,7 @@ export default function EvidenciasStaff() {
 
   const { stats, timelineData, engagementTimelineData, referralData, organizationData, geoData, pillarsData, durationChart, municipalityChartData } = derivedData;
 
-  // NOVO: Estados para controle do Modal de Exportação
+  // Estados para controle do Modal de Exportação
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [eventName, setEventName] = useState('');
   const [isExporting, setIsExporting] = useState(false);
@@ -111,7 +111,6 @@ export default function EvidenciasStaff() {
             <p className="text-slate-500 text-lg font-light tracking-wide">Inteligência operacional e métricas da comunidade <span className="text-cyan-600 font-medium">OTDSP</span></p>
           </div>
           
-          {/* NOVO: Botão de acionar o Modal de Exportação */}
           <button 
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 bg-[#0F172A] hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-sm"
@@ -121,6 +120,7 @@ export default function EvidenciasStaff() {
           </button>
         </header>
 
+        {/* Bloco de Filtros */}
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-4 lg:items-center relative z-40">
           <div className="flex items-center gap-2 lg:border-r border-slate-100 pr-4">
             <Filter className="w-5 h-5 text-slate-400" />
@@ -213,12 +213,11 @@ export default function EvidenciasStaff() {
           </div>
         </div>
 
-        {/* NOVO: Wrapper do PDF. Tudo dentro desta div será printado */}
+        {/* CONTAINER DO RELATÓRIO / CONTEÚDO PDF */}
         <div id="pdf-content" className="space-y-8 bg-slate-50 p-2">
           
-          {/* NOVO: Cabeçalho Oculto (Só aparece no PDF) atualizado com as Logos */}
+          {/* Cabeçalho Oculto (Só no PDF) */}
           <div id="pdf-header" style={{ display: 'none' }} className="mb-6 pb-4 border-b border-slate-200">
-            {/* Bloco de Logos */}
             <div className="flex items-center gap-6 mb-6">
               <img 
                 src={`${process.env.__NEXT_ROUTER_BASEPATH || ''}/logo.png`} 
@@ -233,14 +232,13 @@ export default function EvidenciasStaff() {
               />
             </div>
             
-            {/* Títulos e Metadados */}
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">OTDSP - Relatório de Evidências</h1>
             <p className="text-slate-600 text-lg mt-2">Evento / Contexto: <strong className="text-cyan-700">{eventName || 'Geral'}</strong></p>
             <p className="text-slate-500 mt-1">Período consultado: {filters.startDate ? new Date(filters.startDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Início'} até {filters.endDate ? new Date(filters.endDate + 'T23:59:59').toLocaleDateString('pt-BR') : 'Hoje'}</p>
-            <p className="text-slate-500 mt-1">Filtros utilizados:{activeFiltersSummary}</p>
+            <p className="text-slate-500 mt-1">Filtros utilizados: {activeFiltersSummary}</p>
           </div>
 
-          {/* Cards de Métricas */}
+          {/* Cards Principais de Métricas */}
           <div className="avoid-break grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <KpiCard title="Total de Membros" value={stats.totalUsers} icon={Users} bgColor="bg-cyan-50" iconColor="text-cyan-600" />
             <KpiCard title="Membros Ativos" value={stats.activeUsers} icon={Activity} bgColor="bg-emerald-50" iconColor="text-emerald-600" />
@@ -248,82 +246,7 @@ export default function EvidenciasStaff() {
             <KpiCard title="Convênios Firmados" value={stats.signedAgreements} icon={Handshake} bgColor="bg-indigo-50" iconColor="text-indigo-600" />
           </div>
 
-          <div className="avoid-break grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="avoid-break lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-96 flex flex-col">
-              <div className="flex items-center gap-3 mb-4">
-                <BarChart3 className="text-cyan-600 w-6 h-6" />
-                <h2 className="text-lg font-bold tracking-tight text-slate-800">Crescimento de Membros</h2>
-              </div>
-              <div className="flex-1 w-full h-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={timelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorMembros" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0891b2" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#0891b2" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                    <Area type="monotone" dataKey="Membros" stroke="#0891b2" strokeWidth={3} fillOpacity={1} fill="url(#colorMembros)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="col-span-1 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-96 flex flex-col">
-              <div className="flex items-center gap-3 mb-2">
-                <PieIcon className="text-cyan-600 w-6 h-6" />
-                <h2 className="text-lg font-bold tracking-tight text-slate-800">Origem de Descoberta</h2>
-              </div>
-              <div className="flex-1 w-full h-full relative">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={referralData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">
-                      {referralData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                    <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', color: '#475569' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          <div className="avoid-break bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col">
-            <div className="flex items-center gap-3 mb-4">
-              <Globe2 className="text-amber-600 w-6 h-6" />
-              <h2 className="text-lg font-bold tracking-tight text-slate-800">Distribuição de Membros</h2>
-            </div>
-            <div className="w-full h-[450px] rounded-xl overflow-hidden border border-slate-200 bg-slate-100 z-0">
-              <div ref={mapRef} className="w-full h-full" />
-            </div>
-          </div>
-
-          <div className="avoid-break bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <BarChart3 className="text-cyan-600 w-6 h-6" />
-              <h2 className="text-lg font-bold tracking-tight text-slate-800">Duração Estimada por Dimensão</h2>
-            </div>
-            <div className="w-full h-80">
-              <DurationChart series={durationChart} />
-            </div>
-          </div>
-
-          <div className="avoid-break bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <Globe2 className="text-amber-600 w-6 h-6" />
-              <h2 className="text-lg font-bold tracking-tight text-slate-800">Municípios Envolvidos</h2>
-            </div>
-            <div className="w-full h-[420px]">
-              <MunicipalityChart data={municipalityChartData} />
-            </div>
-          </div>
-
+          {/* 1. Crescimento de Engajamentos e Organizações / Instituições */}
           <div className="avoid-break grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-96 flex flex-col">
               <div className="flex items-center gap-3 mb-4">
@@ -370,16 +293,97 @@ export default function EvidenciasStaff() {
             </div>
           </div>
 
+          {/* 2. Duração Estimada por Dimensão */}
+          <div className="avoid-break bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <BarChart3 className="text-cyan-600 w-6 h-6" />
+              <h2 className="text-lg font-bold tracking-tight text-slate-800">Duração Estimada por Dimensão</h2>
+            </div>
+            <div className="w-full h-80">
+              <DurationChart series={durationChart} />
+            </div>
+          </div>
+
+          {/* 3. Municípios Envolvidos */}
+          <div className="avoid-break bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <Globe2 className="text-amber-600 w-6 h-6" />
+              <h2 className="text-lg font-bold tracking-tight text-slate-800">Municípios Envolvidos</h2>
+            </div>
+            <div className="w-full h-[420px]">
+              <MunicipalityChart data={municipalityChartData} />
+            </div>
+          </div>
+
+          {/* 4. MiniPilarCard */}
           <div className="avoid-break grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6">
             {pillarsData.map((pillar, idx) => (
               <MiniPilarCard key={idx} title={pillar.category} data={pillar.items} />
             ))}
           </div>
-        </div>
 
+          {/* 5. Crescimento de Membros e Origem de Descoberta */}
+          <div className="avoid-break grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="avoid-break lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-96 flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <BarChart3 className="text-cyan-600 w-6 h-6" />
+                <h2 className="text-lg font-bold tracking-tight text-slate-800">Crescimento de Membros</h2>
+              </div>
+              <div className="flex-1 w-full h-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={timelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorMembros" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0891b2" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#0891b2" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Area type="monotone" dataKey="Membros" stroke="#0891b2" strokeWidth={3} fillOpacity={1} fill="url(#colorMembros)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="col-span-1 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-96 flex flex-col">
+              <div className="flex items-center gap-3 mb-2">
+                <PieIcon className="text-cyan-600 w-6 h-6" />
+                <h2 className="text-lg font-bold tracking-tight text-slate-800">Origem de Descoberta</h2>
+              </div>
+              <div className="flex-1 w-full h-full relative">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={referralData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" stroke="none">
+                      {referralData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', color: '#475569' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* 6. Distribuição de Membros (Mapa Leaflet) */}
+          <div className="avoid-break bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col">
+            <div className="flex items-center gap-3 mb-4">
+              <Globe2 className="text-amber-600 w-6 h-6" />
+              <h2 className="text-lg font-bold tracking-tight text-slate-800">Distribuição de Membros</h2>
+            </div>
+            <div className="w-full h-[450px] rounded-xl overflow-hidden border border-slate-200 bg-slate-100 z-0">
+              <div ref={mapRef} className="w-full h-full" />
+            </div>
+          </div>
+
+        </div>
       </div>
 
-      {/* NOVO: Modal de Exportação Overlay */}
+      {/* Modal de Exportação Overlay */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
