@@ -12,21 +12,7 @@ import {
   Legend,
 } from 'recharts';
 
-type ParticipantData = {
-  email: string;
-  name: string;
-  role: string;
-  municipality: string;
-};
-
-type MunicipalityRow = {
-  municipality: string;
-  count: number;
-  horizontalCount: number;
-  verticalCount: number;
-  transversalCount: number;
-  participants: ParticipantData[];
-};
+import type { MunicipalityChartRow } from '../types';
 
 type TooltipProps = {
   active?: boolean;
@@ -37,7 +23,7 @@ type TooltipProps = {
 function MunicipalityTooltip({ active, payload }: TooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
 
-  const data = payload[0].payload as MunicipalityRow;
+  const data = payload[0].payload as MunicipalityChartRow;
   return (
     <div className="rounded-2xl bg-white border border-slate-100 p-4 shadow-xl text-slate-900 backdrop-blur-md bg-white/95" style={{ width: 280 }}>
       <p className="text-sm font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">{data.municipality}</p>
@@ -75,7 +61,7 @@ function MunicipalityTooltip({ active, payload }: TooltipProps) {
   );
 }
 
-export default function MunicipalityChart({ data }: { data: MunicipalityRow[] }) {
+export default function MunicipalityChart({ data }: { data: MunicipalityChartRow[] }) {
   const chartData = useMemo(() => data.slice(0, 12), [data]);
 
   return (

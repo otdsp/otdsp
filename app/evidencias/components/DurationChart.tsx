@@ -11,9 +11,8 @@ import {
   Bar,
   CartesianGrid
 } from 'recharts';
-
-type Point = { label: string; value: number };
-type Series = { dimension: string; color: string; data: Point[] };
+import type { DurationChartSeries } from '../types';
+import { buildDurationChartRows, getActiveDurationDimensions } from '../utils/presentation';
 
 type CustomTooltipProps = {
   active?: boolean;
@@ -49,40 +48,16 @@ function DurationCustomTooltip({ active, payload, label, seriesColors }: CustomT
   );
 }
 
-export default function DurationChart({ series }: { series: Series[] }) {
+export default function DurationChart({ series }: { series: DurationChartSeries[] }) {
   const seriesColors = useMemo(() => {
     const mapping: Record<string, string> = {};
     series.forEach(s => { mapping[s.dimension] = s.color; });
     return mapping;
   }, [series]);
 
-  const merged = useMemo(() => {
-    const labels = new Set<string>();
-    series.forEach(s => s.data.forEach(d => labels.add(d.label)));
-    const allLabels = Array.from(labels).sort();
+  const merged = useMemo(() => buildDurationChartRows(series), [series]);
 
-    return allLabels.map(label => {
-      const entry: Record<string, string | number> = { label };
-      series.forEach(s => {
-        const found = s.data.find(d => d.label === label);
-        entry[s.dimension] = found ? found.value : 0;
-      });
-      return entry;
-    });
-  }, [series]);
-
-  // Identifica quais dimensões possuem algum valor relevante (> 0)
-  const activeDimensions = useMemo(() => {
-    const activeSet = new Set<string>();
-    merged.forEach(entry => {
-      series.forEach(s => {
-        if (typeof entry[s.dimension] === 'number' && (entry[s.dimension] as number) > 0) {
-          activeSet.add(s.dimension);
-        }
-      });
-    });
-    return activeSet;
-  }, [merged, series]);
+  const activeDimensions = useMemo(() => new Set(getActiveDurationDimensions(series, merged)), [merged, series]);
 
   // Componente de Legenda Customizada: o Recharts injeta as propriedades nativas aqui automaticamente
   // Aceitamos 'any' no parâmetro para contornar problemas de exportação de interfaces internas do Recharts

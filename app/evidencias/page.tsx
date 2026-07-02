@@ -18,6 +18,7 @@ import { MultiSelectFilter } from './components/MultiSelectFilter';
 import { exportToPDF } from './utils/exportPdf'; 
 import DurationChart from './components/DurationChart';
 import MunicipalityChart from './components/MunicipalityChart';
+import { buildActiveFiltersSummary, getGeoMarkerColor } from './utils/presentation';
 
 const PIE_COLORS = ['#0891b2', '#059669', '#d97706', '#7c3aed', '#db2777', '#475569'];
 const ORG_COLORS = ['#4f46e5', '#ea580c', '#0284c7', '#16a34a', '#9333ea', '#64748b'];
@@ -37,11 +38,7 @@ export default function EvidenciasStaff() {
     derivedData
   } = useEvidence();
 
-  const activeFiltersSummary = [
-    `Vertical: ${filters.vertical.enabled ? (filters.vertical.values.length ? filters.vertical.values.join(', ') : 'Nenhum item selecionado') : 'Desativado'}`,
-    `Horizontal: ${filters.horizontal.enabled ? (filters.horizontal.values.length ? filters.horizontal.values.join(', ') : 'Nenhum item selecionado') : 'Desativado'}`,
-    `Transversal: ${filters.transversal.enabled ? (filters.transversal.values.length ? filters.transversal.values.join(', ') : 'Nenhum item selecionado') : 'Desativado'}`,
-  ].join(' • ');
+  const activeFiltersSummary = buildActiveFiltersSummary(filters);
 
   const { stats, timelineData, engagementTimelineData, referralData, organizationData, geoData, pillarsData, durationChart, municipalityChartData } = derivedData;
 
@@ -67,7 +64,7 @@ export default function EvidenciasStaff() {
       const bounds: [number, number][] = [];
       geoData.forEach((city) => {
         const [lng, lat] = city.coordinates; 
-        let mColor = city.count > 50 ? "#b91c1c" : city.count > 20 ? "#dc2626" : city.count > 5 ? "#f97316" : "#eab308";  
+        const mColor = getGeoMarkerColor(city.count);
         const marker = L.circleMarker([lat, lng], { radius: Math.min(6 + city.count * 1.5, 25), fillColor: mColor, color: "#ffffff", weight: 1.5, fillOpacity: 0.75 }).addTo(mapInstance.current);
         marker.bindPopup(`<div style="font-family: Inter; font-size: 13px;"><strong style="color: #0f172a;">${city.name}</strong><br/><span>${city.count} membros ativos</span></div>`);
         bounds.push([lat, lng]);

@@ -1,4 +1,4 @@
-import { UserAuth, UserProfile, Engagement, EvidenceFilters, OrgGroup } from '../types';
+import { UserAuth, UserProfile, Engagement, EvidenceFilters, OrgGroup, DerivedEvidenceData } from '../types';
 
 export type RawEvidenceData = {
   auth: UserAuth[];
@@ -10,24 +10,17 @@ export function processDerivedData(
   rawData: RawEvidenceData,
   filters: EvidenceFilters,
   geocodeCache: Record<string, [number, number]>
-) {
-  const emptyResult = {
+): DerivedEvidenceData {
+  const emptyResult: DerivedEvidenceData = {
     stats: { totalUsers: 0, activeUsers: 0, totalEngagements: 0, signedAgreements: 0 },
-    timelineData: [] as { name: string; Membros: number }[],
-    engagementTimelineData: [] as { name: string; Engajamentos: number }[],
-    referralData: [] as { name: string; value: number }[],
-    organizationData: [] as { name: string; value: number; orgType: string; members: string[] }[],
-    geoData: [] as { name: string; count: number; coordinates: [number, number] }[],
-    pillarsData: [] as { category: string; items: { label: string; count: number }[] }[],
-    durationChart: [] as { dimension: string; color: string; data: { label: string; value: number }[] }[],
-    municipalityChartData: [] as { 
-      municipality: string; 
-      count: number; 
-      horizontalCount: number; 
-      verticalCount: number; 
-      transversalCount: number; 
-      participants: { email: string; name: string; role: string; municipality: string }[] 
-    }[]
+    timelineData: [],
+    engagementTimelineData: [],
+    referralData: [],
+    organizationData: [],
+    geoData: [],
+    pillarsData: [],
+    durationChart: [],
+    municipalityChartData: []
   };
 
   // Retorna vazio se não houver dados para processar

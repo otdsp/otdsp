@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import { UserAuth, UserProfile, Engagement, EvidenceFilters } from './types';
+import { UserAuth, UserProfile, Engagement, EvidenceFilters, EvidenceFilterOptions } from './types';
 import { useAdminAuth } from './useAdminAuth';
 import { fetchCityCoordinates } from './services/geocoding';
 import { processDerivedData } from './utils/evidenceProcessor';
+import { buildCityFrequency, buildFilterOptions } from './utils/dataTransforms';
 
 export function useEvidence() {
   const { isAuthorized, isAuthLoading } = useAdminAuth();
@@ -17,7 +18,7 @@ export function useEvidence() {
   auth: [], profiles: [], engagements: [] 
 });
 
-  const [filterOptions, setFilterOptions] = useState<{ verticals: string[]; horizontals: string[]; transversals: string[] }>({ 
+  const [filterOptions, setFilterOptions] = useState<EvidenceFilterOptions>({ 
     verticals: [], horizontals: [], transversals: [] 
   });
   
@@ -46,43 +47,10 @@ export function useEvidence() {
       const safeProfiles: UserProfile[] = profileRes.data || [];
       const safeEng: Engagement[] = engRes.data || [];
 
-      const uniqueVerticals = new Set<string>();
-      const uniqueHorizontals = new Set<string>();
-      const uniqueTransversals = new Set<string>();
-      const cityFreq: Record<string, number> = {};
+      const cityFreq = buildCityFrequency(safeProfiles);
+      const nextFilterOptions = buildFilterOptions(safeProfiles, safeEng);
 
-      safeProfiles.forEach((p) => {
-        if (p.municipality) {
-          const city = p.municipality.trim().charAt(0).toUpperCase() + p.municipality.trim().slice(1);
-          cityFreq[city] = (cityFreq[city] || 0) + 1;
-        }
-      });
-      safeEng.forEach((e) => {
-        if (Array.isArray(e.vertical)) {
-          e.vertical.forEach((value) => {
-            const normalized = value?.trim();
-            if (normalized) uniqueVerticals.add(normalized);
-          });
-        }
-        if (Array.isArray(e.horizontal)) {
-          e.horizontal.forEach((value) => {
-            const normalized = value?.trim();
-            if (normalized) uniqueHorizontals.add(normalized);
-          });
-        }
-        if (Array.isArray(e.transversal)) {
-          e.transversal.forEach((value) => {
-            const normalized = value?.trim();
-            if (normalized) uniqueTransversals.add(normalized);
-          });
-        }
-      });
-
-      setFilterOptions({
-        verticals: Array.from(uniqueVerticals).sort(),
-        horizontals: Array.from(uniqueHorizontals).sort(),
-        transversals: Array.from(uniqueTransversals).sort()
-      });
+      setFilterOptions(nextFilterOptions);
       
       // Busca as coordenadas
       const topCities = Object.entries(cityFreq).sort((a, b) => b[1] - a[1]).slice(0, 30).map(x => x[0]);

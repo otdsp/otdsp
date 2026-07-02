@@ -70,7 +70,7 @@ export interface OrgGroup {
 export interface DimensionFilter {
   enabled: boolean;
   values: string[];
-};
+}
 
 export interface EvidenceFilters {
   startDate: string;
@@ -78,4 +78,66 @@ export interface EvidenceFilters {
   vertical: DimensionFilter;
   horizontal: DimensionFilter;
   transversal: DimensionFilter;
-};
+}
+
+export interface EvidenceFilterOptions {
+  verticals: string[];
+  horizontals: string[];
+  transversals: string[];
+}
+
+export interface MetricPoint {
+  label: string;
+  value: number;
+}
+
+export interface TimelinePoint {
+  name: string;
+  Membros: number;
+}
+
+export interface EngagementTimelinePoint {
+  name: string;
+  Engajamentos: number;
+}
+
+export interface PieChartPoint {
+  name: string;
+  value: number;
+  orgType?: string;
+  members?: string[];
+}
+
+export interface GeoPoint {
+  name: string;
+  count: number;
+  coordinates: [number, number];
+}
+
+export interface PillarMetric {
+  label: string;
+  count: number;
+}
+
+export interface PillarGroup {
+  category: string;
+  items: PillarMetric[];
+}
+
+export interface DurationChartSeries {
+  dimension: string;
+  color: string;
+  data: MetricPoint[];
+}
+
+export interface DerivedEvidenceData {
+  stats: KPIStats;
+  timelineData: TimelinePoint[];
+  engagementTimelineData: EngagementTimelinePoint[];
+  referralData: PieChartPoint[];
+  organizationData: PieChartPoint[];
+  geoData: GeoPoint[];
+  pillarsData: PillarGroup[];
+  durationChart: DurationChartSeries[];
+  municipalityChartData: MunicipalityChartRow[];
+}
