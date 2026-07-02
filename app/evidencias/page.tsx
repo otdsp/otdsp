@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { 
   Users, Activity, Target, Handshake, Globe2, BarChart3, ShieldAlert, Loader2, 
-  PieChart as PieIcon, Briefcase, Filter, Calendar as CalendarIcon, Download, X, Layers3, Rows3, Waypoints
+  PieChart as PieIcon, Briefcase, Filter, Download, X, Layers3, Rows3, Waypoints
 } from 'lucide-react';
 import { 
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -14,7 +14,8 @@ import { useEvidence } from './useEvidence';
 import { KpiCard } from './components/KpiCard';
 import { CustomOrgTooltip } from './components/CustomOrgTooltip';
 import { MiniPilarCard } from './components/MiniPilarCard';
-import { MultiSelectFilter } from './components/MultiSelectFilter';
+import { MultiSelectFilter } from '../../components/MultiSelectFilter';
+import { DateRangeFilter } from '../../components/DateRangeFilter';
 import { exportToPDF } from './utils/exportPdf'; 
 import DurationChart from './components/DurationChart';
 import MunicipalityChart from './components/MunicipalityChart';
@@ -125,37 +126,12 @@ export default function EvidenciasStaff() {
           </div>
           
           <div className="flex-1 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex flex-col space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-1">Data Inicial</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <CalendarIcon className="h-4 w-4 text-cyan-600" />
-                  </div>
-                  <input 
-                    type="date"
-                    value={filters.startDate}
-                    onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                    className="block w-full pl-9 pr-3 py-2 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 hover:bg-slate-100 transition-colors cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-1">Data Final</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <CalendarIcon className="h-4 w-4 text-cyan-600" />
-                  </div>
-                  <input 
-                    type="date"
-                    value={filters.endDate}
-                    onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                    className="block w-full pl-9 pr-3 py-2 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 hover:bg-slate-100 transition-colors cursor-pointer"
-                  />
-                </div>
-              </div>
-            </div>
+            <DateRangeFilter
+              startDate={filters.startDate}
+              endDate={filters.endDate}
+              onStartDateChange={(date) => handleFilterChange('startDate', date)}
+              onEndDateChange={(date) => handleFilterChange('endDate', date)}
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <MultiSelectFilter

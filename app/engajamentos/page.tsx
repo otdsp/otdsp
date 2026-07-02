@@ -6,10 +6,10 @@ import { motion, AnimatePresence } from 'motion/react'
 import { 
   Calendar, 
   Plus, 
-  Clock, 
+  Search, 
   MapPin, 
   CheckCircle, 
-  AlertCircle, 
+  Activity, 
   Loader2, 
   Target,
   X,
@@ -20,9 +20,15 @@ import {
   Heart,
   Pencil,
   Trash2,
-  Lock
+  Lock,
+  Filter,
+  Layers3,
+  Rows3,
+  Waypoints
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { DateRangeFilter } from '@/components/DateRangeFilter'
+import { MultiSelectFilter } from '@/components/MultiSelectFilter'
 
 // Interface limpa e sincronizada com o banco de dados atual
 interface Engagement {
@@ -62,6 +68,20 @@ export default function EngajamentosPage() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('Todos')
+  
+  // Filtros de Período e Dimensões
+  const [filterOptions, setFilterOptions] = useState({
+    verticals: [] as string[],
+    horizontals: [] as string[],
+    transversals: [] as string[]
+  })
+  const [periodFilters, setPeriodFilters] = useState({
+    startDate: '',
+    endDate: '',
+    vertical: { enabled: false, values: [] as string[] },
+    horizontal: { enabled: false, values: [] as string[] },
+    transversal: { enabled: false, values: [] as string[] }
+  })
   
   const router = useRouter()
 
@@ -105,6 +125,35 @@ export default function EngajamentosPage() {
           : eng.engagement_staff_notes
       }))
       setEngagements(formattedData)
+      
+      // Construir opções de filtro
+      const uniqueVerticals = new Set<string>()
+      const uniqueHorizontals = new Set<string>()
+      const uniqueTransversals = new Set<string>()
+      
+      formattedData.forEach((eng: Engagement) => {
+        if (Array.isArray(eng.vertical)) {
+          eng.vertical.forEach(v => {
+            if (v?.trim()) uniqueVerticals.add(v.trim())
+          })
+        }
+        if (Array.isArray(eng.horizontal)) {
+          eng.horizontal.forEach(h => {
+            if (h?.trim()) uniqueHorizontals.add(h.trim())
+          })
+        }
+        if (Array.isArray(eng.transversal)) {
+          eng.transversal.forEach(t => {
+            if (t?.trim()) uniqueTransversals.add(t.trim())
+          })
+        }
+      })
+      
+      setFilterOptions({
+        verticals: Array.from(uniqueVerticals).sort(),
+        horizontals: Array.from(uniqueHorizontals).sort(),
+        transversals: Array.from(uniqueTransversals).sort()
+      })
     }
     setLoading(false)
   }
@@ -188,6 +237,10 @@ export default function EngajamentosPage() {
     setFormData(prev => ({ ...prev, participants: prev.participants.filter(e => e !== email) }))
   }
 
+  const handleFilterChange = (filterKey: string, newValue: any) => {
+    setPeriodFilters((prev) => ({ ...prev, [filterKey]: newValue }))
+  }
+
   const handleEdit = (eng: Engagement) => {
     setEditingId(eng.id)
     setFormData({
@@ -202,7 +255,7 @@ export default function EngajamentosPage() {
       vertical: eng.vertical || [],
       transversal: eng.transversal || [],
       planned_activities: eng.planned_activities || [],
-      participants: []
+      participants: eng.engagement_participants?.map(p => p.user_email) || []
     })
     setShowForm(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -309,6 +362,56 @@ export default function EngajamentosPage() {
       return endTimeMs < Date.now();
     };
   }, []);
+
+  const filteredEngagements = useMemo(() => {
+    return engagements.filter(eng => {
+      // Filtro de Status
+      const matchesStatus = statusFilter === 'Todos' || eng.status === statusFilter
+      
+      // Filtro de Busca por termo
+      const searchLower = searchTerm.toLowerCase()
+      const matchesSearch = !searchTerm || eng.title.toLowerCase().includes(searchLower) || eng.description.toLowerCase().includes(searchLower)
+      
+      // Filtro de Data
+      let matchesDateRange = true
+      if (periodFilters.startDate || periodFilters.endDate) {
+        if (!eng.event_date) {
+          matchesDateRange = false
+        } else {
+          const engDate = new Date(eng.event_date).getTime()
+          const startTime = periodFilters.startDate ? new Date(periodFilters.startDate).getTime() : 0
+          const endTime = periodFilters.endDate ? new Date(periodFilters.endDate + 'T23:59:59').getTime() : Date.now()
+          matchesDateRange = engDate >= startTime && engDate <= endTime
+        }
+      }
+      
+      // Filtro de Horizontal
+      let matchesHorizontal = true
+      if (periodFilters.horizontal.enabled && periodFilters.horizontal.values.length > 0) {
+        matchesHorizontal = periodFilters.horizontal.values.some(val => 
+          eng.horizontal?.includes(val)
+        )
+      }
+      
+      // Filtro de Vertical
+      let matchesVertical = true
+      if (periodFilters.vertical.enabled && periodFilters.vertical.values.length > 0) {
+        matchesVertical = periodFilters.vertical.values.some(val => 
+          eng.vertical?.includes(val)
+        )
+      }
+      
+      // Filtro de Transversal
+      let matchesTransversal = true
+      if (periodFilters.transversal.enabled && periodFilters.transversal.values.length > 0) {
+        matchesTransversal = periodFilters.transversal.values.some(val => 
+          eng.transversal?.includes(val)
+        )
+      }
+      
+      return matchesStatus && matchesSearch && matchesDateRange && matchesHorizontal && matchesVertical && matchesTransversal
+    })
+  }, [engagements, statusFilter, searchTerm, periodFilters])
 
   return (
     <main className="min-h-screen bg-slate-50 pt-24 pb-20">
@@ -479,7 +582,7 @@ export default function EngajamentosPage() {
         {/* Existing List */}
         <div className="bg-white/40 backdrop-blur-md rounded-[2.5rem] border border-white p-2 mt-8">
           <div className="bg-white rounded-[2rem] shadow-sm p-8 md:p-12 min-h-[500px]">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-12">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-12">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-800"><Calendar className="w-6 h-6" /></div>
                 <div>
@@ -487,29 +590,122 @@ export default function EngajamentosPage() {
                   <p className="text-slate-500">Acompanhe suas ações no ecossistema.</p>
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50 p-2 rounded-2xl border border-slate-100">
-                <input type="text" placeholder="Buscar engajamentos..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:ring-2 focus:ring-cyan-500 outline-none" />
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm font-semibold outline-none cursor-pointer">
-                  <option value="Todos">Todos Status</option>
+            </div>
+
+        {/* Bloco de Filtros */}
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-5 lg:items-center relative z-40 mb-8">
+          
+          {/* Label Lateral (Filtros) */}
+          <div className="flex items-center gap-2 lg:border-r border-slate-100 pr-4 shrink-0">
+            <Filter className="w-5 h-5 text-slate-400" />
+            <span className="font-semibold text-slate-700 text-sm tracking-wide uppercase">Filtros</span>
+          </div>
+          
+          <div className="flex-1 space-y-4">
+            {/* Linha Superior: Data e Busca */}
+            <div className="flex flex-col md:flex-row gap-4 items-end">
+              <div className="flex-1 w-full">
+                <DateRangeFilter
+                  startDate={periodFilters.startDate}
+                  endDate={periodFilters.endDate}
+                  onStartDateChange={(date) => handleFilterChange('startDate', date)}
+                  onEndDateChange={(date) => handleFilterChange('endDate', date)}
+                />
+              </div>
+              
+              {/* Input de Busca Otimizado */}
+              <div className="w-full md:w-80 flex flex-col space-y-1">
+                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-1">Buscar</label>
+                <div className="relative flex items-center">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+                  <input 
+                    type="text" 
+                    placeholder="Título ou descrição..." 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)} 
+                    className="w-full bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-xl py-2 pl-9 pr-4 text-sm text-slate-700 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none transition-all" 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Linha Inferior: Filtros de Categoria e Status */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <MultiSelectFilter
+                label="Horizontal"
+                icon={Rows3}
+                enabled={periodFilters.horizontal.enabled}
+                values={periodFilters.horizontal.values}
+                options={filterOptions.horizontals}
+                onEnabledChange={(nextEnabled) => 
+                  handleFilterChange('horizontal', { 
+                    enabled: nextEnabled, 
+                    values: nextEnabled ? [...filterOptions.horizontals] : [] 
+                  })
+                }
+                onValuesChange={(nextValues) => 
+                  handleFilterChange('horizontal', { ...periodFilters.horizontal, values: nextValues })
+                }
+              />
+              
+              <MultiSelectFilter
+                label="Vertical"
+                icon={Layers3}
+                enabled={periodFilters.vertical.enabled}
+                values={periodFilters.vertical.values}
+                options={filterOptions.verticals}
+                onEnabledChange={(nextEnabled) => 
+                  handleFilterChange('vertical', { 
+                    enabled: nextEnabled, 
+                    values: nextEnabled ? [...filterOptions.verticals] : [] 
+                  })
+                }
+                onValuesChange={(nextValues) => 
+                  handleFilterChange('vertical', { ...periodFilters.vertical, values: nextValues })
+                }
+              />
+              
+              <MultiSelectFilter
+                label="Transversal"
+                icon={Waypoints}
+                enabled={periodFilters.transversal.enabled}
+                values={periodFilters.transversal.values}
+                options={filterOptions.transversals}
+                onEnabledChange={(nextEnabled) => 
+                  handleFilterChange('transversal', { 
+                    enabled: nextEnabled, 
+                    values: nextEnabled ? [...filterOptions.transversals] : [] 
+                  })
+                }
+                onValuesChange={(nextValues) => 
+                  handleFilterChange('transversal', { ...periodFilters.transversal, values: nextValues })
+                }
+              />
+ 
+              <div className="relative flex items-center h-full min-h-[42px]"> 
+                <Activity className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+                <select 
+                  value={statusFilter} 
+                  onChange={(e) => setStatusFilter(e.target.value)} 
+                  className="w-full h-full bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-xl pl-9 pr-8 text-xs font-semibold text-slate-600 appearance-none outline-none cursor-pointer focus:bg-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all py-3" 
+                >
+                  <option value="Todos">Todos os Status</option>
                   <option value="Planejado">Planejado</option>
                   <option value="Pendente">Pendente</option>
                   <option value="Cancelado">Cancelado</option>
                   <option value="Concluído">Concluído</option>
                 </select>
-              </div>
+                <div className="absolute right-3 pointer-events-none text-slate-400 text-[10px]">▼</div>
+              </div>             
             </div>
+          </div>
+        </div>
 
             {loading ? (
               <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-cyan-500" /></div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {engagements
-                  .filter(eng => {
-                    const matchesStatus = statusFilter === 'Todos' || eng.status === statusFilter
-                    const searchLower = searchTerm.toLowerCase()
-                    return matchesStatus && (!searchTerm || eng.title.toLowerCase().includes(searchLower) || eng.description.toLowerCase().includes(searchLower))
-                  })
-                  .map((eng) => {
+                {filteredEngagements.map((eng) => {
                     const isPast = checkIsPast(eng.event_date, eng.estimated_duration || 0);
                     const canEdit = isStaff || !isPast;
 
