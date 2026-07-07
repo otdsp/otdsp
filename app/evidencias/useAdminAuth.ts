@@ -15,11 +15,11 @@ export function useAdminAuth() {
 
         const { data: userData, error } = await supabase
           .from('user_auth')
-          .select('is_staff')
+          .select('role')
           .eq('id', session.user.id)
           .single();
 
-        if (error || !userData?.is_staff) return router.replace('/');
+        if (error || userData?.role !== 'staff') return router.replace('/');
 
         setIsAuthorized(true);
       } catch (error) {

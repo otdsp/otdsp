@@ -15,7 +15,7 @@ export function DateRangeFilter({
   onEndDateChange,
 }: DateRangeFilterProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid w-full grid-cols-1 gap-3 min-[520px]:grid-cols-2">
       <div className="flex flex-col space-y-1">
         <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-1">Data Inicial</label>
         <div className="relative">

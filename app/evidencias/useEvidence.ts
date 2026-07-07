@@ -38,9 +38,9 @@ export function useEvidence() {
       setIsLoadingData(true);
       
       const [authRes, profileRes, engRes] = await Promise.all([
-        supabase.from('user_auth').select('id, email, is_active, date_joined'),
-        supabase.from('user_profile').select('id, user_id, full_name, cpf, municipality, referral_source, institution_organization, organization_type, job_title'),
-        supabase.from('engagements').select('id, created_by, status, horizontal, vertical, transversal, planned_activities, estimated_duration, created_at, event_date, engagement_participants(user_email)')
+        supabase.from('user_auth').select('id, email, is_active, date_joined, cpf, phone'),
+        supabase.from('user_profile').select('id, user_id, full_name, municipality, referral_source, institution_organization, organization_type, job_title'),
+        supabase.from('engagements').select('id, created_by, status, horizontal, vertical, transversal, planned_activities, estimated_duration, created_at, event_date, engagement_participants(email)')
       ]);
 
       const safeAuth: UserAuth[] = authRes.data || [];

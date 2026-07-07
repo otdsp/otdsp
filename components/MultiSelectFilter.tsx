@@ -35,9 +35,9 @@ export function MultiSelectFilter({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm transition-colors">
+    <div className="w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm transition-colors sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 cursor-pointer">
             <input
               type="checkbox"

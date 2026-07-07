@@ -103,8 +103,10 @@ export default function CadastroPage() {
           .upsert({
             id: user.id,
             email: user.email,
-            is_staff: false,
+            role: 'user',
             is_active: true,
+            cpf: formData.cpf,
+            phone: formData.phone,
           })
         
         if (authTableError) console.error('Error in user_auth upsert:', authTableError)
@@ -115,8 +117,6 @@ export default function CadastroPage() {
           .upsert({
             user_id: user.id,
             full_name: formData.full_name,
-            cpf: formData.cpf,
-            phone: formData.phone,
             municipality: formData.municipality,
             institution_organization: formData.institution_organization,
             organization_type: formData.organization_type,

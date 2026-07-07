@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X, ChevronDown, UserPlus, User, LogOut, Calendar, ChartColumn } from 'lucide-react';
+import { Menu, X, ChevronDown, UserPlus, User, LogOut, Calendar, ChartColumn, Shield } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
@@ -54,7 +54,7 @@ export default function Navbar() {
   const [mobileExpandedIndex, setMobileExpandedIndex] = useState<number | null>(null);
   const [user, setUser] = useState<any>(null);
   const [isStaff, setIsStaff] = useState<boolean>(false);
-  // 1. ADICIONADO: Estado de carregamento para sincronização de auth
+  const [isPesquisa, setIsPesquisa] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   
   const router = useRouter();
@@ -64,18 +64,21 @@ export default function Navbar() {
       try {
         const { data, error } = await supabase
           .from('user_auth')
-          .select('is_staff')
+          .select('role')
           .eq('id', userId)
           .single();
 
         if (data && !error) {
-          setIsStaff(data.is_staff);
+          setIsStaff(data.role === 'staff');
+          setIsPesquisa(data.role === 'pesquisa');
         } else {
           setIsStaff(false);
+          setIsPesquisa(false);
         }
       } catch (err) {
         console.error("Erro ao verificar status de staff:", err);
         setIsStaff(false);
+        setIsPesquisa(false);
       }
     };
 
@@ -89,6 +92,7 @@ export default function Navbar() {
           await checkStaffStatus(currentUser.id);
         } else {
           setIsStaff(false);
+          setIsPesquisa(false);
         }
       } catch (error) {
         console.error("Erro ao inicializar sessão:", error);
@@ -108,10 +112,8 @@ export default function Navbar() {
         await checkStaffStatus(currentUser.id);
       } else {
         setIsStaff(false);
+        setIsPesquisa(false);
       }
-      
-      // REMOVIDO: setLoading(true/false) daqui de dentro.
-      // Isso evita que o botão suma quando o Supabase checa o token ao minimizar/maximizar.
     });
 
     return () => {
@@ -125,6 +127,7 @@ export default function Navbar() {
     setMobileMenuOpen(false);
     setMobileExpandedIndex(null);
     setIsStaff(false);
+    setIsPesquisa(false);
     router.push('/');
     router.refresh();
   };
@@ -140,7 +143,8 @@ export default function Navbar() {
 
       const loggedInDropdown = [
         { name: 'Meu Perfil', href: '/perfil', icon: User },
-        ...(isStaff ? [{ name: 'Evidências', href: '/evidencias', icon: ChartColumn }] : []),
+        ...(isStaff ? [{ name: 'Administração', href: '/admin', icon: Shield }] : []),
+        ...(isStaff || isPesquisa ? [{ name: 'Evidências', href: '/evidencias', icon: ChartColumn }] : []),
         { name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
         { name: 'Sair', href: '#', isLogout: true, icon: LogOut },
       ];

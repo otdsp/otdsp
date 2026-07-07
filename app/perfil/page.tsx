@@ -78,14 +78,27 @@ export default function ProfilePage() {
 
       // Fetch Profile Data
       try {
-        const { data, error } = await supabase
-          .from('user_profile')
-          .select('*')
-          .eq('id', currentSession.user.id)
-          .single()
+        const [profileRes, authRes] = await Promise.all([
+          supabase
+            .from('user_profile')
+            .select('*')
+            .eq('id', currentSession.user.id)
+            .maybeSingle(),
+          supabase
+            .from('user_auth')
+            .select('cpf, phone')
+            .eq('id', currentSession.user.id)
+            .maybeSingle()
+        ])
 
-        if (error) throw error
-        setProfile(data)
+        if (profileRes.error && profileRes.error.code !== 'PGRST116') throw profileRes.error
+        if (authRes.error && authRes.error.code !== 'PGRST116') throw authRes.error
+
+        setProfile({
+          ...(profileRes.data || {}),
+          cpf: authRes.data?.cpf || '',
+          phone: authRes.data?.phone || ''
+        })
       } catch (err) {
         console.error('Error fetching profile:', err)
       } finally {
@@ -110,12 +123,10 @@ export default function ProfilePage() {
     setFeedback(null)
 
     try {
-      const { error } = await supabase
+      const { error: profileError } = await supabase
         .from('user_profile')
         .update({
           full_name: profile.full_name,
-          cpf: profile.cpf,
-          phone: profile.phone,
           municipality: profile.municipality,
           institution_organization: profile.institution_organization,
           organization_type: profile.organization_type,
@@ -123,9 +134,17 @@ export default function ProfilePage() {
           relationship_with_otdsp: profile.relationship_with_otdsp,
           referral_source: profile.referral_source
         })
+        .eq('user_id', session.user.id)
+
+      const { error: authError } = await supabase
+        .from('user_auth')
+        .update({
+          cpf: profile.cpf,
+          phone: profile.phone,
+        })
         .eq('id', session.user.id)
 
-      if (error) throw error
+      if (profileError || authError) throw profileError || authError
 
       setFeedback({ type: 'success', message: 'Perfil atualizado com sucesso!' })
       setTimeout(() => setFeedback(null), 3000)

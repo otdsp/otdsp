@@ -43,6 +43,7 @@ export default function EngajamentosPage() {
   const [loading, setLoading] = useState(true)
   const [engagements, setEngagements] = useState<Engagement[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [currentTime] = useState(() => Date.now())
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -140,11 +141,11 @@ export default function EngajamentosPage() {
       
       const { data: authData } = await supabase
         .from('user_auth')
-        .select('is_staff')
+        .select('role')
         .eq('id', session.user.id)
         .single()
         
-      setIsStaff(authData?.is_staff || false)
+      setIsStaff(authData?.role === 'staff')
       fetchEngajamentos()
     }
     getSession()
@@ -176,7 +177,7 @@ export default function EngajamentosPage() {
     
     // Mapeamento respeitando estritamente o tipo 'Participant'
     const existingParticipants: Participant[] = eng.engagement_participants?.map((p: any) => {
-      const resolvedName = p.user_profile?.full_name || p.email || 'Usuário Pendente';
+      const resolvedName = p.vw_user_profile_pesquisa?.full_name || p.email || 'Usuário Pendente';
       
       return {
         user_id: p.user_id,
@@ -265,23 +266,47 @@ export default function EngajamentosPage() {
               .from('engagement_participants')
               .delete()
               .eq('engagement_id', currentEngagementId);
-              
-            if (deleteError) console.error("Erro ao limpar participantes antigos:", deleteError.message);
+
+            if (deleteError) console.error('Erro ao limpar participantes antigos:', deleteError.message);
           }
 
-          // 2. Insere a lista atualizada
-          if (formData.participants.length > 0) {
-            const participantsData = formData.participants.map(p => ({
-              engagement_id: currentEngagementId,
-              user_id: p.user_id || null, // Se tiver cadastro vai o ID
-              email: !p.user_id ? p.email : null // Se não tiver, vai apenas o email
-            }));
+          // 2. Insere a lista atualizada, incluindo automaticamente o criador como participante
+          const participantsToSave: Array<{ engagement_id: string; user_id: string | null; email: string | null }> = []
 
+          if (user?.id) {
+            participantsToSave.push({
+              engagement_id: currentEngagementId,
+              user_id: user.id,
+              email: null
+            })
+          }
+
+          formData.participants.forEach((p) => {
+            const normalizedEmail = p.email?.trim() || null
+            const normalizedUserId = p.user_id || null
+
+            if (!normalizedUserId && !normalizedEmail) return
+
+            const alreadyAdded = participantsToSave.some((participant) => {
+              if (normalizedUserId) return participant.user_id === normalizedUserId
+              return participant.email === normalizedEmail
+            })
+
+            if (!alreadyAdded) {
+              participantsToSave.push({
+                engagement_id: currentEngagementId,
+                user_id: normalizedUserId,
+                email: normalizedUserId ? null : normalizedEmail
+              })
+            }
+          })
+
+          if (participantsToSave.length > 0) {
             const { error: partError } = await supabase
               .from('engagement_participants')
-              .insert(participantsData);
+              .insert(participantsToSave)
 
-            if (partError) console.error("Erro ao vincular participantes:", partError.message);
+            if (partError) console.error('Erro ao vincular participantes:', partError.message)
           }
         }
 
@@ -315,9 +340,9 @@ export default function EngajamentosPage() {
     return (eventDate: string, duration: number) => {
       if (!eventDate) return false;
       const endTimeMs = new Date(eventDate).getTime() + (duration * 60 * 60 * 1000);
-      return endTimeMs < Date.now();
+      return endTimeMs < currentTime;
     };
-  }, []);
+  }, [currentTime]);
 
   const filteredEngagements = useMemo(() => {
     return engagements.filter(eng => {
@@ -332,7 +357,7 @@ export default function EngajamentosPage() {
         } else {
           const engDate = new Date(eng.event_date).getTime()
           const startTime = periodFilters.startDate ? new Date(periodFilters.startDate).getTime() : 0
-          const endTime = periodFilters.endDate ? new Date(periodFilters.endDate + 'T23:59:59').getTime() : Date.now()
+          const endTime = periodFilters.endDate ? new Date(periodFilters.endDate + 'T23:59:59').getTime() : currentTime
           matchesDateRange = engDate >= startTime && engDate <= endTime
         }
       }
@@ -354,7 +379,7 @@ export default function EngajamentosPage() {
       
       return matchesStatus && matchesSearch && matchesDateRange && matchesHorizontal && matchesVertical && matchesTransversal
     })
-  }, [engagements, statusFilter, searchTerm, periodFilters])
+  }, [engagements, statusFilter, searchTerm, periodFilters, currentTime])
 
   return (
     <main className="min-h-screen bg-slate-50 pt-24 pb-20">

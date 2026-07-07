@@ -10,9 +10,11 @@
 CREATE TABLE IF NOT EXISTS public.user_auth (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT UNIQUE NOT NULL,
-    is_staff BOOLEAN DEFAULT FALSE,
+    role TEXT DEFAULT 'user',
     is_active BOOLEAN DEFAULT TRUE,
-    date_joined TIMESTAMPTZ DEFAULT NOW()
+    date_joined TIMESTAMPTZ DEFAULT NOW(),
+    cpf TEXT,
+    phone TEXT
 );
 
 -- Tabela: user_profile (Informações de perfil cadastral)
@@ -20,7 +22,6 @@ CREATE TABLE IF NOT EXISTS public.user_profile (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID UNIQUE NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     full_name TEXT,
-    phone TEXT,
     municipality TEXT,
     institution_organization TEXT,
     organization_type TEXT,
@@ -76,7 +77,7 @@ RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM public.user_auth 
-    WHERE id = auth.uid() AND is_staff = true
+    WHERE id = auth.uid() AND role = 'staff'
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -227,22 +228,25 @@ CREATE TRIGGER enforce_staff_status_update
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  -- Criação controlada na user_auth (is_staff sempre injetado como FALSE por segurança)
-  INSERT INTO public.user_auth (id, email, is_staff, is_active)
+  -- Criação controlada na user_auth (role sempre injetada como 'user' por segurança)
+  INSERT INTO public.user_auth (id, email, role, is_active, cpf, phone)
   VALUES (
     new.id, 
     new.email, 
-    FALSE, 
-    TRUE
+    'user', 
+    TRUE,
+    COALESCE(new.raw_user_meta_data->>'cpf', ''),
+    COALESCE(new.raw_user_meta_data->>'phone', '')
   )
   ON CONFLICT (id) DO UPDATE SET
-    email = EXCLUDED.email;
+    email = EXCLUDED.email,
+    cpf = EXCLUDED.cpf,
+    phone = EXCLUDED.phone;
 
   -- Criação controlada do perfil com metadados do Next.js
   INSERT INTO public.user_profile (
     user_id,
     full_name,
-    phone,
     municipality,
     institution_organization,
     organization_type,
@@ -253,7 +257,6 @@ BEGIN
   VALUES (
     new.id,
     COALESCE(new.raw_user_meta_data->>'full_name', ''),
-    COALESCE(new.raw_user_meta_data->>'phone', ''),
     COALESCE(new.raw_user_meta_data->>'municipality', ''),
     COALESCE(new.raw_user_meta_data->>'institution_organization', ''),
     COALESCE(new.raw_user_meta_data->>'organization_type', ''),
@@ -263,7 +266,6 @@ BEGIN
   )
   ON CONFLICT (user_id) DO UPDATE SET
     full_name = EXCLUDED.full_name,
-    phone = EXCLUDED.phone,
     municipality = EXCLUDED.municipality,
     institution_organization = EXCLUDED.institution_organization,
     organization_type = EXCLUDED.organization_type,

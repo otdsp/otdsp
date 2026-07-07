@@ -3,13 +3,14 @@ export interface UserAuth {
   email?: string;
   is_active: boolean;
   date_joined: string;
+  cpf?: string;
+  phone?: string;
 }
 
 export interface UserProfile {
   id: string;
   user_id?: string;
   full_name?: string;
-  cpf?: string;
   municipality?: string;
   referral_source?: string;
   institution_organization?: string;
@@ -18,7 +19,7 @@ export interface UserProfile {
 }
 
 export interface EngagementParticipant {
-  user_email: string;
+  email: string;
 }
 
 export interface Engagement {
