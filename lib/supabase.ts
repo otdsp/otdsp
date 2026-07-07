@@ -7,8 +7,10 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_A
   console.warn('Supabase environment variables are missing. Please add them to .env.local');
 }
 
-/**
- * Single instance of the Supabase client for client-side use.
- * Switched to standard createClient for consistent client-side session management.
- */
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});

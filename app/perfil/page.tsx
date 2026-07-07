@@ -8,6 +8,7 @@ import {
   User, 
   Lock, 
   Save, 
+  Fingerprint,
   ShieldCheck, 
   Building2, 
   Briefcase, 
@@ -27,8 +28,8 @@ import {
 // Profile fields type
 interface UserProfile {
   id: string
-  user_id: string
   full_name: string
+  cpf: string
   phone: string
   municipality: string
   institution_organization: string
@@ -80,7 +81,7 @@ export default function ProfilePage() {
         const { data, error } = await supabase
           .from('user_profile')
           .select('*')
-          .eq('user_id', currentSession.user.id)
+          .eq('id', currentSession.user.id)
           .single()
 
         if (error) throw error
@@ -113,6 +114,7 @@ export default function ProfilePage() {
         .from('user_profile')
         .update({
           full_name: profile.full_name,
+          cpf: profile.cpf,
           phone: profile.phone,
           municipality: profile.municipality,
           institution_organization: profile.institution_organization,
@@ -121,7 +123,7 @@ export default function ProfilePage() {
           relationship_with_otdsp: profile.relationship_with_otdsp,
           referral_source: profile.referral_source
         })
-        .eq('user_id', session.user.id)
+        .eq('id', session.user.id)
 
       if (error) throw error
 
@@ -407,6 +409,19 @@ export default function ProfilePage() {
                             type="text"
                             name="full_name"
                             value={profile?.full_name || ''}
+                            onChange={handleProfileChange}
+                            className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-slate-700 ml-1">CPF</label>
+                        <div className="relative">
+                          <Fingerprint className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                          <input 
+                            type="text"
+                            name="cpf"
+                            value={profile?.cpf || ''}
                             onChange={handleProfileChange}
                             className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
                           />

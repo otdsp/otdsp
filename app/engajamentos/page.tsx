@@ -13,7 +13,6 @@ import {
   Loader2, 
   Target,
   X,
-  Mail,
   Users,
   Briefcase,
   Monitor,
@@ -29,24 +28,8 @@ import {
 import { useRouter } from 'next/navigation'
 import { DateRangeFilter } from '@/components/DateRangeFilter'
 import { MultiSelectFilter } from '@/components/MultiSelectFilter'
-
-// Interface limpa e sincronizada com o banco de dados atual
-interface Engagement {
-  id: string
-  title: string
-  description: string
-  event_date: string
-  location: string
-  status: string
-  horizontal: string[]
-  vertical: string[]
-  transversal: string[]
-  planned_activities: string[]
-  estimated_duration: number
-  created_by: string
-  engagement_participants?: { user_email: string }[]
-  engagement_staff_notes?: { notes: string } | null
-}
+import { ParticipantManager } from '@/components/ParticipantManager'
+import { Engagement, Participant } from '@/types/engagement'
 
 const INTEREST_OPTIONS = ["Educação", "Saúde", "Segurança", "Meio Ambiente", "Infraestutura de TI"]
 const TECH_OPTIONS = ["5G", "IA", "Open hardware", "Open Semi Condoctors", "Computação Quântica", "Internet das coisas (IoT)"]
@@ -63,9 +46,6 @@ export default function EngajamentosPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [emailInput, setEmailInput] = useState('')
-  const [emailSuggestions, setEmailSuggestions] = useState<string[]>([])
-  const [showSuggestions, setShowSuggestions] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('Todos')
   
@@ -75,8 +55,9 @@ export default function EngajamentosPage() {
     horizontals: [] as string[],
     transversals: [] as string[]
   })
+  
   const [periodFilters, setPeriodFilters] = useState({
-    startDate: '',
+    startDate: '2026-04-01',
     endDate: '',
     vertical: { enabled: false, values: [] as string[] },
     horizontal: { enabled: false, values: [] as string[] },
@@ -97,56 +78,46 @@ export default function EngajamentosPage() {
     vertical: [] as string[],
     transversal: [] as string[],
     planned_activities: [] as string[],
-    participants: [] as string[]
+    participants: [] as Participant[]
   })
 
-  // Busca Avançada Relacional
   const fetchEngajamentos = async () => {
     setLoading(true)
     const { data, error } = await supabase
       .from('engagements')
       .select(`
         *,
-        engagement_participants(user_email),
+        engagement_participants(
+          user_id,
+          email,
+          user_profile(full_name)
+        ),
         engagement_staff_notes(notes)
       `)
       .order('event_date', { ascending: false })
 
     if (error) {
-      console.error('Error fetching engagements:', error)
+      console.error('Error fetching engagements:', JSON.stringify(error, null, 2))
     } else {
       const formattedData = (data || []).map((eng: any) => ({
         ...eng,
-        horizontal: Array.isArray(eng.horizontal) ? eng.horizontal : (Array.isArray(eng.horizontal) ? eng.horizontal : []),
-        vertical: Array.isArray(eng.vertical) ? eng.vertical : (Array.isArray(eng.vertical) ? eng.vertical : []),
-        transversal: Array.isArray(eng.transversal) ? eng.transversal : (Array.isArray(eng.transversal) ? eng.transversal : []),
+        horizontal: Array.isArray(eng.horizontal) ? eng.horizontal : [],
+        vertical: Array.isArray(eng.vertical) ? eng.vertical : [],
+        transversal: Array.isArray(eng.transversal) ? eng.transversal : [],
         engagement_staff_notes: Array.isArray(eng.engagement_staff_notes) 
           ? eng.engagement_staff_notes[0] 
           : eng.engagement_staff_notes
       }))
       setEngagements(formattedData)
       
-      // Construir opções de filtro
       const uniqueVerticals = new Set<string>()
       const uniqueHorizontals = new Set<string>()
       const uniqueTransversals = new Set<string>()
       
       formattedData.forEach((eng: Engagement) => {
-        if (Array.isArray(eng.vertical)) {
-          eng.vertical.forEach(v => {
-            if (v?.trim()) uniqueVerticals.add(v.trim())
-          })
-        }
-        if (Array.isArray(eng.horizontal)) {
-          eng.horizontal.forEach(h => {
-            if (h?.trim()) uniqueHorizontals.add(h.trim())
-          })
-        }
-        if (Array.isArray(eng.transversal)) {
-          eng.transversal.forEach(t => {
-            if (t?.trim()) uniqueTransversals.add(t.trim())
-          })
-        }
+        if (Array.isArray(eng.vertical)) eng.vertical.forEach(v => { if (v?.trim()) uniqueVerticals.add(v.trim()) })
+        if (Array.isArray(eng.horizontal)) eng.horizontal.forEach(h => { if (h?.trim()) uniqueHorizontals.add(h.trim()) })
+        if (Array.isArray(eng.transversal)) eng.transversal.forEach(t => { if (t?.trim()) uniqueTransversals.add(t.trim()) })
       })
       
       setFilterOptions({
@@ -180,36 +151,6 @@ export default function EngajamentosPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => {
-    if (!isStaff || emailInput.trim().length < 2) {
-      const timer = setTimeout(() => {
-        setEmailSuggestions([])
-        setShowSuggestions(false)
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-
-    const fetchSuggestions = async () => {
-      const { data, error } = await supabase
-        .from('user_auth')
-        .select('email')
-        .ilike('email', `%${emailInput}%`)
-        .limit(5)
-
-      if (!error && data) {
-        const newSuggestions = data
-          .map(d => d.email)
-          .filter(email => !formData.participants.includes(email))
-        
-        setEmailSuggestions(newSuggestions)
-        setShowSuggestions(newSuggestions.length > 0)
-      }
-    }
-
-    const timeoutId = setTimeout(fetchSuggestions, 300)
-    return () => clearTimeout(timeoutId)
-  }, [emailInput, isStaff, formData.participants])
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
@@ -226,23 +167,26 @@ export default function EngajamentosPage() {
     })
   }
 
-  const addParticipant = () => {
-    if (emailInput && emailInput.includes('@') && !formData.participants.includes(emailInput)) {
-      setFormData(prev => ({ ...prev, participants: [...prev.participants, emailInput] }))
-      setEmailInput('')
-    }
-  }
-
-  const removeParticipant = (email: string) => {
-    setFormData(prev => ({ ...prev, participants: prev.participants.filter(e => e !== email) }))
-  }
-
   const handleFilterChange = (filterKey: string, newValue: any) => {
     setPeriodFilters((prev) => ({ ...prev, [filterKey]: newValue }))
   }
 
   const handleEdit = (eng: Engagement) => {
     setEditingId(eng.id)
+    
+    // Mapeamento respeitando estritamente o tipo 'Participant'
+    const existingParticipants: Participant[] = eng.engagement_participants?.map((p: any) => {
+      const resolvedName = p.user_profile?.full_name || p.email || 'Usuário Pendente';
+      
+      return {
+        user_id: p.user_id,
+        email: p.email || '',
+        full_name: resolvedName,
+        cpf: '',
+        status: p.user_id ? 'green' : 'red'
+      }
+    }) || []
+
     setFormData({
       title: eng.title,
       description: eng.description,
@@ -255,7 +199,7 @@ export default function EngajamentosPage() {
       vertical: eng.vertical || [],
       transversal: eng.transversal || [],
       planned_activities: eng.planned_activities || [],
-      participants: eng.engagement_participants?.map(p => p.user_email) || []
+      participants: existingParticipants // Agora o TypeScript aceita sem reclamar
     })
     setShowForm(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -313,24 +257,36 @@ export default function EngajamentosPage() {
             .upsert({ engagement_id: currentEngagementId, notes: formData.feedback })
         }
 
-        if (formData.participants.length > 0 && currentEngagementId) {
-          const participantsData = formData.participants.map(email => ({
-            engagement_id: currentEngagementId,
-            user_email: email.trim().toLowerCase()
-          }))
+        // --- SINCRONIZAÇÃO DE PARTICIPANTES ---
+        if (currentEngagementId) {
+          // 1. Limpa os vínculos antigos para evitar duplicidade ou manter quem foi removido
+          if (editingId) {
+            const { error: deleteError } = await supabase
+              .from('engagement_participants')
+              .delete()
+              .eq('engagement_id', currentEngagementId);
+              
+            if (deleteError) console.error("Erro ao limpar participantes antigos:", deleteError.message);
+          }
 
-          const { error: partError } = await supabase
-            .from('engagement_participants')
-            .insert(participantsData)
+          // 2. Insere a lista atualizada
+          if (formData.participants.length > 0) {
+            const participantsData = formData.participants.map(p => ({
+              engagement_id: currentEngagementId,
+              user_id: p.user_id || null, // Se tiver cadastro vai o ID
+              email: !p.user_id ? p.email : null // Se não tiver, vai apenas o email
+            }));
 
-          if (partError) {
-            console.error("Erro ao vincular e-mails dos participantes:", partError.message)
+            const { error: partError } = await supabase
+              .from('engagement_participants')
+              .insert(participantsData);
+
+            if (partError) console.error("Erro ao vincular participantes:", partError.message);
           }
         }
 
         setMessage({ type: 'success', text: editingId ? 'Engajamento atualizado!' : 'Engajamento criado!' })
         
-        // Limpa completamente os estados do formulário para permitir o próximo
         setFormData({
           title: '', description: '', event_date: '', location: '', status: 'Planejado',
           feedback: '', estimated_duration: '', horizontal: [], vertical: [],
@@ -365,14 +321,10 @@ export default function EngajamentosPage() {
 
   const filteredEngagements = useMemo(() => {
     return engagements.filter(eng => {
-      // Filtro de Status
       const matchesStatus = statusFilter === 'Todos' || eng.status === statusFilter
-      
-      // Filtro de Busca por termo
       const searchLower = searchTerm.toLowerCase()
       const matchesSearch = !searchTerm || eng.title.toLowerCase().includes(searchLower) || eng.description.toLowerCase().includes(searchLower)
       
-      // Filtro de Data
       let matchesDateRange = true
       if (periodFilters.startDate || periodFilters.endDate) {
         if (!eng.event_date) {
@@ -385,28 +337,19 @@ export default function EngajamentosPage() {
         }
       }
       
-      // Filtro de Horizontal
       let matchesHorizontal = true
       if (periodFilters.horizontal.enabled && periodFilters.horizontal.values.length > 0) {
-        matchesHorizontal = periodFilters.horizontal.values.some(val => 
-          eng.horizontal?.includes(val)
-        )
+        matchesHorizontal = periodFilters.horizontal.values.some(val => eng.horizontal?.includes(val))
       }
       
-      // Filtro de Vertical
       let matchesVertical = true
       if (periodFilters.vertical.enabled && periodFilters.vertical.values.length > 0) {
-        matchesVertical = periodFilters.vertical.values.some(val => 
-          eng.vertical?.includes(val)
-        )
+        matchesVertical = periodFilters.vertical.values.some(val => eng.vertical?.includes(val))
       }
       
-      // Filtro de Transversal
       let matchesTransversal = true
       if (periodFilters.transversal.enabled && periodFilters.transversal.values.length > 0) {
-        matchesTransversal = periodFilters.transversal.values.some(val => 
-          eng.transversal?.includes(val)
-        )
+        matchesTransversal = periodFilters.transversal.values.some(val => eng.transversal?.includes(val))
       }
       
       return matchesStatus && matchesSearch && matchesDateRange && matchesHorizontal && matchesVertical && matchesTransversal
@@ -446,6 +389,8 @@ export default function EngajamentosPage() {
               <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border border-slate-100 mt-8">
                 <form onSubmit={handleSubmit} className="space-y-10">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    
+                    {/* Coluna 1: Informações Básicas e Staff */}
                     <div className="space-y-6">
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-slate-700 ml-1">Título da Atividade</label>
@@ -483,6 +428,7 @@ export default function EngajamentosPage() {
                       )}
                     </div>
 
+                    {/* Coluna 2: Logística e Novo Componente de Participantes */}
                     <div className="space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
@@ -498,61 +444,19 @@ export default function EngajamentosPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 gap-6">
                         <div className="space-y-2">
-                          <label className="text-sm font-semibold text-slate-700 ml-1">Duração (Horas)</label>
+                          <label className="text-sm font-semibold text-slate-700 ml-1">Duração Estimada (Horas)</label>
                           <input type="number" name="estimated_duration" value={formData.estimated_duration} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5" />
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-slate-700 ml-1">Convidar Participantes</label>
-                          <div className="flex gap-2">
-                            <div className="relative flex-grow">
-                              <input 
-                                type="email" 
-                                value={emailInput} 
-                                onChange={(e) => setEmailInput(e.target.value)} 
-                                onFocus={() => emailSuggestions.length > 0 && setShowSuggestions(true)}
-                                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addParticipant())} 
-                                placeholder="Digite o e-mail..." 
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-4 text-sm focus:ring-2 focus:ring-cyan-500 outline-none" 
-                              />
-                              
-                              {isStaff && showSuggestions && (
-                                <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
-                                  {emailSuggestions.map(suggestion => (
-                                    <button
-                                      key={suggestion}
-                                      type="button"
-                                      onMouseDown={(e) => {
-                                        e.preventDefault()
-                                        setFormData(prev => ({ ...prev, participants: [...prev.participants, suggestion] }))
-                                        setEmailInput('')
-                                        setShowSuggestions(false)
-                                      }}
-                                      className="w-full text-left px-4 py-3 text-sm text-slate-600 font-medium hover:bg-cyan-50 hover:text-cyan-700 transition-colors border-b border-slate-50 last:border-0"
-                                    >
-                                      {suggestion}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                            <button type="button" onClick={addParticipant} className="bg-slate-100 p-4 rounded-xl hover:bg-slate-200 transition-colors">
-                              <Plus className="w-5 h-5 text-slate-600" />
-                            </button>
-                          </div>
-                          
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {formData.participants.map(email => (
-                              <span key={email} className="inline-flex items-center gap-1 px-3 py-1.5 bg-cyan-50 text-cyan-700 rounded-full text-xs font-bold border border-cyan-100">
-                                {email} 
-                                <button type="button" onClick={() => removeParticipant(email)} className="hover:text-red-500 transition-colors">
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </span>
-                            ))}
-                          </div>
+                        
+                        {/* AQUI ESTÁ A IMPLEMENTAÇÃO LIMPA DO COMPONENTE */}
+                        <div className="space-y-2 pt-2">
+                          <label className="text-sm font-semibold text-slate-700 ml-1">Convidar e Gerenciar Participantes</label>
+                          <ParticipantManager 
+                            participants={formData.participants} 
+                            onChange={(newParticipants) => setFormData({ ...formData, participants: newParticipants })}
+                          />
                         </div>
                       </div>
                     </div>
@@ -592,114 +496,88 @@ export default function EngajamentosPage() {
               </div>
             </div>
 
-        {/* Bloco de Filtros */}
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-5 lg:items-center relative z-40 mb-8">
-          
-          {/* Label Lateral (Filtros) */}
-          <div className="flex items-center gap-2 lg:border-r border-slate-100 pr-4 shrink-0">
-            <Filter className="w-5 h-5 text-slate-400" />
-            <span className="font-semibold text-slate-700 text-sm tracking-wide uppercase">Filtros</span>
-          </div>
-          
-          <div className="flex-1 space-y-4">
-            {/* Linha Superior: Data e Busca */}
-            <div className="flex flex-col md:flex-row gap-4 items-end">
-              <div className="flex-1 w-full">
-                <DateRangeFilter
-                  startDate={periodFilters.startDate}
-                  endDate={periodFilters.endDate}
-                  onStartDateChange={(date) => handleFilterChange('startDate', date)}
-                  onEndDateChange={(date) => handleFilterChange('endDate', date)}
-                />
+            {/* Bloco de Filtros */}
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-5 lg:items-center relative z-40 mb-8">
+              <div className="flex items-center gap-2 lg:border-r border-slate-100 pr-4 shrink-0">
+                <Filter className="w-5 h-5 text-slate-400" />
+                <span className="font-semibold text-slate-700 text-sm tracking-wide uppercase">Filtros</span>
               </div>
               
-              {/* Input de Busca Otimizado */}
-              <div className="w-full md:w-80 flex flex-col space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-1">Buscar</label>
-                <div className="relative flex items-center">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
-                  <input 
-                    type="text" 
-                    placeholder="Título ou descrição..." 
-                    value={searchTerm} 
-                    onChange={(e) => setSearchTerm(e.target.value)} 
-                    className="w-full bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-xl py-2 pl-9 pr-4 text-sm text-slate-700 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none transition-all" 
+              <div className="flex-1 space-y-4">
+                <div className="flex flex-col md:flex-row gap-4 items-end">
+                  <div className="flex-1 w-full">
+                    <DateRangeFilter
+                      startDate={periodFilters.startDate}
+                      endDate={periodFilters.endDate}
+                      onStartDateChange={(date) => handleFilterChange('startDate', date)}
+                      onEndDateChange={(date) => handleFilterChange('endDate', date)}
+                    />
+                  </div>
+                  
+                  <div className="w-full md:w-80 flex flex-col space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-1">Buscar</label>
+                    <div className="relative flex items-center">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+                      <input 
+                        type="text" 
+                        placeholder="Título ou descrição..." 
+                        value={searchTerm} 
+                        onChange={(e) => setSearchTerm(e.target.value)} 
+                        className="w-full bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-xl py-2 pl-9 pr-4 text-sm text-slate-700 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none transition-all" 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MultiSelectFilter
+                    label="Horizontal"
+                    icon={Rows3}
+                    enabled={periodFilters.horizontal.enabled}
+                    values={periodFilters.horizontal.values}
+                    options={filterOptions.horizontals}
+                    onEnabledChange={(nextEnabled) => handleFilterChange('horizontal', { enabled: nextEnabled, values: nextEnabled ? [...filterOptions.horizontals] : [] })}
+                    onValuesChange={(nextValues) => handleFilterChange('horizontal', { ...periodFilters.horizontal, values: nextValues })}
                   />
+                  
+                  <MultiSelectFilter
+                    label="Vertical"
+                    icon={Layers3}
+                    enabled={periodFilters.vertical.enabled}
+                    values={periodFilters.vertical.values}
+                    options={filterOptions.verticals}
+                    onEnabledChange={(nextEnabled) => handleFilterChange('vertical', { enabled: nextEnabled, values: nextEnabled ? [...filterOptions.verticals] : [] })}
+                    onValuesChange={(nextValues) => handleFilterChange('vertical', { ...periodFilters.vertical, values: nextValues })}
+                  />
+                  
+                  <MultiSelectFilter
+                    label="Transversal"
+                    icon={Waypoints}
+                    enabled={periodFilters.transversal.enabled}
+                    values={periodFilters.transversal.values}
+                    options={filterOptions.transversals}
+                    onEnabledChange={(nextEnabled) => handleFilterChange('transversal', { enabled: nextEnabled, values: nextEnabled ? [...filterOptions.transversals] : [] })}
+                    onValuesChange={(nextValues) => handleFilterChange('transversal', { ...periodFilters.transversal, values: nextValues })}
+                  />
+        
+                  <div className="relative flex items-center h-full min-h-[42px]"> 
+                    <Activity className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+                    <select 
+                      value={statusFilter} 
+                      onChange={(e) => setStatusFilter(e.target.value)} 
+                      className="w-full h-full bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-xl pl-9 pr-8 text-xs font-semibold text-slate-600 appearance-none outline-none cursor-pointer focus:bg-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all py-3" 
+                    >
+                      <option value="Todos">Todos os Status</option>
+                      <option value="Planejado">Planejado</option>
+                      <option value="Pendente">Pendente</option>
+                      <option value="Cancelado">Cancelado</option>
+                      <option value="Concluído">Concluído</option>
+                    </select>
+                    <div className="absolute right-3 pointer-events-none text-slate-400 text-[10px]">▼</div>
+                  </div>              
                 </div>
               </div>
             </div>
-
-            {/* Linha Inferior: Filtros de Categoria e Status */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <MultiSelectFilter
-                label="Horizontal"
-                icon={Rows3}
-                enabled={periodFilters.horizontal.enabled}
-                values={periodFilters.horizontal.values}
-                options={filterOptions.horizontals}
-                onEnabledChange={(nextEnabled) => 
-                  handleFilterChange('horizontal', { 
-                    enabled: nextEnabled, 
-                    values: nextEnabled ? [...filterOptions.horizontals] : [] 
-                  })
-                }
-                onValuesChange={(nextValues) => 
-                  handleFilterChange('horizontal', { ...periodFilters.horizontal, values: nextValues })
-                }
-              />
-              
-              <MultiSelectFilter
-                label="Vertical"
-                icon={Layers3}
-                enabled={periodFilters.vertical.enabled}
-                values={periodFilters.vertical.values}
-                options={filterOptions.verticals}
-                onEnabledChange={(nextEnabled) => 
-                  handleFilterChange('vertical', { 
-                    enabled: nextEnabled, 
-                    values: nextEnabled ? [...filterOptions.verticals] : [] 
-                  })
-                }
-                onValuesChange={(nextValues) => 
-                  handleFilterChange('vertical', { ...periodFilters.vertical, values: nextValues })
-                }
-              />
-              
-              <MultiSelectFilter
-                label="Transversal"
-                icon={Waypoints}
-                enabled={periodFilters.transversal.enabled}
-                values={periodFilters.transversal.values}
-                options={filterOptions.transversals}
-                onEnabledChange={(nextEnabled) => 
-                  handleFilterChange('transversal', { 
-                    enabled: nextEnabled, 
-                    values: nextEnabled ? [...filterOptions.transversals] : [] 
-                  })
-                }
-                onValuesChange={(nextValues) => 
-                  handleFilterChange('transversal', { ...periodFilters.transversal, values: nextValues })
-                }
-              />
- 
-              <div className="relative flex items-center h-full min-h-[42px]"> 
-                <Activity className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
-                <select 
-                  value={statusFilter} 
-                  onChange={(e) => setStatusFilter(e.target.value)} 
-                  className="w-full h-full bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-xl pl-9 pr-8 text-xs font-semibold text-slate-600 appearance-none outline-none cursor-pointer focus:bg-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all py-3" 
-                >
-                  <option value="Todos">Todos os Status</option>
-                  <option value="Planejado">Planejado</option>
-                  <option value="Pendente">Pendente</option>
-                  <option value="Cancelado">Cancelado</option>
-                  <option value="Concluído">Concluído</option>
-                </select>
-                <div className="absolute right-3 pointer-events-none text-slate-400 text-[10px]">▼</div>
-              </div>             
-            </div>
-          </div>
-        </div>
 
             {loading ? (
               <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-cyan-500" /></div>
@@ -748,14 +626,28 @@ export default function EngajamentosPage() {
                         {eng.engagement_participants && eng.engagement_participants.length > 0 && (
                           <div className="mb-6">
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-1">
-                              <Users className="w-3 h-3" /> Participantes Vinculados
+                              <Users className="w-3 h-3" /> Participantes
                             </p>
                             <div className="flex flex-wrap gap-1.5">
-                              {eng.engagement_participants.map(p => (
-                                <span key={p.user_email} className="text-[11px] font-semibold bg-slate-50 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-md">
-                                  {p.user_email}
-                                </span>
-                              ))}
+                              {eng.engagement_participants.map((p: any, idx: number) => {
+                                // Define o que será exibido (Nome > Email > ID Genérico)
+                                const displayName = p.user_profile?.full_name || p.email || 'Usuário Pendente';
+                                const isPending = !p.user_id;
+
+                                return (
+                                  <span 
+                                    key={p.user_id || p.email || idx} 
+                                    className={`text-[11px] font-semibold border px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                                      isPending 
+                                        ? 'bg-amber-50 border-amber-200 text-amber-700' // pendentes
+                                        : 'bg-slate-50 border-slate-200 text-slate-600' // cadastrados
+                                    }`}
+                                  >
+                                    {displayName}
+                                    {isPending && <span className="text-[9px] opacity-70">(Pendente)</span>}
+                                  </span>
+                                )
+                              })}
                             </div>
                           </div>
                         )}
@@ -777,6 +669,7 @@ export default function EngajamentosPage() {
   );
 }
 
+// Componente para a grade de multi-seleção
 const BadgeToggleList = ({ options, selected, onToggle, label, icon: Icon }: any) => (
   <div className="space-y-3">
     <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 ml-1"><Icon className="w-4 h-4 text-slate-400" />{label}</div>

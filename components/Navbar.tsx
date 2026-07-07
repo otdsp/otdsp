@@ -90,16 +90,17 @@ export default function Navbar() {
         } else {
           setIsStaff(false);
         }
+      } catch (error) {
+        console.error("Erro ao inicializar sessão:", error);
       } finally {
-        // Concluiu a checagem inicial do recarregamento
         setLoading(false);
       }
     };
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setLoading(true); // Entra em loading rápido enquanto revalida
+    // Listener escuta mudanças reais (Ex: Login, Logout, Token renovado)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       
@@ -108,7 +109,9 @@ export default function Navbar() {
       } else {
         setIsStaff(false);
       }
-      setLoading(false);
+      
+      // REMOVIDO: setLoading(true/false) daqui de dentro.
+      // Isso evita que o botão suma quando o Supabase checa o token ao minimizar/maximizar.
     });
 
     return () => {
@@ -131,7 +134,6 @@ export default function Navbar() {
   // Dynamic menu items based on auth state and staff status
   const dynamicNavItems = navItems.map((item) => {
     if (item.name === 'Acessos') {
-      // 2. ALTERADO: Se ainda estiver checando no banco, mantém vazio ou oculto para evitar o "flash" errático
       if (loading) {
         return { ...item, dropdown: [] };
       }

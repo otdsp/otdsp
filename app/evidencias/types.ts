@@ -9,6 +9,7 @@ export interface UserProfile {
   id: string;
   user_id?: string;
   full_name?: string;
+  cpf?: string;
   municipality?: string;
   referral_source?: string;
   institution_organization?: string;
