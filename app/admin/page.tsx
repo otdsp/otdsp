@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { sendSystemEmail } from '@/lib/sendEmail'
 import { motion, AnimatePresence } from 'motion/react'
 import {
   Users,
@@ -92,6 +93,12 @@ export default function AdminPage() {
   const [savingUserId, setSavingUserId] = useState<string | null>(null)
   const [bulkActionLoading, setBulkActionLoading] = useState(false)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  // Estados adicionados para controle de envio de e-mail customizado
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailHtml, setEmailHtml] = useState('')
+  const [emailSending, setEmailSending] = useState(false)
 
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -250,29 +257,74 @@ export default function AdminPage() {
     }
   }
 
-  const handleBulkEmail = () => {
-    alert(`Preparando envio de e-mail customizado para ${selectedUserIds.size} usuário(s)...`)
+  // 👇 NOVA INTEGRAÇÃO: Dispara e-mail customizado para os usuários selecionados
+  const handleSendCustomEmail = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (selectedUserIds.size === 0 || !emailSubject || !emailHtml) return
+
+    setEmailSending(true)
+    setFeedback(null)
+
+    // Filtra e obtém a lista de e-mails de quem foi selecionado
+    const selectedEmails = filteredUsers
+      .filter(u => selectedUserIds.has(u.id))
+      .map(u => extractEmail(u))
+      .filter(Boolean)
+
+    try {
+      await sendSystemEmail({
+        emails: selectedEmails,
+        subject: emailSubject,
+        htmlContent: emailHtml.replace(/\n/g, '<br />') // formatação quebra de linha simples
+      })
+
+      setFeedback({ type: 'success', message: `E-mail enviado com sucesso para ${selectedEmails.length} destinatários!` })
+      setIsEmailModalOpen(false)
+      setEmailSubject('')
+      setEmailHtml('')
+      setSelectedUserIds(new Set())
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || 'Erro ao realizar disparo de e-mails.' })
+    } finally {
+      setEmailSending(false)
+    }
   }
 
   const missingDataEmails = useMemo(() => {
     return filteredUsers
-      .filter(user => getUserStatus(user) !== 'green')
+      .filter(user => selectedUserIds.has(user.id) && getUserStatus(user) !== 'green')
       .map(user => extractEmail(user))
       .filter(Boolean)
-  }, [filteredUsers])
+  }, [filteredUsers, selectedUserIds])
 
-  const handleSendMissingDataEmails = () => {
+  // 👇 NOVA INTEGRAÇÃO: Dispara automaticamente usando a API local
+  const handleSendMissingDataEmails = async () => {
     if (missingDataEmails.length === 0) {
-      setFeedback({ type: 'error', message: 'Nenhum e-mail com dados faltantes está disponível no momento.' })
+      setFeedback({ type: 'error', message: 'Nenhum e-mail com dados faltantes está selecionado.' })
       return
     }
 
-    const recipients = missingDataEmails.join(',')
-    const subject = encodeURIComponent('Complete seu cadastro no sistema')
-    const body = encodeURIComponent('Olá! Estamos solicitando que você complete os dados pendentes do seu cadastro para continuar utilizando a plataforma.')
+    setBulkActionLoading(true)
+    setFeedback(null)
 
-    window.location.href = `mailto:${recipients}?subject=${subject}&body=${body}`
-    setFeedback({ type: 'success', message: `E-mails preparados para ${missingDataEmails.length} usuário(s) com dados incompletos.` })
+    try {
+      await sendSystemEmail({
+        emails: missingDataEmails,
+        subject: 'Complete seu cadastro no sistema',
+        htmlContent: `
+          <p>Olá!</p>
+          <p>Estamos solicitando que você complete os dados pendentes do seu cadastro para continuar utilizando a plataforma.</p>
+          <p>Por favor, acesse seu perfil e atualize suas informações.</p>
+        `
+      })
+
+      setFeedback({ type: 'success', message: `E-mail de cobrança enviado com sucesso para ${missingDataEmails.length} usuário(s).` })
+      setSelectedUserIds(new Set())
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || 'Falha ao enviar cobrança.' })
+    } finally {
+      setBulkActionLoading(false)
+    }
   }
 
   const startEditing = (user: AdminUser) => {
@@ -344,7 +396,7 @@ export default function AdminPage() {
         }
       }))
 
-      setFeedback({ type: 'success', message: 'Usuário atualizado com sucesso.' })
+      setFeedback({ type: 'success', message: 'Usuário updated com sucesso.' })
       setEditingUserId(null)
       setEditDraft(null)
     } catch (error: any) {
@@ -551,14 +603,14 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={handleSendMissingDataEmails}
-                  disabled={missingDataEmails.length === 0}
+                  disabled={bulkActionLoading || missingDataEmails.length === 0}
                   className="flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                 >
-                  <Mail className="h-4 w-4" />
+                  {bulkActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
                   E-mails para dados ausentes ({missingDataEmails.length})
                 </button>
                 <button
-                  onClick={handleBulkEmail}
+                  onClick={() => setIsEmailModalOpen(true)}
                   className="flex items-center justify-center gap-2 rounded-xl bg-cyan-700 px-4 py-2 text-sm font-bold transition-colors hover:bg-cyan-600"
                 >
                   <Mail className="h-4 w-4" /> E-mail Customizado
@@ -583,6 +635,70 @@ export default function AdminPage() {
                 </button>
               </div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* 👇 MODAL DO E-MAIL CUSTOMIZADO 👇 */}
+        <AnimatePresence>
+          {isEmailModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <Mail className="h-5 w-5 text-cyan-600" />
+                    Enviar E-mail Customizado ({selectedUserIds.size} dest.)
+                  </h3>
+                  <button onClick={() => setIsEmailModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <form onSubmit={handleSendCustomEmail} className="mt-4 space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-slate-400 mb-1">Assunto</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={emailSubject}
+                      onChange={e => setEmailSubject(e.target.value)}
+                      placeholder="Ex: Atualização importante do sistema"
+                      className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-slate-400 mb-1">Mensagem (HTML/Texto)</label>
+                    <textarea 
+                      required
+                      rows={6}
+                      value={emailHtml}
+                      onChange={e => setEmailHtml(e.target.value)}
+                      placeholder="Escreva o conteúdo do e-mail aqui..."
+                      className="w-full rounded-xl border border-slate-200 p-3 text-sm outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 resize-none"
+                    />
+                  </div>
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsEmailModalOpen(false)}
+                      className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={emailSending}
+                      className="h-10 flex items-center gap-2 rounded-xl bg-cyan-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-cyan-700 disabled:opacity-50"
+                    >
+                      {emailSending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Disparar E-mails'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
 

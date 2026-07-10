@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Search, Mail, Loader2, CheckCircle2, AlertCircle, XCircle, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Participant } from '@/types/engagement'
+import { sendSystemEmail } from '@/lib/emailService'
 
 interface ParticipantManagerProps {
   participants: Participant[]
@@ -13,6 +14,8 @@ export function ParticipantManager({ participants, onChange }: ParticipantManage
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [isSendingEmail, setIsSendingEmail] = useState(false)
+  const [emailStatus, setEmailStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   // 1. Auto-complete Relacional (user_profile + user_auth)
   useEffect(() => {
@@ -23,7 +26,6 @@ export function ParticipantManager({ participants, onChange }: ParticipantManage
 
     const fetchUsers = async () => {
       setIsSearching(true)
-      // Faz o cruzamento de dados: busca no perfil e puxa o email da user_auth
       const { data, error } = await supabase
         .from('user_profile')
         .select(`
@@ -38,7 +40,6 @@ export function ParticipantManager({ participants, onChange }: ParticipantManage
         .limit(5)
 
       if (!error && data) {
-        // Filtra utilizadores que já estão na lista
         const addedIds = participants.map(p => p.user_id).filter(Boolean)
         const newSuggestions = data.filter(d => !addedIds.includes(d.id))
         
@@ -52,18 +53,15 @@ export function ParticipantManager({ participants, onChange }: ParticipantManage
     return () => clearTimeout(timer)
   }, [inputValue, participants])
 
-  // Avaliação do Status (Verde ou Amarelo)
   const isProfileComplete = (user: any) => {
     return Boolean(user.full_name && user.cpf && user.phone && user.municipality)
   }
 
-  // Extrai o email vindo da relação user_auth
   const extractEmail = (user: any) => {
     if (Array.isArray(user.user_auth)) return user.user_auth[0]?.email || ''
     return user.user_auth?.email || ''
   }
 
-  // 2. Adicionar via Auto-complete (Existente)
   const handleAddSuggestion = (user: any) => {
     const status = isProfileComplete(user) ? 'green' : 'yellow'
     const newParticipant: Participant = {
@@ -78,12 +76,10 @@ export function ParticipantManager({ participants, onChange }: ParticipantManage
     resetInput()
   }
 
-  // 3. Adicionar Manualmente (Externo/Vermelho) via Input Único
   const handleAddManual = () => {
     const val = inputValue.trim()
     if (!val) return
 
-    // Lógica inteligente para adivinhar o que o utilizador digitou
     const isEmail = val.includes('@')
     const isCpf = /^[\d.-]{11,14}$/.test(val)
 
@@ -97,6 +93,58 @@ export function ParticipantManager({ participants, onChange }: ParticipantManage
     
     onChange([...participants, newParticipant])
     resetInput()
+  }
+
+  // 2. Função que filtra os pendentes e realiza o disparo
+  const handleNotifyPending = async () => {
+    // Filtra quem não está com perfil completo ('green') e possui e-mail preenchido
+    const pendingWithEmail = participants.filter(
+      p => p.status !== 'green' && p.email && p.email.trim() !== ''
+    )
+
+    if (pendingWithEmail.length === 0) {
+      setEmailStatus({
+        type: 'error',
+        message: 'Nenhum participante pendente possui um e-mail válido informado.'
+      })
+      return
+    }
+
+    const emailList = pendingWithEmail.map(p => p.email)
+
+    try {
+      setIsSendingEmail(true)
+      setEmailStatus(null)
+
+      // Executa a sua função de integração
+      await sendSystemEmail({
+        emails: emailList,
+        subject: 'Você foi convidado para participar do nosso Engajamento!',
+        htmlContent: `
+          <div style="font-family: sans-serif; color: #333;">
+            <h2>Olá!</h2>
+            <p>Você foi adicionado à nossa lista de participantes de engajamento.</p>
+            <p>Se você ainda não possui cadastro ou seu perfil está incompleto, por favor acesse a plataforma para atualizar seus dados.</p>
+            <br />
+            <a href="${window.location.origin}" style="background-color: #06b6d4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+              Acessar Plataforma
+            </a>
+          </div>
+        `
+      })
+
+      setEmailStatus({
+        type: 'success',
+        message: `E-mail de notificação enviado com sucesso para ${emailList.length} participante(s)!`
+      })
+    } catch (error: any) {
+      setEmailStatus({
+        type: 'error',
+        message: error.message || 'Falha ao enviar as notificações.'
+      })
+    } finally {
+      setIsSendingEmail(false)
+    }
   }
 
   const resetInput = () => {
@@ -117,7 +165,6 @@ export function ParticipantManager({ participants, onChange }: ParticipantManage
 
   return (
     <div className="space-y-4">
-      {/* Input Único e Botão */}
       <div className="flex gap-2 relative">
         <div className="relative flex-grow">
           <div className="absolute left-3 top-0 bottom-0 flex items-center pointer-events-none">
@@ -135,7 +182,6 @@ export function ParticipantManager({ participants, onChange }: ParticipantManage
           />
           {isSearching && <Loader2 className="w-4 h-4 text-cyan-500 animate-spin absolute right-3 top-3" />}
 
-          {/* Dropdown Flutuante */}
           {showSuggestions && suggestions.length > 0 && (
             <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
               {suggestions.map(s => (
@@ -171,7 +217,6 @@ export function ParticipantManager({ participants, onChange }: ParticipantManage
         </button>
       </div>
 
-      {/* Etiquetas Minimalistas Coloridas */}
       {participants.length > 0 && (
         <div className="flex flex-wrap gap-2 pt-1">
           {participants.map((p, idx) => {
@@ -189,7 +234,6 @@ export function ParticipantManager({ participants, onChange }: ParticipantManage
               Icon = XCircle; 
             }
 
-            // Exibe preferencialmente o nome, se não houver exibe o email ou CPF digitado
             const displayLabel = p.full_name !== 'Sem Nome' ? p.full_name : (p.email || p.cpf)
 
             return (
@@ -213,17 +257,31 @@ export function ParticipantManager({ participants, onChange }: ParticipantManage
         </div>
       )}
 
-      {/* Alerta / Ação para incompletos */}
+      {/* 3. Seção do botão alterada para usar a API de e-mail real */}
       {participants.some(p => p.status !== 'green') && (
-        <div className="pt-2 border-t border-slate-100">
+        <div className="pt-2 border-t border-slate-100 space-y-2">
           <button 
             type="button" 
-            onClick={() => alert('Em breve: Disparo de emails automáticos.')} 
-            className="inline-flex items-center gap-1.5 text-[11px] font-bold text-cyan-600 hover:text-cyan-700 bg-cyan-50/50 hover:bg-cyan-100/50 py-1.5 px-3 rounded-lg transition-colors border border-cyan-100"
+            onClick={handleNotifyPending}
+            disabled={isSendingEmail} 
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold text-cyan-600 hover:text-cyan-700 bg-cyan-50/50 hover:bg-cyan-100/50 py-1.5 px-3 rounded-lg transition-colors border border-cyan-100 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Mail className="w-3.5 h-3.5" />
-            Notificar cadastros pendentes
+            {isSendingEmail ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Mail className="w-3.5 h-3.5" />
+            )}
+            {isSendingEmail ? 'Enviando convites...' : 'Notificar cadastros pendentes'}
           </button>
+
+          {/* Toast / Alerta em tela do status do envio */}
+          {emailStatus && (
+            <p className={`text-[11px] font-medium ${
+              emailStatus.type === 'success' ? 'text-emerald-600' : 'text-rose-600'
+            }`}>
+              {emailStatus.message}
+            </p>
+          )}
         </div>
       )}
     </div>
