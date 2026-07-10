@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { sendSystemEmail } from '@/lib/sendEmail'
+import { sendSystemEmail } from '@/lib/emailService'
 import { motion, AnimatePresence } from 'motion/react'
 import {
   Users,
