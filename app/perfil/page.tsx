@@ -60,7 +60,7 @@ export default function ProfilePage() {
     confirm: ''
   })
 
-  // Delete Account States (LGPD)
+  // Delete Account States
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
@@ -134,7 +134,7 @@ export default function ProfilePage() {
           relationship_with_otdsp: profile.relationship_with_otdsp,
           referral_source: profile.referral_source
         })
-        .eq('user_id', session.user.id)
+        .eq('id', session.user.id)
 
       const { error: authError } = await supabase
         .from('user_auth')
