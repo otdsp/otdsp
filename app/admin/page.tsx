@@ -158,7 +158,7 @@ export default function AdminPage() {
         const authData = Array.isArray(user.user_auth) ? user.user_auth[0] : user.user_auth
         return {
           ...user,
-          id: authData?.id || user.user_id || user.id,
+          id: authData?.id || user.id,
           full_name: user.full_name || '',
           cpf: authData?.cpf || '',
           phone: authData?.phone || '',
@@ -193,7 +193,7 @@ export default function AdminPage() {
         .select(`
           user_auth!inner(role)
         `)
-        .eq('user_id', session.user.id)
+        .eq('id', session.user.id)
         .single()
 
       const currentRole = extractRole(profile)
@@ -362,7 +362,7 @@ export default function AdminPage() {
           full_name: editDraft.full_name,
           municipality: editDraft.municipality,
         })
-        .eq('user_id', user.id)
+        .eq('id', user.id)
 
       const { error: authError } = await supabase
         .from('user_auth')
@@ -419,7 +419,7 @@ export default function AdminPage() {
         const { error: profileError } = await supabase
           .from('user_profile')
           .delete()
-          .eq('user_id', id)
+          .eq('id', id)
 
         if (profileError) throw profileError
 
