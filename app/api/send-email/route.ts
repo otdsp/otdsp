@@ -2,44 +2,45 @@ import 'server-only';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Configurando o transportador do Gmail utilizando as credenciais seguras do servidor
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASS,
+  },
+});
 
 export async function POST(request: Request) {
   const cookieStore = await cookies();
 
-  // Criando o cliente do Supabase no padrão moderno SSR
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
+        getAll() { return cookieStore.getAll(); },
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             );
-          } catch {
-            // O Next.js pode reclamar se tentar definir cookies em uma API Route de leitura,
-            // mas o Supabase exige a definição do setAll na tipagem. Tratamos silenciosamente.
-          }
+          } catch {}
         },
       },
     }
   );
 
   try {
-    // 1. Verificar a sessão do usuário logado
+    // 1. Validar Sessão
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
-    // 2. Validar a role na tabela user_auth
+    // 2. Validar se o usuário logado é Staff
     const { data: profile } = await supabase
       .from('user_auth')
       .select('role')
@@ -50,26 +51,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Acesso restrito para administradores' }, { status: 403 });
     }
 
-    // 3. Pegar os dados enviados pelo frontend
+    // 3. Pegar os destinatários enviados pelo frontend
     const { emails, subject, htmlContent } = await request.json();
 
     if (!emails || !Array.isArray(emails) || emails.length === 0) {
       return NextResponse.json({ error: 'Nenhum destinatário informado' }, { status: 400 });
     }
 
-    // 4. Disparar e-mails via Resend
-    const { data, error } = await resend.emails.send({
-      from: 'OTDSP <nao-responda@seudominio.com>',
-      to: emails,
+    // 4. Enviar e-mail para a lista de participantes
+    // O Gmail aceita uma string com os e-mails separados por vírgula no campo "to"
+    await transporter.sendMail({
+      from: `"OTDSP Staff" <${process.env.GMAIL_USER}>`,
+      to: emails.join(', '), 
       subject: subject,
       html: htmlContent,
     });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
