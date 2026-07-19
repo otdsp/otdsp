@@ -312,9 +312,9 @@ export default function AdminPage() {
         emails: missingDataEmails,
         subject: 'Complete seu cadastro no sistema',
         htmlContent: `
-          <p>Olá!</p>
-          <p>Estamos solicitando que você complete os dados pendentes do seu cadastro para continuar utilizando a plataforma.</p>
-          <p>Por favor, acesse seu perfil e atualize suas informações.</p>
+          Olá!\n
+          Estamos solicitando que você complete os dados pendentes do seu cadastro para continuar utilizando a plataforma.\n
+          Por favor, acesse seu perfil e atualize suas informações.
         `
       })
 
