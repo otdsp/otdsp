@@ -37,6 +37,97 @@ const POLICY_OPTIONS = ["Igualdade de gênero", "Igualdade racial", "Acessibilid
 const ACTIVITY_OPTIONS = ["Pitch Inicial", "Visita ao Showroom", "Apresentação Institucional", "Reunião de Plano de Trabalho", "Reunião de Adesão ao Convênio"]
 const LOCATION_OPTIONS = ["Remoto", "Inova USP"]
 
+type ParticipantVisualStatus = 'green' | 'yellow' | 'red'
+
+type ParticipantProfileData = {
+  id: string
+  full_name: string | null
+  institution_organization: string | null
+  organization_type: string | null
+  job_title: string | null
+  relationship_with_otdsp: string | null
+  municipality: string | null
+  referral_source: string | null
+}
+
+type ParticipantAuthData = {
+  id: string
+  email: string | null
+  cpf: string | null
+  phone: string | null
+  role: string | null
+}
+
+const isEmptyValue = (value: unknown) =>
+  value === null ||
+  value === undefined ||
+  (typeof value === 'string' && value.trim() === '')
+
+const REQUIRED_AUTH_FIELDS: Array<[keyof ParticipantAuthData, string]> = [
+  ['email', 'E-mail'],
+  ['cpf', 'CPF'],
+  ['phone', 'Telefone'],
+  ['role', 'Perfil de acesso']
+]
+
+const REQUIRED_PROFILE_FIELDS: Array<[keyof ParticipantProfileData, string]> = [
+  ['full_name', 'Nome completo'],
+  ['institution_organization', 'Instituição/organização'],
+  ['organization_type', 'Tipo de organização'],
+  ['job_title', 'Cargo'],
+  ['relationship_with_otdsp', 'Relação com o OTDSP'],
+  ['municipality', 'Município'],
+  ['referral_source', 'Como conheceu o projeto']
+]
+
+const getParticipantProfile = (participant: any): ParticipantProfileData | null =>
+  participant?.user_profile ?? null
+
+const getParticipantAuth = (participant: any): ParticipantAuthData | null =>
+  participant?.user_auth ?? null
+
+const getParticipantMissingFields = (participant: any): string[] => {
+  if (!participant?.user_id) return []
+
+  const auth = getParticipantAuth(participant)
+  const profile = getParticipantProfile(participant)
+
+  if (!auth) return []
+
+  const missingAuthFields = REQUIRED_AUTH_FIELDS
+    .filter(([field]) => isEmptyValue(auth[field]))
+    .map(([, label]) => label)
+
+  const missingProfileFields = profile
+    ? REQUIRED_PROFILE_FIELDS
+        .filter(([field]) => isEmptyValue(profile[field]))
+        .map(([, label]) => label)
+    : REQUIRED_PROFILE_FIELDS.map(([, label]) => label)
+
+  return [...missingAuthFields, ...missingProfileFields]
+}
+
+const getParticipantDisplayName = (participant: any) => {
+  const profile = getParticipantProfile(participant)
+  const auth = getParticipantAuth(participant)
+
+  return (
+    profile?.full_name?.trim() ||
+    auth?.email?.trim() ||
+    participant?.email?.trim() ||
+    'Usuário sem identificação'
+  )
+}
+
+const getParticipantVisualStatus = (participant: any): ParticipantVisualStatus => {
+  if (!participant?.user_id) return 'red'
+
+  const auth = getParticipantAuth(participant)
+  if (!auth) return 'red'
+
+  return getParticipantMissingFields(participant).length > 0 ? 'yellow' : 'green'
+}
+
 export default function EngajamentosPage() {
   const [user, setUser] = useState<any>(null)
   const [isStaff, setIsStaff] = useState(false)
@@ -89,9 +180,9 @@ export default function EngajamentosPage() {
       .select(`
         *,
         engagement_participants(
+          id,
           user_id,
-          email,
-          user_profile(full_name)
+          email
         ),
         engagement_staff_notes(notes)
       `)
@@ -100,11 +191,64 @@ export default function EngajamentosPage() {
     if (error) {
       console.error('Error fetching engagements:', JSON.stringify(error, null, 2))
     } else {
+      const userIds = Array.from(new Set(
+        (data || [])
+          .flatMap((eng: any) => eng.engagement_participants || [])
+          .map((participant: any) => participant.user_id)
+          .filter((userId: string | null): userId is string => Boolean(userId))
+      ))
+
+      let profilesById = new Map<string, ParticipantProfileData>()
+      let authById = new Map<string, ParticipantAuthData>()
+
+      if (userIds.length > 0) {
+        const [profilesResult, authResult] = await Promise.all([
+          supabase
+            .from('user_profile')
+            .select(`
+              id,
+              full_name,
+              institution_organization,
+              organization_type,
+              job_title,
+              relationship_with_otdsp,
+              municipality,
+              referral_source
+            `)
+            .in('id', userIds),
+          supabase
+            .from('user_auth')
+            .select('id, email, cpf, phone, role')
+            .in('id', userIds)
+        ])
+
+        if (profilesResult.error) {
+          console.error('Erro ao buscar perfis dos participantes:', profilesResult.error.message)
+        } else {
+          profilesById = new Map(
+            (profilesResult.data || []).map((profile: ParticipantProfileData) => [profile.id, profile])
+          )
+        }
+
+        if (authResult.error) {
+          console.error('Erro ao buscar dados de autenticação dos participantes:', authResult.error.message)
+        } else {
+          authById = new Map(
+            (authResult.data || []).map((auth: ParticipantAuthData) => [auth.id, auth])
+          )
+        }
+      }
+
       const formattedData = (data || []).map((eng: any) => ({
         ...eng,
         horizontal: Array.isArray(eng.horizontal) ? eng.horizontal : [],
         vertical: Array.isArray(eng.vertical) ? eng.vertical : [],
         transversal: Array.isArray(eng.transversal) ? eng.transversal : [],
+        engagement_participants: (eng.engagement_participants || []).map((participant: any) => ({
+          ...participant,
+          user_profile: participant.user_id ? profilesById.get(participant.user_id) ?? null : null,
+          user_auth: participant.user_id ? authById.get(participant.user_id) ?? null : null
+        })),
         engagement_staff_notes: Array.isArray(eng.engagement_staff_notes) 
           ? eng.engagement_staff_notes[0] 
           : eng.engagement_staff_notes
@@ -175,16 +319,15 @@ export default function EngajamentosPage() {
   const handleEdit = (eng: Engagement) => {
     setEditingId(eng.id)
     
-    // Mapeamento respeitando estritamente o tipo 'Participant'
     const existingParticipants: Participant[] = eng.engagement_participants?.map((p: any) => {
-      const resolvedName = p.vw_user_profile_pesquisa?.full_name || p.email || 'Usuário Pendente';
-      
+      const profile = getParticipantProfile(p)
+
       return {
         user_id: p.user_id,
         email: p.email || '',
-        full_name: resolvedName,
-        cpf: '',
-        status: p.user_id ? 'green' : 'red'
+        full_name: getParticipantDisplayName(p),
+        cpf: getParticipantAuth(p)?.cpf || '',
+        status: getParticipantVisualStatus(p)
       }
     }) || []
 
@@ -655,21 +798,30 @@ export default function EngajamentosPage() {
                             </p>
                             <div className="flex flex-wrap gap-1.5">
                               {eng.engagement_participants.map((p: any, idx: number) => {
-                                // Define o que será exibido (Nome > Email > ID Genérico)
-                                const displayName = p.user_profile?.full_name || p.email || 'Usuário Pendente';
-                                const isPending = !p.user_id;
+                                const displayName = getParticipantDisplayName(p)
+                                const participantStatus = getParticipantVisualStatus(p)
+
+                                const statusClasses = {
+                                  green: 'bg-slate-50 border-slate-200 text-slate-600',
+                                  yellow: 'bg-amber-50 border-amber-200 text-amber-700',
+                                  red: 'bg-red-50 border-red-200 text-red-700'
+                                }[participantStatus]
+
+                                const statusLabel = {
+                                  green: null,
+                                  yellow: 'Dados faltantes',
+                                  red: 'Sem cadastro'
+                                }[participantStatus]
 
                                 return (
-                                  <span 
-                                    key={p.user_id || p.email || idx} 
-                                    className={`text-[11px] font-semibold border px-2 py-0.5 rounded-md flex items-center gap-1 ${
-                                      isPending 
-                                        ? 'bg-amber-50 border-amber-200 text-amber-700' // pendentes
-                                        : 'bg-slate-50 border-slate-200 text-slate-600' // cadastrados
-                                    }`}
+                                  <span
+                                    key={p.user_id || p.email || idx}
+                                    className={`text-[11px] font-semibold border px-2 py-0.5 rounded-md flex items-center gap-1 ${statusClasses}`}
                                   >
                                     {displayName}
-                                    {isPending && <span className="text-[9px] opacity-70">(Pendente)</span>}
+                                    {statusLabel && (
+                                      <span className="text-[9px] opacity-70">({statusLabel})</span>
+                                    )}
                                   </span>
                                 )
                               })}

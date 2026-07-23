@@ -783,7 +783,7 @@ export default function AdminPage() {
                                         onChange={event => handleDraftChange('role', event.target.value)}
                                         className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500"
                                       >
-                                        <option value="user">USER</option>
+                                        <option value="user">COMUM</option>
                                         <option value="pesquisa">PESQUISA</option>
                                         <option value="staff">STAFF</option>
                                       </select>

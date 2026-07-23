@@ -39,13 +39,15 @@ export function useEvidence() {
       
       const [authRes, profileRes, engRes] = await Promise.all([
         supabase.from('user_auth').select('id, email, is_active, date_joined, cpf, phone'),
-        supabase.from('user_profile').select('id, user_id, full_name, municipality, referral_source, institution_organization, organization_type, job_title'),
+        supabase.from('user_profile').select('id, full_name, municipality, referral_source, institution_organization, organization_type, job_title'),
         supabase.from('engagements').select('id, created_by, status, horizontal, vertical, transversal, planned_activities, estimated_duration, created_at, event_date, engagement_participants(email)')
       ]);
 
       const safeAuth: UserAuth[] = authRes.data || [];
       const safeProfiles: UserProfile[] = profileRes.data || [];
       const safeEng: Engagement[] = engRes.data || [];
+
+      console.log('Fetched raw data:', { safeAuth, safeProfiles, safeEng });
 
       const cityFreq = buildCityFrequency(safeProfiles);
       const nextFilterOptions = buildFilterOptions(safeProfiles, safeEng);
