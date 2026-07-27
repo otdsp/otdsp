@@ -62,10 +62,6 @@ export function useEvidence() {
 
   useEffect(() => {
     if (!isAuthorized) {
-      if (!isAuthLoading) {
-        setIsLoadingData(false);
-      }
-
       return;
     }
 
@@ -75,32 +71,19 @@ export function useEvidence() {
       setIsLoadingData(true);
 
       try {
-        const [authRes, profileRes, engagementRes] =
+        const [authRes, profileRes, engRes] =
           await Promise.all([
             supabase
               .from('user_auth')
-              .select(`
-                id,
-                email,
-                is_active,
-                date_joined,
-                role,
-                cpf,
-                phone
-              `),
+              .select(
+                'id, email, is_active, date_joined, role, cpf, phone'
+              ),
 
             supabase
               .from('user_profile')
-              .select(`
-                id,
-                full_name,
-                municipality,
-                referral_source,
-                institution_organization,
-                organization_type,
-                job_title,
-                relationship_with_otdsp
-              `),
+              .select(
+                'id, full_name, municipality, referral_source, institution_organization, organization_type, job_title, relationship_with_otdsp'
+              ),
 
             supabase
               .from('engagements')
@@ -122,86 +105,30 @@ export function useEvidence() {
           ]);
 
         if (authRes.error) {
-          throw new Error(
-            `Erro em user_auth: ${authRes.error.message}`
-          );
+          throw authRes.error;
         }
 
         if (profileRes.error) {
-          throw new Error(
-            `Erro em user_profile: ${profileRes.error.message}`
-          );
+          throw profileRes.error;
         }
 
-        if (engagementRes.error) {
-          throw new Error(
-            `Erro em engagements: ${engagementRes.error.message}`
-          );
+        if (engRes.error) {
+          throw engRes.error;
         }
 
         const safeAuth = (authRes.data ?? []) as UserAuth[];
         const safeProfiles =
           (profileRes.data ?? []) as UserProfile[];
-        const safeEngagements =
-          (engagementRes.data ?? []) as Engagement[];
+        const safeEng =
+          (engRes.data ?? []) as Engagement[];
 
-        console.log('Resultado da consulta:', {
-          users: safeAuth.length,
-          profiles: safeProfiles.length,
-          engagements: safeEngagements.length,
-          participants: safeEngagements.reduce(
-            (total, engagement) =>
-              total +
-              (engagement.engagement_participants?.length ?? 0),
-            0
-          )
-        });
-
-        const profilesById = new Map(
-          safeProfiles.map((profile) => [
-            profile.id,
-            profile
-          ])
-        );
-
-        const authById = new Map(
-          safeAuth.map((user) => [user.id, user])
-        );
-
-        const participantsWithoutUser =
-          safeEngagements.flatMap((engagement) =>
-            (engagement.engagement_participants ?? [])
-              .filter((participant) => {
-                if (
-                  participant.user_id &&
-                  authById.has(participant.user_id)
-                ) {
-                  return false;
-                }
-
-                return true;
-              })
-              .map((participant) => ({
-                userId: participant.user_id,
-              }))
-          );
-
-        const usersWithoutProfile = safeAuth
-          .filter((user) => !profilesById.has(user.id))
-          .map((user) => ({
-            id: user.id,
-            email: user.email
-          }));
-
-        const cityFrequency =
+        const cityFreq =
           buildCityFrequency(safeProfiles);
 
-        const nextFilterOptions = buildFilterOptions(
-          safeProfiles,
-          safeEngagements
-        );
+        const nextFilterOptions =
+          buildFilterOptions(safeProfiles, safeEng);
 
-        const topCities = Object.entries(cityFrequency)
+        const topCities = Object.entries(cityFreq)
           .sort((a, b) => b[1] - a[1])
           .slice(0, 30)
           .map(([city]) => city);
@@ -223,21 +150,13 @@ export function useEvidence() {
         setRawData({
           auth: safeAuth,
           profiles: safeProfiles,
-          engagements: safeEngagements
+          engagements: safeEng
         });
       } catch (error) {
         console.error(
-          'Erro ao carregar os dados de evidências:',
+          'Erro ao carregar dados de evidências:',
           error
         );
-
-        if (isMounted) {
-          setRawData({
-            auth: [],
-            profiles: [],
-            engagements: []
-          });
-        }
       } finally {
         if (isMounted) {
           setIsLoadingData(false);
@@ -245,12 +164,12 @@ export function useEvidence() {
       }
     };
 
-    fetchRawData();
+    void fetchRawData();
 
     return () => {
       isMounted = false;
     };
-  }, [isAuthorized, isAuthLoading]);
+  }, [isAuthorized]);
 
   const derivedData = useMemo(() => {
     return processDerivedData(
@@ -271,7 +190,7 @@ export function useEvidence() {
   };
 
   return {
-    isLoading: isAuthLoading || isLoadingData,
+    isLoading: isAuthLoading || (isAuthorized && isLoadingData),
     isAuthorized,
     filters,
     filterOptions,
