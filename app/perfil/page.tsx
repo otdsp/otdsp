@@ -8,6 +8,7 @@ import {
   User, 
   Lock, 
   Save, 
+  Fingerprint,
   ShieldCheck, 
   Building2, 
   Briefcase, 
@@ -27,8 +28,8 @@ import {
 // Profile fields type
 interface UserProfile {
   id: string
-  user_id: string
   full_name: string
+  cpf: string
   phone: string
   municipality: string
   institution_organization: string
@@ -59,7 +60,7 @@ export default function ProfilePage() {
     confirm: ''
   })
 
-  // Delete Account States (LGPD)
+  // Delete Account States
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
@@ -77,14 +78,27 @@ export default function ProfilePage() {
 
       // Fetch Profile Data
       try {
-        const { data, error } = await supabase
-          .from('user_profile')
-          .select('*')
-          .eq('user_id', currentSession.user.id)
-          .single()
+        const [profileRes, authRes] = await Promise.all([
+          supabase
+            .from('user_profile')
+            .select('*')
+            .eq('id', currentSession.user.id)
+            .maybeSingle(),
+          supabase
+            .from('user_auth')
+            .select('cpf, phone')
+            .eq('id', currentSession.user.id)
+            .maybeSingle()
+        ])
 
-        if (error) throw error
-        setProfile(data)
+        if (profileRes.error && profileRes.error.code !== 'PGRST116') throw profileRes.error
+        if (authRes.error && authRes.error.code !== 'PGRST116') throw authRes.error
+
+        setProfile({
+          ...(profileRes.data || {}),
+          cpf: authRes.data?.cpf || '',
+          phone: authRes.data?.phone || ''
+        })
       } catch (err) {
         console.error('Error fetching profile:', err)
       } finally {
@@ -109,11 +123,10 @@ export default function ProfilePage() {
     setFeedback(null)
 
     try {
-      const { error } = await supabase
+      const { error: profileError } = await supabase
         .from('user_profile')
         .update({
           full_name: profile.full_name,
-          phone: profile.phone,
           municipality: profile.municipality,
           institution_organization: profile.institution_organization,
           organization_type: profile.organization_type,
@@ -121,9 +134,17 @@ export default function ProfilePage() {
           relationship_with_otdsp: profile.relationship_with_otdsp,
           referral_source: profile.referral_source
         })
-        .eq('user_id', session.user.id)
+        .eq('id', session.user.id)
 
-      if (error) throw error
+      const { error: authError } = await supabase
+        .from('user_auth')
+        .update({
+          cpf: profile.cpf,
+          phone: profile.phone,
+        })
+        .eq('id', session.user.id)
+
+      if (profileError || authError) throw profileError || authError
 
       setFeedback({ type: 'success', message: 'Perfil atualizado com sucesso!' })
       setTimeout(() => setFeedback(null), 3000)
@@ -343,7 +364,7 @@ export default function ProfilePage() {
             </motion.div>
 
             {/* Quick Stats or Tips Card */}
-            <div className="bg-[#0F172A] rounded-2xl p-6 text-white overflow-hidden relative group">
+            {/* <div className="bg-[#0F172A] rounded-2xl p-6 text-white overflow-hidden relative group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-cyan-500/20 transition-all duration-700" />
               <div className="relative z-10">
                 <div className="flex items-center gap-3 mb-4">
@@ -356,7 +377,7 @@ export default function ProfilePage() {
                   Seus dados são protegidos por criptografia de ponta e usados apenas para fins de cooperação técnica institucional.
                 </p>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Main Content / Right Column */}
@@ -407,6 +428,19 @@ export default function ProfilePage() {
                             type="text"
                             name="full_name"
                             value={profile?.full_name || ''}
+                            onChange={handleProfileChange}
+                            className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-slate-700 ml-1">CPF</label>
+                        <div className="relative">
+                          <Fingerprint className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                          <input 
+                            type="text"
+                            name="cpf"
+                            value={profile?.cpf || ''}
                             onChange={handleProfileChange}
                             className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
                           />

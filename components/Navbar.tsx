@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X, ChevronDown, UserPlus, User, LogOut, Calendar, ChartColumn } from 'lucide-react';
+import { Menu, X, ChevronDown, UserPlus, User, LogOut, Calendar, ChartColumn, Shield } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
@@ -54,6 +54,8 @@ export default function Navbar() {
   const [mobileExpandedIndex, setMobileExpandedIndex] = useState<number | null>(null);
   const [user, setUser] = useState<any>(null);
   const [isStaff, setIsStaff] = useState<boolean>(false);
+  const [isPesquisa, setIsPesquisa] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   
   const router = useRouter();
 
@@ -62,23 +64,47 @@ export default function Navbar() {
       try {
         const { data, error } = await supabase
           .from('user_auth')
-          .select('is_staff')
+          .select('role')
           .eq('id', userId)
           .single();
 
         if (data && !error) {
-          setIsStaff(data.is_staff);
+          setIsStaff(data.role === 'staff');
+          setIsPesquisa(data.role === 'pesquisa');
         } else {
           setIsStaff(false);
+          setIsPesquisa(false);
         }
       } catch (err) {
         console.error("Erro ao verificar status de staff:", err);
         setIsStaff(false);
+        setIsPesquisa(false);
       }
     };
 
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        
+        if (currentUser) {
+          await checkStaffStatus(currentUser.id);
+        } else {
+          setIsStaff(false);
+          setIsPesquisa(false);
+        }
+      } catch (error) {
+        console.error("Erro ao inicializar sessão:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
+
+    // Listener escuta mudanças reais (Ex: Login, Logout, Token renovado)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       
@@ -86,19 +112,7 @@ export default function Navbar() {
         await checkStaffStatus(currentUser.id);
       } else {
         setIsStaff(false);
-      }
-    };
-
-    checkUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      
-      if (currentUser) {
-        await checkStaffStatus(currentUser.id);
-      } else {
-        setIsStaff(false);
+        setIsPesquisa(false);
       }
     });
 
@@ -113,6 +127,7 @@ export default function Navbar() {
     setMobileMenuOpen(false);
     setMobileExpandedIndex(null);
     setIsStaff(false);
+    setIsPesquisa(false);
     router.push('/');
     router.refresh();
   };
@@ -122,9 +137,14 @@ export default function Navbar() {
   // Dynamic menu items based on auth state and staff status
   const dynamicNavItems = navItems.map((item) => {
     if (item.name === 'Acessos') {
+      if (loading) {
+        return { ...item, dropdown: [] };
+      }
+
       const loggedInDropdown = [
         { name: 'Meu Perfil', href: '/perfil', icon: User },
-        ...(isStaff ? [{ name: 'Indicadores', href: '/indicadores', icon: ChartColumn }] : []),
+        ...(isStaff ? [{ name: 'Administração', href: '/admin', icon: Shield }] : []),
+        ...(isStaff || isPesquisa ? [{ name: 'Evidências', href: '/evidencias', icon: ChartColumn }] : []),
         { name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
         { name: 'Sair', href: '#', isLogout: true, icon: LogOut },
       ];
@@ -167,19 +187,22 @@ export default function Navbar() {
                 onMouseEnter={() => setHoveredIndex(index)}
                 onMouseLeave={() => setHoveredIndex(null)}
               >
-                <Link
-                  href={item.href}
-                  className="px-1.5 xl:px-2 py-2 flex items-center gap-1 text-[#0F172A] font-medium transition-colors hover:text-cyan-600 text-[14px] xl:text-[15px] tracking-wide whitespace-nowrap group"
-                >
-                  {item.name}
-                  {item.dropdown && item.dropdown.length > 0 && (
-                    <ChevronDown
-                      className={`w-4 h-4 transition-transform duration-200 ${
-                        hoveredIndex === index ? 'rotate-180 text-cyan-600' : 'text-slate-400 group-hover:text-cyan-600'
-                      }`}
-                    />
-                  )}
-                </Link>
+                {/* 3. ALTERADO: Evita renderizar ou dar foco no botão "Acessos" enquanto as opções internas não estiverem prontas */}
+                {(item.name !== 'Acessos' || !loading) && (
+                  <Link
+                    href={item.href}
+                    className="px-1.5 xl:px-2 py-2 flex items-center gap-1 text-[#0F172A] font-medium transition-colors hover:text-cyan-600 text-[14px] xl:text-[15px] tracking-wide whitespace-nowrap group"
+                  >
+                    {item.name}
+                    {item.dropdown && item.dropdown.length > 0 && (
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform duration-200 ${
+                          hoveredIndex === index ? 'rotate-180 text-cyan-600' : 'text-slate-400 group-hover:text-cyan-600'
+                        }`}
+                      />
+                    )}
+                  </Link>
+                )}
 
                 {/* Dropdown Menu */}
                 {item.dropdown && item.dropdown.length > 0 && (
@@ -250,73 +273,75 @@ export default function Navbar() {
             transition={{ duration: 0.3 }}
             className="lg:hidden bg-white border-b border-slate-200 overflow-hidden"
           >
-            {/* ADICIONANDO ALTURA MÁXIMA E SCROLL */}
             <div className="px-4 pt-2 pb-6 space-y-1 sm:px-6 max-h-[calc(100vh-5rem)] overflow-y-auto">
               {dynamicNavItems.map((item, index) => (
-                <div key={item.name} className="py-1">
-                  {item.dropdown && item.dropdown.length > 0 ? (
-                    <>
-                      <button
-                        onClick={() =>
-                          setMobileExpandedIndex(mobileExpandedIndex === index ? null : index)
-                        }
-                        className="w-full flex items-center justify-between px-3 py-3 text-base font-medium text-[#0F172A] hover:bg-slate-50 hover:text-cyan-600 rounded-xl transition-colors"
+                // Se for a aba Acessos e estiver carregando, pula a renderização na lista mobile temporariamente
+                (item.name !== 'Acessos' || !loading) && (
+                  <div key={item.name} className="py-1">
+                    {item.dropdown && item.dropdown.length > 0 ? (
+                      <>
+                        <button
+                          onClick={() =>
+                            setMobileExpandedIndex(mobileExpandedIndex === index ? null : index)
+                          }
+                          className="w-full flex items-center justify-between px-3 py-3 text-base font-medium text-[#0F172A] hover:bg-slate-50 hover:text-cyan-600 rounded-xl transition-colors"
+                        >
+                          {item.name}
+                          <ChevronDown
+                            className={`w-5 h-5 transition-transform duration-200 ${
+                              mobileExpandedIndex === index ? 'rotate-180 text-cyan-600' : 'text-slate-400'
+                            }`}
+                          />
+                        </button>
+                        <AnimatePresence>
+                          {mobileExpandedIndex === index && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="pl-6 pr-3 overflow-hidden"
+                            >
+                              <div className="py-2 space-y-1 relative before:absolute before:left-3 before:top-4 before:bottom-4 before:w-px before:bg-slate-200">
+                                {item.dropdown.map((subItem: any) => (
+                                  subItem.isLogout ? (
+                                    <button
+                                      key={subItem.name}
+                                      onClick={handleLogout}
+                                      className="w-full text-left flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border-0 cursor-pointer"
+                                    >
+                                      {subItem.icon && <subItem.icon className="w-5 h-5" />}
+                                      {subItem.name}
+                                  </button>
+                                  ) : (
+                                    <Link
+                                      key={subItem.name}
+                                      href={subItem.href}
+                                      target={subItem.href.startsWith('http') ? "_blank" : undefined}
+                                      rel={subItem.href.startsWith('http') ? "noopener noreferrer" : undefined}
+                                      onClick={() => setMobileMenuOpen(false)}
+                                      className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors relative"
+                                    >
+                                      {subItem.icon && <subItem.icon className="w-5 h-5" />}
+                                      {subItem.name}
+                                    </Link>
+                                  )
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block px-3 py-3 text-base font-medium text-[#0F172A] hover:bg-slate-50 hover:text-cyan-600 rounded-xl transition-colors"
                       >
                         {item.name}
-                        <ChevronDown
-                          className={`w-5 h-5 transition-transform duration-200 ${
-                            mobileExpandedIndex === index ? 'rotate-180 text-cyan-600' : 'text-slate-400'
-                          }`}
-                        />
-                      </button>
-                      <AnimatePresence>
-                        {mobileExpandedIndex === index && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="pl-6 pr-3 overflow-hidden"
-                          >
-                            <div className="py-2 space-y-1 relative before:absolute before:left-3 before:top-4 before:bottom-4 before:w-px before:bg-slate-200">
-                              {item.dropdown.map((subItem: any) => (
-                                subItem.isLogout ? (
-                                  <button
-                                    key={subItem.name}
-                                    onClick={handleLogout}
-                                    className="w-full text-left flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border-0 cursor-pointer"
-                                  >
-                                    {subItem.icon && <subItem.icon className="w-5 h-5" />}
-                                    {subItem.name}
-                                  </button>
-                                ) : (
-                                  <Link
-                                    key={subItem.name}
-                                    href={subItem.href}
-                                    target={subItem.href.startsWith('http') ? "_blank" : undefined}
-                                    rel={subItem.href.startsWith('http') ? "noopener noreferrer" : undefined}
-                                    onClick={() => setMobileMenuOpen(false)}
-                                    className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors relative"
-                                  >
-                                    {subItem.icon && <subItem.icon className="w-5 h-5" />}
-                                    {subItem.name}
-                                  </Link>
-                                )
-                              ))}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </>
-                  ) : (
-                    <Link
-                      href={item.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block px-3 py-3 text-base font-medium text-[#0F172A] hover:bg-slate-50 hover:text-cyan-600 rounded-xl transition-colors"
-                    >
-                      {item.name}
-                    </Link>
-                  )}
-                </div>
+                      </Link>
+                    )}
+                  </div>
+                )
               ))}
             </div>
           </motion.div>

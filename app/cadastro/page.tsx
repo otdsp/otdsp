@@ -8,6 +8,7 @@ import {
   Mail, 
   Lock, 
   Phone, 
+  Fingerprint,
   MapPin, 
   Briefcase, 
   Building2, 
@@ -42,6 +43,7 @@ export default function CadastroPage() {
     email: '',
     password: '',
     full_name: '',
+    cpf: '',
     phone: '',
     municipality: '',
     institution_organization: '',
@@ -79,6 +81,7 @@ export default function CadastroPage() {
         options: {
           data: {
             full_name: formData.full_name,
+            cpf: formData.cpf,
             phone: formData.phone,
             municipality: formData.municipality,
             institution_organization: formData.institution_organization,
@@ -100,8 +103,10 @@ export default function CadastroPage() {
           .upsert({
             id: user.id,
             email: user.email,
-            is_staff: false,
+            role: 'user',
             is_active: true,
+            cpf: formData.cpf,
+            phone: formData.phone,
           })
         
         if (authTableError) console.error('Error in user_auth upsert:', authTableError)
@@ -112,7 +117,6 @@ export default function CadastroPage() {
           .upsert({
             user_id: user.id,
             full_name: formData.full_name,
-            phone: formData.phone,
             municipality: formData.municipality,
             institution_organization: formData.institution_organization,
             organization_type: formData.organization_type,
@@ -251,6 +255,20 @@ export default function CadastroPage() {
                       value={formData.full_name}
                       onChange={handleChange}
                       placeholder="Digite seu nome completo"
+                      className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3.5 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-400"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700 ml-1">CPF</label>
+                  <div className="relative">
+                    <Fingerprint className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input 
+                      type="text"
+                      name="cpf"
+                      value={formData.cpf}
+                      onChange={handleChange}
+                      placeholder="000.000.000-00"
                       className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3.5 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-400"
                     />
                   </div>
