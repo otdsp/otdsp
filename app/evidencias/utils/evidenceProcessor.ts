@@ -29,21 +29,15 @@ export function processDerivedData(
   const { auth, profiles, engagements } = rawData;
 
   // 1. Mapeamentos iniciais para busca rápida (O(1))
-  const profileMap = new Map<string, UserProfile>();
-  profiles.forEach(p => {
-    if (p.user_id) profileMap.set(p.user_id, p);
-  });
+  // user_profile.id é a chave de correlação com user_auth.id.
+  // Não existe user_profile.user_id na estrutura do banco.
+  const profileMap = new Map<string, UserProfile>(
+    profiles.map((profile) => [profile.id, profile])
+  );
 
-  const profileByEmail = new Map<string, UserProfile>();
-  const authById = new Map<string, UserAuth>();
-  
-  auth.forEach((u) => {
-    if (u.id) authById.set(u.id, u);
-    if (u.email) {
-      const profile = profileMap.get(u.id);
-      if (profile) profileByEmail.set(u.email.trim().toLowerCase(), profile);
-    }
-  });
+  const authById = new Map<string, UserAuth>(
+    auth.map((user) => [user.id, user])
+  );
 
   // 2. Lógica Dinâmica de Limites de Data
   const startCutoff = filters.startDate ? new Date(filters.startDate + 'T00:00:00') : new Date(2000, 0, 1);
@@ -73,24 +67,40 @@ export function processDerivedData(
     return userDate >= startCutoff && userDate <= endCutoff;
   });
 
-  const baseUserIds = new Set(baseAuth.map(u => u.id));
 
   const getEngagementPeriodDate = (engagement: Engagement) => {
     const rawDate = engagement.event_date || engagement.created_at;
     return rawDate ? new Date(rawDate) : new Date(0);
   };
 
-  const filteredEngagements = engagements.filter(e => {
-    const engDate = getEngagementPeriodDate(e);
-    const dateOk = engDate >= startCutoff && engDate <= endCutoff;
-    const userOk = baseUserIds.has(e.created_by);
-    const dimensionOk = activeDimensionFilters.length === 0 || matchesDimensionFilters(e);
-    return dateOk && userOk && dimensionOk;
+  const filteredEngagements = engagements.filter((engagement) => {
+    const engagementDate = getEngagementPeriodDate(engagement);
+    const dateOk = engagementDate >= startCutoff && engagementDate <= endCutoff;
+    const dimensionOk = activeDimensionFilters.length === 0 || matchesDimensionFilters(engagement);
+
+    // A data de cadastro do criador não deve excluir um engajamento válido.
+    return dateOk && dimensionOk;
   });
 
-  const filteredUserIds = new Set(filteredEngagements.map(e => e.created_by));
-  const filteredAuth = baseAuth.filter(u => filteredUserIds.has(u.id));
-  const filteredProfiles = profiles.filter(p => filteredUserIds.has(p.user_id || p.id));
+  // Usuários relacionados aos engajamentos filtrados: participantes e criadores.
+  // A correlação de participante é feita exclusivamente por user_id.
+  const relatedUserIds = new Set<string>();
+
+  filteredEngagements.forEach((engagement) => {
+    if (engagement.created_by) {
+      relatedUserIds.add(engagement.created_by);
+    }
+
+    (engagement.engagement_participants ?? []).forEach((participant) => {
+      const userId = participant.user_id?.trim();
+      if (!userId) return;
+
+      relatedUserIds.add(userId);
+    });
+  });
+
+  const filteredAuth = baseAuth.filter((user) => relatedUserIds.has(user.id));
+  const filteredProfiles = profiles.filter((profile) => relatedUserIds.has(profile.id));
 
   const signedCount = filteredEngagements.filter(e => 
     Array.isArray(e.planned_activities) && 
@@ -98,8 +108,8 @@ export function processDerivedData(
   ).length;
 
   const stats = {
-    totalUsers: filteredAuth.length,
-    activeUsers: filteredAuth.filter(u => u.is_active).length,
+    totalUsers: baseAuth.length,
+    activeUsers: filteredAuth.filter((user) => user.is_active).length,
     totalEngagements: filteredEngagements.length,
     signedAgreements: signedCount
   };
@@ -302,9 +312,15 @@ export function processDerivedData(
     return municipalityBuckets[municipality];
   };
 
-  const addParticipantData = (municipality: string, email: string, name: string, role: string) => {
+  const addParticipantData = (
+    municipality: string,
+    participantKey: string,
+    email: string,
+    name: string,
+    role: string
+  ) => {
     const bucket = ensureMunicipalityBucket(municipality);
-    bucket.participants[email] = { email, name, role, municipality };
+    bucket.participants[participantKey] = { email, name, role, municipality };
   };
 
   filteredEngagements.forEach(eng => {
@@ -323,29 +339,36 @@ export function processDerivedData(
 
     if (Array.isArray(eng.engagement_participants)) {
       eng.engagement_participants.forEach((participant) => {
-        const email = participant.user_email?.trim().toLowerCase();
-        if (!email) return;
-        const profile = profileByEmail.get(email);
-        const municipality = profile?.municipality?.trim().replace(/\s+/g, ' ') || 'Não informado';
-        const name = profile?.full_name?.trim() || email;
-        const role = profile?.job_title?.trim() || 'Sem função';
-        if (!municipality) return;
+        const userId = participant.user_id?.trim();
+        if (!userId) return;
 
-        addParticipantData(municipality, email, name, role);
+        // Correlação estritamente por UUID:
+        // engagement_participants.user_id -> user_auth.id -> user_profile.id
+        const participantAuth = authById.get(userId);
+        const profile = profileMap.get(userId);
+
+        // Um participante sem perfil continua sendo contabilizado.
+        const municipality = profile?.municipality?.trim().replace(/\s+/g, ' ') || 'Não informado';
+        const email = participantAuth?.email?.trim().toLowerCase() || '';
+        const name = profile?.full_name?.trim() || 'Usuário sem perfil';
+        const role = profile?.job_title?.trim() || 'Sem função';
+
+        // A chave de deduplicação é o UUID, nunca o e-mail.
+        addParticipantData(municipality, userId, email, name, role);
         associatedMunicipalities.add(municipality);
       });
     }
 
     const creatorProfile = profileMap.get(eng.created_by);
     const creatorAuth = authById.get(eng.created_by);
-    const creatorEmail = creatorAuth?.email?.trim().toLowerCase() || creatorProfile?.full_name?.trim().toLowerCase() || eng.created_by;
-    
-    if (creatorProfile && creatorEmail) {
+
+    if (creatorProfile) {
       const municipality = creatorProfile.municipality?.trim().replace(/\s+/g, ' ') || 'Não informado';
-      const name = creatorProfile.full_name?.trim() || creatorEmail;
+      const email = creatorAuth?.email?.trim().toLowerCase() || '';
+      const name = creatorProfile.full_name?.trim() || 'Usuário sem nome';
       const role = creatorProfile.job_title?.trim() || 'Criador do engajamento';
 
-      addParticipantData(municipality, creatorEmail, name, role);
+      addParticipantData(municipality, eng.created_by, email, name, role);
       associatedMunicipalities.add(municipality);
     }
 

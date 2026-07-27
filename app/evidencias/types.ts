@@ -19,24 +19,21 @@ export interface UserProfile {
 }
 
 export interface EngagementParticipant {
-  email: string;
+  user_id: string | null;
 }
 
 export interface Engagement {
   id: string;
   created_by: string;
-  status?: string;
-  horizontal?: string[];
-  vertical?: string[];
-  transversal?: string[];
-  interests?: string[];
-  technologies?: string[];
-  public_policies?: string[];
-  planned_activities?: string[];
-  estimated_duration?: number;
-  engagement_participants?: EngagementParticipant[];
-  created_at: string;
-  event_date?: string | null;
+  status: string | null;
+  horizontal: string[] | null;
+  vertical: string[] | null;
+  transversal: string[] | null;
+  planned_activities: string[] | null;
+  estimated_duration: number | null;
+  created_at: string | null;
+  event_date: string;
+  engagement_participants: EngagementParticipant[];
 }
 
 export interface MunicipalityParticipant {
