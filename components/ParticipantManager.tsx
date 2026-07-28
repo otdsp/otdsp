@@ -126,12 +126,7 @@ export function ParticipantManager({
   useEffect(() => {
     const term = inputValue.trim()
 
-    if (term.length < 3) {
-      setSuggestions([])
-      setShowSuggestions(false)
-      setSearchError(null)
-      return
-    }
+    if (term.length < 3) return
 
     let cancelled = false
 
@@ -143,12 +138,6 @@ export function ParticipantManager({
         const escapedTerm = escapeLikeValue(term)
         const digitsOnly = normalizeCpf(term)
 
-        /*
-         * A busca é feita separadamente porque:
-         * - nome e demais dados de perfil estão em user_profile;
-         * - e-mail, CPF e telefone estão em user_auth;
-         * - não dependemos de um relacionamento embed configurado no Supabase.
-         */
         const profilePromise = supabase
           .from('user_profile')
           .select(`
@@ -325,6 +314,19 @@ export function ParticipantManager({
     }
   }, [inputValue, participants])
 
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value
+
+    setInputValue(value)
+
+    if (value.trim().length < 3) {
+      setSuggestions([])
+      setShowSuggestions(false)
+      setSearchError(null)
+      setIsSearching(false)
+    }
+  }
+
   const handleAddSuggestion = (user: UserSuggestion) => {
     const newParticipant: Participant = {
       user_id: user.id,
@@ -474,7 +476,7 @@ export function ParticipantManager({
           <input
             type="text"
             value={inputValue}
-            onChange={event => setInputValue(event.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             onFocus={() =>
               suggestions.length > 0 && setShowSuggestions(true)
