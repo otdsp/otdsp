@@ -19,7 +19,7 @@ export function useAdminAuth() {
           .eq('id', session.user.id)
           .single();
 
-        if (error || userData?.role !== 'staff') return router.replace('/');
+        if (error || userData?.role !== 'staff' && userData?.role !== 'pesquisa') return router.replace('/');
 
         setIsAuthorized(true);
       } catch (error) {
