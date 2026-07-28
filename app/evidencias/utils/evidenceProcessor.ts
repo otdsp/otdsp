@@ -108,7 +108,7 @@ export function processDerivedData(
   ).length;
 
   const stats = {
-    totalUsers: baseAuth.length,
+    totalUsers: profiles.length,
     activeUsers: filteredAuth.filter((user) => user.is_active).length,
     totalEngagements: filteredEngagements.length,
     signedAgreements: signedCount
