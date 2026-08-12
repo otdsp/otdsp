@@ -115,7 +115,7 @@ export default function CadastroPage() {
         const { error: profileTableError } = await supabase
           .from('user_profile')
           .upsert({
-            user_id: user.id,
+            id: user.id,
             full_name: formData.full_name,
             municipality: formData.municipality,
             institution_organization: formData.institution_organization,
@@ -358,7 +358,6 @@ export default function CadastroPage() {
                   <div className="relative">
                     <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input 
-                      required
                       type="text"
                       name="institution_organization"
                       value={formData.institution_organization}
@@ -372,13 +371,12 @@ export default function CadastroPage() {
                   <label className="text-sm font-semibold text-slate-700 ml-1">Tipo de Organização</label>
                   <div className="relative">
                     <select 
-                      required
                       name="organization_type"
                       value={formData.organization_type}
                       onChange={handleChange}
                       className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3.5 px-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all appearance-none cursor-pointer"
                     >
-                      <option value="" disabled>Selecione o tipo...</option>
+                      <option value="">Selecione o tipo...</option>
                       <option value="Governamental">Governamental</option>
                       <option value="Privada">Privada</option>
                       <option value="Privada sem fins lucrativos">Privada sem fins lucrativos</option>
@@ -403,13 +401,12 @@ export default function CadastroPage() {
                   <label className="text-sm font-semibold text-slate-700 ml-1">Relação com o OTDSP</label>
                   <div className="relative">
                     <select 
-                      required
                       name="relationship_with_otdsp"
                       value={formData.relationship_with_otdsp}
                       onChange={handleChange}
                       className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3.5 px-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all appearance-none cursor-pointer"
                     >
-                      <option value="" disabled>Selecione uma opção</option>
+                      <option value="">Selecione uma opção</option>
                       <option value="Visitante">Visitante</option>
                       <option value="Pesquisador">Pesquisador</option>
                       <option value="Voluntário">Voluntário</option>

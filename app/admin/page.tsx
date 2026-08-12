@@ -7,6 +7,7 @@ import { sendSystemEmail } from '@/lib/emailService'
 import { motion, AnimatePresence } from 'motion/react'
 import {
   Users,
+  UserPlus,
   Search,
   Mail,
   Loader2,
@@ -100,11 +101,37 @@ export default function AdminPage() {
   const [emailHtml, setEmailHtml] = useState('')
   const [emailSending, setEmailSending] = useState(false)
 
+  // Modal de Adicionar Usuário
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false)
+  const [isCreatingUser, setIsCreatingUser] = useState(false)
+  const [newUserForm, setNewUserForm] = useState({
+    email: '',
+    full_name: '',
+    cpf: '',
+    phone: '',
+    municipality: '',
+    institution_organization: '',
+    organization_type: '',
+    job_title: '',
+    relationship_with_otdsp: '',
+    referral_source: ''
+  })
+
+  // Filtros
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [activityFilter, setActivityFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'green' | 'yellow' | 'red'>('all')
   const [levelFilter, setLevelFilter] = useState<'all' | 'comum' | 'pesquisa' | 'staff'>('all')
+
+  const generateRandomPassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+'
+    let password = ''
+    for (let i = 0; i < 16; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return password
+  }
 
   const extractEmail = (user: AdminUser) => {
     if (Array.isArray(user.user_auth)) return user.user_auth[0]?.email || ''
@@ -211,6 +238,84 @@ export default function AdminPage() {
     checkAuthAndFetch()
   }, [router])
 
+  const handleCreateNewUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsCreatingUser(true)
+    setFeedback(null)
+
+    try {
+      const randomPassword = generateRandomPassword()
+      const { data, error } = await supabase.auth.signUp({
+        email: newUserForm.email,
+        password: randomPassword,
+        options: {
+          data: {
+            full_name: newUserForm.full_name,
+            cpf: newUserForm.cpf,
+            phone: newUserForm.phone,
+            municipality: newUserForm.municipality,
+            institution_organization: newUserForm.institution_organization,
+            organization_type: newUserForm.organization_type,
+            job_title: newUserForm.job_title,
+            relationship_with_otdsp: newUserForm.relationship_with_otdsp,
+            referral_source: newUserForm.referral_source
+          }
+        }
+      })
+      
+      if (error) throw error
+
+      const user = data.user
+      if (user) {
+        // Try to insert/upsert into user_auth (using upsert to avoid primary key conflict if trigger executed)
+        const { error: authTableError } = await supabase
+          .from('user_auth')
+          .upsert({
+            id: user.id,
+            email: user.email,
+            role: 'user',
+            is_active: true,
+            cpf: newUserForm.cpf,
+            phone: newUserForm.phone,
+          })
+        
+        if (authTableError) console.error('Error in user_auth upsert:', authTableError)
+
+        // Try to insert/upsert into user_profile (using upsert to avoid primary key conflict if trigger executed)
+        const { error: profileTableError } = await supabase
+          .from('user_profile')
+          .upsert({
+            id: user.id,
+            full_name: newUserForm.full_name,
+            municipality: newUserForm.municipality,
+            institution_organization: newUserForm.institution_organization,
+            organization_type: newUserForm.organization_type,
+            job_title: newUserForm.job_title,
+            relationship_with_otdsp: newUserForm.relationship_with_otdsp,
+            referral_source: newUserForm.referral_source
+          })
+        
+        if (profileTableError) console.error('Error in user_profile upsert:', profileTableError)
+      }
+
+      setFeedback({ type: 'success', message: 'Usuário criado com sucesso!' })
+      setIsAddUserModalOpen(false)
+      setNewUserForm({
+        email: '', full_name: '', cpf: '', phone: '', municipality: '',
+        institution_organization: '', organization_type: '', job_title: '', relationship_with_otdsp: '', referral_source: ''
+      })
+      await fetchUsers()
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message })
+    } finally {
+      setIsCreatingUser(false)
+    }
+  }
+
+  const handleNewUserChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setNewUserForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  }
+
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
       const searchLower = searchTerm.toLowerCase()
@@ -257,7 +362,7 @@ export default function AdminPage() {
     }
   }
 
-  // 👇 NOVA INTEGRAÇÃO: Dispara e-mail customizado para os usuários selecionados
+  // Dispara e-mail customizado para os usuários selecionados
   const handleSendCustomEmail = async (e: React.FormEvent) => {
     e.preventDefault()
     if (selectedUserIds.size === 0 || !emailSubject || !emailHtml) return
@@ -506,6 +611,13 @@ export default function AdminPage() {
               Gerencie usuários, acessos e integridade de dados (Visão Staff)
             </p>
           </div>
+
+          <button
+            onClick={() => setIsAddUserModalOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-cyan-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-cyan-700"
+          >
+            <UserPlus className="h-5 w-5" /> Novo Usuário
+        </button>
         </div>
 
         <AnimatePresence>
@@ -518,6 +630,102 @@ export default function AdminPage() {
             >
               {feedback.message}
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* MODAL DE ADICIONAR USUÁRIO */}
+        <AnimatePresence>
+          {isAddUserModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-3xl my-8 rounded-3xl border border-slate-700 bg-[#0F172A] p-6 shadow-2xl overflow-hidden"
+              >
+                <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <UserPlus className="h-6 w-6 text-cyan-400" />
+                    Cadastrar Novo Usuário
+                  </h3>
+                  <button onClick={() => setIsAddUserModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreateNewUser} className="space-y-6">
+                  {/* Dados Obrigatórios */}
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-cyan-500">Credenciais (Obrigatório)</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">Nome Completo</label>
+                        <input required type="text" name="full_name" value={newUserForm.full_name} onChange={handleNewUserChange} className="w-full h-11 rounded-xl border border-slate-700 bg-slate-800/50 px-4 text-sm text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">E-mail</label>
+                        <input required type="email" name="email" value={newUserForm.email} onChange={handleNewUserChange} className="w-full h-11 rounded-xl border border-slate-700 bg-slate-800/50 px-4 text-sm text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dados Opcionais */}
+                  <div className="space-y-4 pt-4 border-t border-slate-800">
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500">Dados Complementares (Opcional)</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">CPF</label>
+                        <input type="text" name="cpf" value={newUserForm.cpf} onChange={handleNewUserChange} className="w-full h-11 rounded-xl border border-slate-700 bg-slate-800/50 px-4 text-sm text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">Telefone / WhatsApp</label>
+                        <input type="tel" name="phone" value={newUserForm.phone} onChange={handleNewUserChange} className="w-full h-11 rounded-xl border border-slate-700 bg-slate-800/50 px-4 text-sm text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">Município de Sede</label>
+                        <input type="text" name="municipality" value={newUserForm.municipality} onChange={handleNewUserChange} className="w-full h-11 rounded-xl border border-slate-700 bg-slate-800/50 px-4 text-sm text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">Instituição / Organização</label>
+                        <input type="text" name="institution_organization" value={newUserForm.institution_organization} onChange={handleNewUserChange} className="w-full h-11 rounded-xl border border-slate-700 bg-slate-800/50 px-4 text-sm text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">Tipo de Organização</label>
+                        <select name="organization_type" value={newUserForm.organization_type} onChange={handleNewUserChange} className="w-full h-11 rounded-xl border border-slate-700 bg-slate-800/50 px-4 text-sm text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500">
+                          <option value="">Selecione...</option>
+                          <option value="Governamental">Governamental</option>
+                          <option value="Privada">Privada</option>
+                          <option value="Privada sem fins lucrativos">Privada sem fins lucrativos</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">Cargo / Função</label>
+                        <input type="text" name="job_title" value={newUserForm.job_title} onChange={handleNewUserChange} className="w-full h-11 rounded-xl border border-slate-700 bg-slate-800/50 px-4 text-sm text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">Relação com o OTDSP</label>
+                        <select name="relationship_with_otdsp" value={newUserForm.relationship_with_otdsp} onChange={handleNewUserChange} className="w-full h-11 rounded-xl border border-slate-700 bg-slate-800/50 px-4 text-sm text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500">
+                          <option value="">Selecione...</option>
+                          <option value="Visitante">Visitante</option>
+                          <option value="Pesquisador">Pesquisador</option>
+                          <option value="Voluntário">Voluntário</option>
+                          <option value="Aluno">Aluno</option>
+                          <option value="Staff">Staff</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+                    <button type="button" onClick={() => setIsAddUserModalOpen(false)} className="h-11 rounded-xl bg-transparent px-5 text-sm font-semibold text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">
+                      Cancelar
+                    </button>
+                    <button type="submit" disabled={isCreatingUser} className="h-11 flex items-center gap-2 rounded-xl bg-cyan-600 px-6 text-sm font-bold text-white transition-colors hover:bg-cyan-500 shadow-[0_0_15px_rgba(8,145,178,0.4)] disabled:opacity-50">
+                      {isCreatingUser ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      Salvar Usuário
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
 
