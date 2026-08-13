@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { supabase, tempSupabase } from '@/lib/supabase'
 import { sendSystemEmail } from '@/lib/emailService'
 import { motion, AnimatePresence } from 'motion/react'
 import {
@@ -245,7 +245,7 @@ export default function AdminPage() {
 
     try {
       const randomPassword = generateRandomPassword()
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await tempSupabase.auth.signUp({
         email: newUserForm.email,
         password: randomPassword,
         options: {
@@ -265,38 +265,38 @@ export default function AdminPage() {
       
       if (error) throw error
 
-      const user = data.user
-      if (user) {
-        // Try to insert/upsert into user_auth (using upsert to avoid primary key conflict if trigger executed)
-        const { error: authTableError } = await supabase
-          .from('user_auth')
-          .upsert({
-            id: user.id,
-            email: user.email,
-            role: 'user',
-            is_active: true,
-            cpf: newUserForm.cpf,
-            phone: newUserForm.phone,
-          })
+      // const user = data.user
+      // if (user) {
+      //   // Try to insert/upsert into user_auth (using upsert to avoid primary key conflict if trigger executed)
+      //   const { error: authTableError } = await supabase
+      //     .from('user_auth')
+      //     .upsert({
+      //       id: user.id,
+      //       email: user.email,
+      //       role: 'user',
+      //       is_active: true,
+      //       cpf: newUserForm.cpf,
+      //       phone: newUserForm.phone,
+      //     })
         
-        if (authTableError) console.error('Error in user_auth upsert:', authTableError)
+      //   if (authTableError) console.error('Error in user_auth upsert:', authTableError)
 
-        // Try to insert/upsert into user_profile (using upsert to avoid primary key conflict if trigger executed)
-        const { error: profileTableError } = await supabase
-          .from('user_profile')
-          .upsert({
-            id: user.id,
-            full_name: newUserForm.full_name,
-            municipality: newUserForm.municipality,
-            institution_organization: newUserForm.institution_organization,
-            organization_type: newUserForm.organization_type,
-            job_title: newUserForm.job_title,
-            relationship_with_otdsp: newUserForm.relationship_with_otdsp,
-            referral_source: newUserForm.referral_source
-          })
+      //   // Try to insert/upsert into user_profile (using upsert to avoid primary key conflict if trigger executed)
+      //   const { error: profileTableError } = await supabase
+      //     .from('user_profile')
+      //     .upsert({
+      //       id: user.id,
+      //       full_name: newUserForm.full_name,
+      //       municipality: newUserForm.municipality,
+      //       institution_organization: newUserForm.institution_organization,
+      //       organization_type: newUserForm.organization_type,
+      //       job_title: newUserForm.job_title,
+      //       relationship_with_otdsp: newUserForm.relationship_with_otdsp,
+      //       referral_source: newUserForm.referral_source
+      //     })
         
-        if (profileTableError) console.error('Error in user_profile upsert:', profileTableError)
-      }
+      //   if (profileTableError) console.error('Error in user_profile upsert:', profileTableError)
+      // }
 
       setFeedback({ type: 'success', message: 'Usuário criado com sucesso!' })
       setIsAddUserModalOpen(false)
