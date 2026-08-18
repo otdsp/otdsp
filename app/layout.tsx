@@ -8,15 +8,15 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
   title: 'Transformação Digital USP',
-  description: 'An immersive, kinetic scrolling experience for an innovation hub.',
+  description: 'Innovation hub.',
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
-    <html lang="en" className={`${inter.variable} antialiased`}>
+    <html lang="pt-BR" className={`${inter.variable} antialiased`}>
       <body className="font-sans flex flex-col min-h-screen" suppressHydrationWarning>
         <Navbar />
-        <main className="flex-grow w-full flex flex-col">
+        <main className="flex-1 w-full flex flex-col pt-20">
           {children}
         </main>
         <Footer />

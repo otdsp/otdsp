@@ -240,12 +240,17 @@ export default function EngajamentosPage() {
           )
         }
       }
+      
+      const normalizeArray = (value: unknown): string[] => {
+        if (!Array.isArray(value)) return []
+        return value.map(item => String(item).trim()).filter(Boolean)
+      }
 
       const formattedData = (data || []).map((eng: any) => ({
         ...eng,
-        horizontal: Array.isArray(eng.horizontal) ? eng.horizontal : [],
-        vertical: Array.isArray(eng.vertical) ? eng.vertical : [],
-        transversal: Array.isArray(eng.transversal) ? eng.transversal : [],
+        horizontal: normalizeArray(eng.horizontal),
+        vertical: normalizeArray(eng.vertical),
+        transversal: normalizeArray(eng.transversal),
         engagement_participants: (eng.engagement_participants || []).map((participant: any) => ({
           ...participant,
           user_profile: participant.user_id ? profilesById.get(participant.user_id) ?? null : null,
@@ -530,42 +535,102 @@ export default function EngajamentosPage() {
     };
   }, [currentTime]);
 
+  const normalizeText = (value: unknown) =>
+    String(value ?? '').trim().toLocaleLowerCase('pt-BR')
+
+  const matchesDimension = (
+    engagementValues: string[] | undefined,
+    filter: { enabled: boolean; values: string[] }
+  ) => {
+    // Filtro desligado = não interfere
+    if (!filter.enabled) return true
+
+    // Filtro ligado sem nenhuma opção = nenhum resultado
+    if (filter.values.length === 0) return false
+
+    const engagementSet = new Set(
+      (engagementValues ?? []).map(normalizeText)
+    )
+
+    return filter.values.some(value =>
+      engagementSet.has(normalizeText(value))
+    )
+  }
+
   const filteredEngagements = useMemo(() => {
     return engagements.filter(eng => {
-      const matchesStatus = statusFilter === 'Todos' || eng.status === statusFilter
-      const searchLower = searchTerm.toLowerCase()
-      const matchesSearch = !searchTerm || eng.title.toLowerCase().includes(searchLower) || eng.description.toLowerCase().includes(searchLower)
-      
+
+      // STATUS
+      const matchesStatus =
+        statusFilter === 'Todos' ||
+        normalizeText(eng.status) === normalizeText(statusFilter)
+
+      // BUSCA
+      const searchLower = normalizeText(searchTerm)
+
+      const matchesSearch =
+        !searchLower ||
+        normalizeText(eng.title).includes(searchLower) ||
+        normalizeText(eng.description).includes(searchLower)
+
+      // DATA
       let matchesDateRange = true
+
       if (periodFilters.startDate || periodFilters.endDate) {
         if (!eng.event_date) {
           matchesDateRange = false
         } else {
           const engDate = new Date(eng.event_date).getTime()
-          const startTime = periodFilters.startDate ? new Date(periodFilters.startDate).getTime() : 0
-          const endTime = periodFilters.endDate ? new Date(periodFilters.endDate + 'T23:59:59').getTime() : currentTime
-          matchesDateRange = engDate >= startTime && engDate <= endTime
+
+          const startTime = periodFilters.startDate
+            ? new Date(
+                `${periodFilters.startDate}T00:00:00`
+              ).getTime()
+            : -Infinity
+
+          const endTime = periodFilters.endDate
+            ? new Date(
+                `${periodFilters.endDate}T23:59:59.999`
+              ).getTime()
+            : Infinity
+
+          matchesDateRange =
+            engDate >= startTime &&
+            engDate <= endTime
         }
       }
-      
-      let matchesHorizontal = true
-      if (periodFilters.horizontal.enabled && periodFilters.horizontal.values.length > 0) {
-        matchesHorizontal = periodFilters.horizontal.values.some(val => eng.horizontal?.includes(val))
-      }
-      
-      let matchesVertical = true
-      if (periodFilters.vertical.enabled && periodFilters.vertical.values.length > 0) {
-        matchesVertical = periodFilters.vertical.values.some(val => eng.vertical?.includes(val))
-      }
-      
-      let matchesTransversal = true
-      if (periodFilters.transversal.enabled && periodFilters.transversal.values.length > 0) {
-        matchesTransversal = periodFilters.transversal.values.some(val => eng.transversal?.includes(val))
-      }
-      
-      return matchesStatus && matchesSearch && matchesDateRange && matchesHorizontal && matchesVertical && matchesTransversal
+
+      // DIMENSÕES
+      const matchesHorizontal = matchesDimension(
+        eng.horizontal,
+        periodFilters.horizontal
+      )
+
+      const matchesVertical = matchesDimension(
+        eng.vertical,
+        periodFilters.vertical
+      )
+
+      const matchesTransversal = matchesDimension(
+        eng.transversal,
+        periodFilters.transversal
+      )
+
+      return (
+        matchesStatus &&
+        matchesSearch &&
+        matchesDateRange &&
+        matchesHorizontal &&
+        matchesVertical &&
+        matchesTransversal
+      )
     })
-  }, [engagements, statusFilter, searchTerm, periodFilters, currentTime])
+  }, [
+    engagements,
+    statusFilter,
+    searchTerm,
+    periodFilters
+  ])
 
   const isFormLocked = Boolean(editingId) && !isStaff
 
@@ -598,8 +663,15 @@ export default function EngajamentosPage() {
       <div className="max-w-7xl mx-auto px-4 relative z-20">
         <AnimatePresence>
           {showForm && (
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="mb-12">
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: -20 }} 
+              className="mb-12"
+            >
               <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border border-slate-100 mt-8">
+                
+                {/* Cabeçalho do Formulário */}
                 <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-10 pb-8 border-b border-slate-100">
                   <div>
                     <div className="flex items-center gap-3 mb-2">
@@ -616,7 +688,7 @@ export default function EngajamentosPage() {
                       {editingId
                         ? isStaff
                           ? 'Edite os dados diretamente e salve as alterações ao finalizar.'
-                          : 'Você pode consultar todas as informações, mas somente a staff pode alterá-las.'
+                          : 'Você pode consultar todas as informações.'
                         : 'Preencha os dados para cadastrar um novo engajamento.'}
                     </p>
                   </div>
@@ -634,100 +706,117 @@ export default function EngajamentosPage() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-10">
-                  <fieldset disabled={isFormLocked} className={isFormLocked ? 'opacity-75' : ''}>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      {/* Coluna 1: Informações Básicas e Staff */}
-                      <div className="space-y-6">
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-slate-700 ml-1">Título da Atividade</label>
-                          <input required type="text" name="title" value={formData.title} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none disabled:cursor-not-allowed" />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-slate-700 ml-1">Descrição</label>
-                          <textarea name="description" value={formData.description} onChange={handleInputChange} rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none resize-none disabled:cursor-not-allowed" />
-                        </div>
-
-                        {editingId && (
-                          <div className="space-y-6 pt-4 border-t border-slate-100">
-                            <div className="space-y-2">
-                              <label className="text-sm font-semibold text-slate-700 ml-1">Status do Engajamento</label>
-                              <select
-                                name="status" value={formData.status} onChange={handleInputChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none font-medium cursor-pointer disabled:cursor-not-allowed"
-                              >
-                                <option value="Planejado">Planejado</option>
-                                <option value="Pendente">Pendente</option>
-                                <option value="Cancelado">Cancelado</option>
-                                <option value="Concluído">Concluído</option>
-                              </select>
-                            </div>
-
-                            {isStaff && (
-                              <div className="space-y-2">
-                                <label className="text-sm font-bold text-cyan-700 ml-1">Anotações Internas / Feedback (Apenas Staff)</label>
-                                <textarea
-                                  name="feedback" value={formData.feedback} onChange={handleInputChange}
-                                  placeholder="Notas exclusivas da equipe de gestão..." rows={3}
-                                  className="w-full bg-cyan-50/30 border border-cyan-100 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none resize-none font-medium disabled:cursor-not-allowed"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        )}
+                  <fieldset disabled={isFormLocked} className={`space-y-10 ${isFormLocked ? 'opacity-75' : ''}`}>
+                    
+                    {/* Seção 1: Dados Principais e Logística (Denser Grid) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="col-span-1 md:col-span-2 space-y-2">
+                        <label className="text-sm font-semibold text-slate-700 ml-1">Título da Atividade</label>
+                        <input required type="text" name="title" value={formData.title} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none disabled:cursor-not-allowed" />
+                      </div>
+                      
+                      <div className="col-span-1 space-y-2">
+                        <label className="text-sm font-semibold text-slate-700 ml-1">Data e Hora</label>
+                        <input required type="datetime-local" name="event_date" value={formData.event_date} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-4 focus:ring-2 focus:ring-cyan-500 outline-none disabled:cursor-not-allowed" />
                       </div>
 
-                      {/* Coluna 2: Logística e Participantes */}
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700 ml-1">Data e Hora</label>
-                            <input required type="datetime-local" name="event_date" value={formData.event_date} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-4 focus:ring-2 focus:ring-cyan-500 outline-none disabled:cursor-not-allowed" />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700 ml-1">Localização</label>
-                            <select name="location" value={formData.location} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none disabled:cursor-not-allowed">
-                              <option value="">Selecione...</option>
-                              {LOCATION_OPTIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-6">
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700 ml-1">Duração Estimada (Horas)</label>
-                            <input type="number" name="estimated_duration" value={formData.estimated_duration} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 disabled:cursor-not-allowed" />
-                          </div>
-
-                          <div className={`space-y-2 pt-2 ${isFormLocked ? 'pointer-events-none' : ''}`}>
-                            <label className="text-sm font-semibold text-slate-700 ml-1">Convidar e Gerenciar Participantes</label>
-                            <ParticipantManager
-                              participants={formData.participants}
-                              onChange={(newParticipants) => {
-                                if (!isFormLocked) setFormData(prev => ({ ...prev, participants: newParticipants }))
-                              }}
-                            />
-                          </div>
-                        </div>
+                      <div className="col-span-1 space-y-2">
+                        <label className="text-sm font-semibold text-slate-700 ml-1">Localização</label>
+                        <select name="location" value={formData.location} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none disabled:cursor-not-allowed">
+                          <option value="">Selecione...</option>
+                          {LOCATION_OPTIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                        </select>
                       </div>
+
+                      <div className="col-span-1 space-y-2">
+                        <label className="text-sm font-semibold text-slate-700 ml-1">Duração Estimada (Horas)</label>
+                        <input type="number" name="estimated_duration" value={formData.estimated_duration} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 disabled:cursor-not-allowed" />
+                      </div>
+
+                      {editingId && (
+                        <div className="col-span-1 space-y-2">
+                          <label className="text-sm font-semibold text-slate-700 ml-1">Status do Engajamento</label>
+                          <select name="status" value={formData.status} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none font-medium cursor-pointer disabled:cursor-not-allowed">
+                            <option value="Planejado">Planejado</option>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Cancelado">Cancelado</option>
+                            <option value="Concluído">Concluído</option>
+                          </select>
+                        </div>
+                      )}
+
+                      <div className="col-span-1 md:col-span-2 lg:col-span-3 space-y-2">
+                        <label className="text-sm font-semibold text-slate-700 ml-1">Descrição</label>
+                        <textarea name="description" value={formData.description} onChange={handleInputChange} rows={3} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none resize-none disabled:cursor-not-allowed" />
+                      </div>
+
+                      {editingId && isStaff && (
+                        <div className="col-span-1 md:col-span-2 lg:col-span-3 space-y-2">
+                          <label className="text-sm font-bold text-cyan-700 ml-1">Anotações Internas / Feedback (Apenas Staff)</label>
+                          <textarea name="feedback" value={formData.feedback} onChange={handleInputChange} placeholder="Notas exclusivas da equipe de gestão..." rows={2} className="w-full bg-cyan-50/30 border border-cyan-100 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none resize-none font-medium disabled:cursor-not-allowed" />
+                        </div>
+                      )}
                     </div>
 
-                    {/* Multi-selection Grid */}
+                    {/* Seção 2: Tags e Categorias (Multi-selection Grid) */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 py-8 mt-10 border-y border-slate-100">
-                      <BadgeToggleList label="Áreas de Interesse" icon={Heart} options={INTEREST_OPTIONS} selected={formData.horizontal} onToggle={(item: string) => toggleArrayItem('horizontal', item)} />
-                      <BadgeToggleList label="Tecnologias" icon={Monitor} options={TECH_OPTIONS} selected={formData.vertical} onToggle={(item: string) => toggleArrayItem('vertical', item)} />
-                      <BadgeToggleList label="Políticas Públicas" icon={Briefcase} options={POLICY_OPTIONS} selected={formData.transversal} onToggle={(item: string) => toggleArrayItem('transversal', item)} />
-                      <BadgeToggleList label="Atividades" icon={Users} options={ACTIVITY_OPTIONS} selected={formData.planned_activities} onToggle={(item: string) => toggleArrayItem('planned_activities', item)} />
+                      <BadgeToggleList
+                        label="Tecnologias"
+                        icon={Monitor}
+                        options={TECH_OPTIONS}
+                        selected={formData.horizontal}
+                        onToggle={(item: string) => toggleArrayItem('horizontal', item)}
+                      />
+                      <BadgeToggleList
+                        label="Áreas de Interesse"
+                        icon={Heart}
+                        options={INTEREST_OPTIONS}
+                        selected={formData.vertical}
+                        onToggle={(item: string) => toggleArrayItem('vertical', item)}
+                      />
+                      <BadgeToggleList
+                        label="Políticas Públicas"
+                        icon={Briefcase}
+                        options={POLICY_OPTIONS}
+                        selected={formData.transversal}
+                        onToggle={(item: string) => toggleArrayItem('transversal', item)}
+                      />
+                      <BadgeToggleList
+                        label="Atividades"
+                        icon={Users}
+                        options={ACTIVITY_OPTIONS}
+                        selected={formData.planned_activities}
+                        onToggle={(item: string) => toggleArrayItem('planned_activities', item)}
+                      />
                     </div>
+
+                    {/* Seção 3: Participantes (Largura Total / Full Width) */}
+                    <div className={`space-y-3 pt-8 mt-8 border-t border-slate-100 ${isFormLocked ? 'pointer-events-none' : ''}`}>
+                      <div className="flex flex-col mb-4">
+                        <label className="text-lg font-bold text-slate-800 ml-1">Convidar e Gerenciar Participantes</label>
+                        <p className="text-sm text-slate-500 ml-1">Adicione os participantes deste engajamento. A lista se ajustará automaticamente ao espaço disponível.</p>
+                      </div>
+                      <div className="bg-slate-50/50 rounded-2xl p-4 sm:p-6 border border-slate-100">
+                        <ParticipantManager
+                          participants={formData.participants}
+                          onChange={(newParticipants) => {
+                            if (!isFormLocked) setFormData(prev => ({ ...prev, participants: newParticipants }))
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
                   </fieldset>
 
+                  {/* Botões de Ação */}
                   <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-4">
-                    <button type="button" onClick={closeDetails} className="px-6 py-4 rounded-xl text-slate-500 font-bold hover:bg-slate-50">
+                    <button type="button" onClick={closeDetails} className="px-6 py-4 rounded-xl text-slate-500 font-bold hover:bg-slate-50 transition-colors">
                       {editingId ? 'Fechar' : 'Descartar'}
                     </button>
                     <button
                       type="submit"
                       disabled={isSubmitting || isFormLocked}
-                      className="bg-[#0F172A] hover:bg-slate-800 text-white font-bold py-4 px-12 rounded-xl shadow-xl flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="bg-[#0F172A] hover:bg-slate-800 text-white font-bold py-4 px-12 rounded-xl shadow-xl flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-40 transition-all"
                     >
                       {isSubmitting ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
@@ -744,6 +833,7 @@ export default function EngajamentosPage() {
                     </button>
                   </div>
                 </form>
+                
               </div>
             </motion.div>
           )}
@@ -928,7 +1018,8 @@ export default function EngajamentosPage() {
                             <Users className="w-3 h-3" /> Participantes
                           </p>
                           <div className="flex flex-wrap gap-1.5">
-                            {eng.engagement_participants.map((p: any, idx: number) => {
+                            {/* Limita a exibição aos primeiros participantes */}
+                            {eng.engagement_participants.slice(0, 5).map((p: any, idx: number) => {
                               const displayName = getParticipantDisplayName(p)
                               const participantStatus = getParticipantVisualStatus(p)
 
@@ -938,22 +1029,23 @@ export default function EngajamentosPage() {
                                 red: 'bg-red-50 border-red-200 text-red-700'
                               }[participantStatus]
 
-                              const statusLabel = {
-                                green: null,
-                                yellow: 'Dados faltantes',
-                                red: 'Sem cadastro'
-                              }[participantStatus]
-
                               return (
                                 <span
                                   key={p.user_id || p.email || idx}
                                   className={`text-[11px] font-semibold border px-2 py-0.5 rounded-md flex items-center gap-1 ${statusClasses}`}
-                                >
-                                  {displayName}
-                                  {statusLabel && <span className="text-[9px] opacity-70">({statusLabel})</span>}
+                                >{displayName}
                                 </span>
                               )
                             })}
+
+                            {/* Renderiza o card extra se houver mais de participantsLimit */}
+                            {eng.engagement_participants.length > 5 && (
+                              <span 
+                                className="text-[11px] font-bold border border-slate-200 bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md flex items-center"
+                                title={`+${eng.engagement_participants.length - 5} participantes`}
+                              >+{eng.engagement_participants.length - 5}
+                              </span>
+                            )}
                           </div>
                         </div>
                       )}
