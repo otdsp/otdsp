@@ -1,11 +1,26 @@
-'use client'
-
-import React from 'react'
-import { CheckSquare, Square, CheckCircle2, AlertCircle, XCircle, Activity, PencilLine, X, Save, Loader2 } from 'lucide-react'
+import React, { useMemo, useState } from 'react'
+import {
+  CheckSquare,
+  Square,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  Activity,
+  PencilLine,
+  X,
+  Save,
+  Loader2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from 'lucide-react'
 import { 
   AdminUser, EditableUserFields, extractEmail, extractRole, 
   extractDateJoined, extractIsActive, getUserStatus 
-} from './adminUtils'
+} from './adminUserUtils'
+
+type SortField = 'name' | 'credentials' | 'status'
+type SortDirection = 'asc' | 'desc'
 
 interface AdminUserTableProps {
   users: AdminUser[]
@@ -34,8 +49,65 @@ export function AdminUserTable({
   onStartEdit,
   onCancelEdit,
   onDraftChange,
-  onSaveUser
+  onSaveUser,
 }: AdminUserTableProps) {
+  const [sortField, setSortField] = useState<SortField>('name')
+  const [sortDirection, setSortDirection] =
+    useState<SortDirection>('asc')
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(current =>
+        current === 'asc' ? 'desc' : 'asc'
+      )
+      return
+    }
+
+    setSortField(field)
+    setSortDirection('asc')
+  }
+
+  const sortedUsers = useMemo(() => {
+    return [...users].sort((a, b) => {
+      let valueA = ''
+      let valueB = ''
+
+      switch (sortField) {
+        case 'name':
+          valueA = a.full_name || ''
+          valueB = b.full_name || ''
+          break
+
+        case 'credentials':
+          valueA = extractDateJoined(a) || ''
+          valueB = extractDateJoined(b) || ''
+          break
+
+        case 'status':
+          valueA = getUserStatus(a)
+          valueB = getUserStatus(b)
+          break
+      }
+
+      const comparison = valueA.localeCompare(valueB, 'pt-BR', {
+        sensitivity: 'base',
+      })
+
+      return sortDirection === 'asc'
+        ? comparison
+        : -comparison
+    })
+  }, [users, sortField, sortDirection])
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />
+    }
+
+    return sortDirection === 'asc'
+      ? <ArrowUp className="h-3.5 w-3.5" />
+      : <ArrowDown className="h-3.5 w-3.5" />
+  }
 
   if (loading) {
     return (
@@ -59,10 +131,42 @@ export function AdminUserTable({
                 )}
               </button>
             </th>
-            <th className="p-4">Usuário & Contato</th>
-            <th className="p-4">Credenciais & Nível</th>
-            <th className="p-4">Status</th>
-            <th className="p-4 text-right">Ações</th>
+            <th className="p-4">
+              <button
+                type="button"
+                onClick={() => handleSort('name')}
+                className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
+              >
+                Usuário & Contato
+                <SortIcon field="name" />
+              </button>
+            </th>
+
+            <th className="p-4">
+              <button
+                type="button"
+                onClick={() => handleSort('credentials')}
+                className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
+              >
+                Credenciais & Nível
+                <SortIcon field="credentials" />
+              </button>
+            </th>
+
+            <th className="p-4">
+              <button
+                type="button"
+                onClick={() => handleSort('status')}
+                className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
+              >
+                Status
+                <SortIcon field="status" />
+              </button>
+            </th>
+
+            <th className="p-4 text-right">
+              Ações
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -73,7 +177,7 @@ export function AdminUserTable({
               </td>
             </tr>
           ) : (
-            users.map(user => {
+            sortedUsers.map(user => {
               const isSelected = selectedUserIds.has(user.id)
               const isEditing = editingUserId === user.id
               const status = getUserStatus(user)

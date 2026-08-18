@@ -11,7 +11,7 @@ import { UserPlus, Search, Loader2, CheckCircle2, ShieldAlert, Activity, MapPin 
 import { 
   AdminUser, EditableUserFields, extractEmail, extractMunicipality, extractRole, 
   extractDateJoined, extractIsActive, getUserStatus, getUserActivity 
-} from './adminUtils'
+} from './adminUserUtils'
 
 // Componentes Extraídos
 import { DateRangeFilter } from '@/components/DateRangeFilter'

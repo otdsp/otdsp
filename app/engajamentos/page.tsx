@@ -721,10 +721,22 @@ export default function EngajamentosPage() {
                       </div>
 
                       <div className="col-span-1 space-y-2">
-                        <label className="text-sm font-semibold text-slate-700 ml-1">Localização</label>
-                        <select name="location" value={formData.location} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none disabled:cursor-not-allowed">
+                        <label className="text-sm font-semibold text-slate-700 ml-1">
+                          Localização
+                        </label>
+
+                        <select
+                          name="location"
+                          value={formData.location}
+                          onChange={handleInputChange}
+                          className="w-full h-[58px] bg-slate-50 border border-slate-200 rounded-xl px-5 focus:ring-2 focus:ring-cyan-500 outline-none disabled:cursor-not-allowed"
+                        >
                           <option value="">Selecione...</option>
-                          {LOCATION_OPTIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                          {LOCATION_OPTIONS.map(loc => (
+                            <option key={loc} value={loc}>
+                              {loc}
+                            </option>
+                          ))}
                         </select>
                       </div>
 
@@ -735,8 +747,16 @@ export default function EngajamentosPage() {
 
                       {editingId && (
                         <div className="col-span-1 space-y-2">
-                          <label className="text-sm font-semibold text-slate-700 ml-1">Status do Engajamento</label>
-                          <select name="status" value={formData.status} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 focus:ring-2 focus:ring-cyan-500 outline-none font-medium cursor-pointer disabled:cursor-not-allowed">
+                          <label className="text-sm font-semibold text-slate-700 ml-1">
+                            Status do Engajamento
+                          </label>
+
+                          <select
+                            name="status"
+                            value={formData.status}
+                            onChange={handleInputChange}
+                            className="w-full h-[58px] bg-slate-50 border border-slate-200 rounded-xl px-5 focus:ring-2 focus:ring-cyan-500 outline-none font-medium cursor-pointer disabled:cursor-not-allowed"
+                          >
                             <option value="Planejado">Planejado</option>
                             <option value="Pendente">Pendente</option>
                             <option value="Cancelado">Cancelado</option>
@@ -794,11 +814,12 @@ export default function EngajamentosPage() {
                     <div className={`space-y-3 pt-8 mt-8 border-t border-slate-100 ${isFormLocked ? 'pointer-events-none' : ''}`}>
                       <div className="flex flex-col mb-4">
                         <label className="text-lg font-bold text-slate-800 ml-1">Convidar e Gerenciar Participantes</label>
-                        <p className="text-sm text-slate-500 ml-1">Adicione os participantes deste engajamento. A lista se ajustará automaticamente ao espaço disponível.</p>
+                        <p className="text-sm text-slate-500 ml-1">Adicione os participantes deste engajamento.</p>
                       </div>
                       <div className="bg-slate-50/50 rounded-2xl p-4 sm:p-6 border border-slate-100">
                         <ParticipantManager
                           participants={formData.participants}
+                          isStaff={isStaff}
                           onChange={(newParticipants) => {
                             if (!isFormLocked) setFormData(prev => ({ ...prev, participants: newParticipants }))
                           }}
