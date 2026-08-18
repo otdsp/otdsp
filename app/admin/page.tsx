@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { sendSystemEmail } from '@/lib/emailService'
 import { motion, AnimatePresence } from 'motion/react'
-import { UserPlus, Search, Loader2, CheckCircle2, ShieldAlert, Activity } from 'lucide-react'
+import { UserPlus, Search, Loader2, CheckCircle2, ShieldAlert, Activity, MapPin } from 'lucide-react'
 
 // Utilidades e Tipos
 import { 
-  AdminUser, EditableUserFields, extractEmail, extractRole, 
+  AdminUser, EditableUserFields, extractEmail, extractMunicipality, extractRole, 
   extractDateJoined, extractIsActive, getUserStatus, getUserActivity 
 } from './adminUtils'
 
@@ -44,6 +44,7 @@ export default function AdminPage() {
   // Filtros
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [municipioFilter, setMunicipioFilter] = useState('all');
   const [activityFilter, setActivityFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'green' | 'yellow' | 'red'>('all')
   const [levelFilter, setLevelFilter] = useState<'all' | 'comum' | 'pesquisa' | 'staff'>('all')
@@ -110,6 +111,23 @@ export default function AdminPage() {
     checkAuthAndFetch()
   }, [router])
 
+  const municipioOptions = useMemo(() => {
+    const municipios = users
+      .map(user => extractMunicipality(user))
+      .filter(Boolean)
+
+    const municipiosUnicos = Array.from(new Set(municipios))
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+
+    return [
+      { value: 'all', label: 'Todos' },
+      ...municipiosUnicos.map(municipio => ({
+        value: municipio,
+        label: municipio,
+      })),
+    ]
+  }, [users])
+
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
       const searchLower = searchTerm.toLowerCase()
@@ -131,11 +149,12 @@ export default function AdminPage() {
       }
 
       return matchesSearch && matchesDate && 
+             (municipioFilter === 'all' || extractMunicipality(user) === municipioFilter) &&
              (activityFilter === 'all' || getUserActivity(user) === activityFilter) &&
              (statusFilter === 'all' || getUserStatus(user) === statusFilter) &&
              (levelFilter === 'all' || (extractRole(user) || 'user').toLowerCase() === levelFilter)
     })
-  }, [users, searchTerm, startDate, endDate, activityFilter, statusFilter, levelFilter])
+  }, [users, searchTerm, startDate, endDate, municipioFilter, activityFilter, statusFilter, levelFilter])
 
   const missingDataEmails = useMemo(() => {
     return filteredUsers
@@ -265,23 +284,86 @@ export default function AdminPage() {
 
         {/* FILTROS E BUSCA */}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div className="flex min-w-0 flex-1 flex-col space-y-1 xl:max-w-[420px]">
-              <label className="px-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Busca</label>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:items-end">
+
+            {/* Busca */}
+            <div className="xl:col-span-4">
+              <label className="mb-1 block px-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Busca
+              </label>
+
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                <input type="text" placeholder="Buscar por nome, e-mail ou CPF..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-[42px] w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500" />
+
+                <input
+                  type="text"
+                  placeholder="Buscar por nome, e-mail ou CPF..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="h-[42px] w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                />
               </div>
             </div>
-            <div className="flex w-full flex-col gap-4 lg:flex-row xl:max-w-[760px] xl:flex-1">
-              <div className="flex-1 min-w-0">
-                <DateRangeFilter startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} />
-              </div>
-              <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-[470px] lg:flex-nowrap">
-                <FilterSelectField label="Atividade" icon={Activity} value={activityFilter} onChange={v => setActivityFilter(v as any)} options={[{ value: 'all', label: 'Todos' }, { value: 'active', label: 'Ativos' }, { value: 'inactive', label: 'Não ativos' }]} />
-                <FilterSelectField label="Status" icon={CheckCircle2} value={statusFilter} onChange={v => setStatusFilter(v as any)} options={[{ value: 'all', label: 'Todos' }, { value: 'green', label: 'Completo' }, { value: 'yellow', label: 'Incompleto' }, { value: 'red', label: 'Sem dados' }]} />
-                <FilterSelectField label="Nível" icon={ShieldAlert} value={levelFilter} onChange={v => setLevelFilter(v as any)} options={[{ value: 'all', label: 'Todos' }, { value: 'comum', label: 'Comum' }, { value: 'pesquisa', label: 'Pesquisa' }, { value: 'staff', label: 'Staff' }]} />
-              </div>
+
+            {/* Período */}
+            <div className="min-w-0 xl:col-span-3">
+              <DateRangeFilter
+                startDate={startDate}
+                endDate={endDate}
+                onStartDateChange={setStartDate}
+                onEndDateChange={setEndDate}
+              />
+            </div>
+
+            {/* Filtros */}
+            <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:col-span-5 xl:grid-cols-4">
+
+              <FilterSelectField
+                label="Município"
+                icon={MapPin}
+                value={municipioFilter}
+                onChange={setMunicipioFilter}
+                options={municipioOptions}
+              />
+
+              <FilterSelectField
+                label="Atividade"
+                icon={Activity}
+                value={activityFilter}
+                onChange={v => setActivityFilter(v as any)}
+                options={[
+                  { value: 'all', label: 'Todos' },
+                  { value: 'active', label: 'Ativos' },
+                  { value: 'inactive', label: 'Não ativos' },
+                ]}
+              />
+
+              <FilterSelectField
+                label="Status"
+                icon={CheckCircle2}
+                value={statusFilter}
+                onChange={v => setStatusFilter(v as any)}
+                options={[
+                  { value: 'all', label: 'Todos' },
+                  { value: 'green', label: 'Completo' },
+                  { value: 'yellow', label: 'Incompleto' },
+                  { value: 'red', label: 'Sem dados' },
+                ]}
+              />
+
+              <FilterSelectField
+                label="Nível"
+                icon={ShieldAlert}
+                value={levelFilter}
+                onChange={v => setLevelFilter(v as any)}
+                options={[
+                  { value: 'all', label: 'Todos' },
+                  { value: 'comum', label: 'Comum' },
+                  { value: 'pesquisa', label: 'Pesquisa' },
+                  { value: 'staff', label: 'Staff' },
+                ]}
+              />
+
             </div>
           </div>
         </div>

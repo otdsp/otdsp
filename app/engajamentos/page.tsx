@@ -761,18 +761,18 @@ export default function EngajamentosPage() {
                     {/* Seção 2: Tags e Categorias (Multi-selection Grid) */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 py-8 mt-10 border-y border-slate-100">
                       <BadgeToggleList
-                        label="Tecnologias"
-                        icon={Monitor}
-                        options={TECH_OPTIONS}
-                        selected={formData.horizontal}
-                        onToggle={(item: string) => toggleArrayItem('horizontal', item)}
-                      />
-                      <BadgeToggleList
                         label="Áreas de Interesse"
                         icon={Heart}
                         options={INTEREST_OPTIONS}
                         selected={formData.vertical}
                         onToggle={(item: string) => toggleArrayItem('vertical', item)}
+                      />
+                      <BadgeToggleList
+                        label="Tecnologias"
+                        icon={Monitor}
+                        options={TECH_OPTIONS}
+                        selected={formData.horizontal}
+                        onToggle={(item: string) => toggleArrayItem('horizontal', item)}
                       />
                       <BadgeToggleList
                         label="Políticas Públicas"
@@ -918,16 +918,6 @@ export default function EngajamentosPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <MultiSelectFilter
-                    label="Horizontal"
-                    icon={Rows3}
-                    enabled={periodFilters.horizontal.enabled}
-                    values={periodFilters.horizontal.values}
-                    options={filterOptions.horizontals}
-                    onEnabledChange={(nextEnabled) => handleFilterChange('horizontal', { enabled: nextEnabled, values: nextEnabled ? [...filterOptions.horizontals] : [] })}
-                    onValuesChange={(nextValues) => handleFilterChange('horizontal', { ...periodFilters.horizontal, values: nextValues })}
-                  />
-                  
-                  <MultiSelectFilter
                     label="Vertical"
                     icon={Layers3}
                     enabled={periodFilters.vertical.enabled}
@@ -935,6 +925,16 @@ export default function EngajamentosPage() {
                     options={filterOptions.verticals}
                     onEnabledChange={(nextEnabled) => handleFilterChange('vertical', { enabled: nextEnabled, values: nextEnabled ? [...filterOptions.verticals] : [] })}
                     onValuesChange={(nextValues) => handleFilterChange('vertical', { ...periodFilters.vertical, values: nextValues })}
+                  />
+
+                  <MultiSelectFilter
+                    label="Horizontal"
+                    icon={Rows3}
+                    enabled={periodFilters.horizontal.enabled}
+                    values={periodFilters.horizontal.values}
+                    options={filterOptions.horizontals}
+                    onEnabledChange={(nextEnabled) => handleFilterChange('horizontal', { enabled: nextEnabled, values: nextEnabled ? [...filterOptions.horizontals] : [] })}
+                    onValuesChange={(nextValues) => handleFilterChange('horizontal', { ...periodFilters.horizontal, values: nextValues })}
                   />
                   
                   <MultiSelectFilter

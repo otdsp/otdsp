@@ -85,41 +85,82 @@ export function AdminUserTable({
                 <tr key={user.id} className={`transition-colors hover:bg-slate-50 ${isSelected ? 'bg-cyan-50/30' : ''}`}>
                   {isEditing && editDraft ? (
                     <td colSpan={5} className="p-3">
-                      <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-3 shadow-sm">
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                          <div className="flex flex-1 flex-wrap gap-2">
-                            <div className="min-w-[180px] flex-1">
-                              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                      <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4 shadow-sm">
+                        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                          <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-12">
+                            {/* Nome */}
+                            <div className="sm:col-span-1 xl:col-span-3">
+                              <label
+                                htmlFor={`full-name-${user.id}`}
+                                className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500"
+                              >
                                 Nome
                               </label>
                               <input
+                                id={`full-name-${user.id}`}
                                 value={editDraft.full_name}
-                                onChange={event => onDraftChange('full_name', event.target.value)}
-                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500"
-                                placeholder="Nome"
+                                onChange={event =>
+                                  onDraftChange('full_name', event.target.value)
+                                }
+                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                                placeholder="Nome completo"
                               />
                             </div>
 
-                            <div className="min-w-[180px] flex-1">
-                              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                            {/* E-mail */}
+                            <div className="sm:col-span-1 xl:col-span-3">
+                              <label
+                                htmlFor={`email-${user.id}`}
+                                className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500"
+                              >
                                 E-mail
                               </label>
                               <input
+                                id={`email-${user.id}`}
+                                type="email"
                                 value={editDraft.email}
-                                onChange={event => onDraftChange('email', event.target.value)}
-                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500"
-                                placeholder="E-mail"
+                                onChange={event =>
+                                  onDraftChange('email', event.target.value)
+                                }
+                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                                placeholder="usuario@exemplo.com"
                               />
                             </div>
 
-                            <div className="min-w-[120px]">
-                              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                            {/* Município */}
+                            <div className="sm:col-span-1 xl:col-span-2">
+                              <label
+                                htmlFor={`municipality-${user.id}`}
+                                className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500"
+                              >
+                                Município
+                              </label>
+                              <input
+                                id={`municipality-${user.id}`}
+                                value={editDraft.municipality ?? ''}
+                                onChange={event =>
+                                  onDraftChange('municipality', event.target.value)
+                                }
+                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                                placeholder="Ex.: Campinas"
+                              />
+                            </div>
+
+                            {/* Nível */}
+                            <div className="sm:col-span-1 xl:col-span-2">
+                              <label
+                                htmlFor={`role-${user.id}`}
+                                className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500"
+                              >
                                 Nível
                               </label>
                               <select
+                                id={`role-${user.id}`}
                                 value={editDraft.role}
-                                onChange={event => onDraftChange('role', event.target.value)}
-                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500"
+                                onChange={event =>
+                                  onDraftChange('role', event.target.value)
+                                }
+                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
                               >
                                 <option value="user">COMUM</option>
                                 <option value="pesquisa">PESQUISA</option>
@@ -127,36 +168,51 @@ export function AdminUserTable({
                               </select>
                             </div>
 
-                            <div className="min-w-[120px]">
-                              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                            {/* Status */}
+                            <div className="sm:col-span-1 xl:col-span-2">
+                              <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                                 Status
-                              </label>
-                              <label className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700">
+                              </span>
+
+                              <label className="flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
                                 <input
                                   type="checkbox"
                                   checked={editDraft.is_active}
-                                  onChange={event => onDraftChange('is_active', event.target.checked)}
+                                  onChange={event =>
+                                    onDraftChange('is_active', event.target.checked)
+                                  }
                                   className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
                                 />
-                                {editDraft.is_active ? 'Ativo' : 'Inativo'}
+                                <span>{editDraft.is_active ? 'Ativo' : 'Inativo'}</span>
                               </label>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2">
+                          {/* Ações */}
+                          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-cyan-100 pt-3 xl:border-t-0 xl:pt-0">
                             <button
+                              type="button"
                               onClick={onCancelEdit}
-                              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                              disabled={isSaving}
+                              className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                              <X className="h-4 w-4" /> Cancelar
+                              <X className="h-4 w-4" />
+                              Cancelar
                             </button>
+
                             <button
+                              type="button"
                               onClick={() => onSaveUser(user)}
                               disabled={isSaving}
-                              className="flex items-center gap-2 rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-70"
+                              className="flex h-10 items-center gap-2 rounded-lg bg-cyan-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
                             >
-                              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                              Salvar
+                              {isSaving ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Save className="h-4 w-4" />
+                              )}
+
+                              {isSaving ? 'Salvando...' : 'Salvar'}
                             </button>
                           </div>
                         </div>

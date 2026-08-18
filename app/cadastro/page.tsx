@@ -95,39 +95,6 @@ export default function CadastroPage() {
       
       if (error) throw error
 
-      // const user = data.user
-      // if (user) {
-      //   // Try to insert/upsert into user_auth (using upsert to avoid primary key conflict if trigger executed)
-      //   const { error: authTableError } = await supabase
-      //     .from('user_auth')
-      //     .upsert({
-      //       id: user.id,
-      //       email: user.email,
-      //       role: 'user',
-      //       is_active: true,
-      //       cpf: formData.cpf,
-      //       phone: formData.phone,
-      //     })
-        
-      //   if (authTableError) console.error('Error in user_auth upsert:', authTableError)
-
-      //   // Try to insert/upsert into user_profile (using upsert to avoid primary key conflict if trigger executed)
-      //   const { error: profileTableError } = await supabase
-      //     .from('user_profile')
-      //     .upsert({
-      //       id: user.id,
-      //       full_name: formData.full_name,
-      //       municipality: formData.municipality,
-      //       institution_organization: formData.institution_organization,
-      //       organization_type: formData.organization_type,
-      //       job_title: formData.job_title,
-      //       relationship_with_otdsp: formData.relationship_with_otdsp,
-      //       referral_source: formData.referral_source
-      //     })
-        
-      //   if (profileTableError) console.error('Error in user_profile upsert:', profileTableError)
-      // }
-
       setSuccess(true)
     } catch (err: any) {
       console.error('Registration error:', err)
