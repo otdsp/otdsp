@@ -29,8 +29,6 @@ export function processDerivedData(
   const { auth, profiles, engagements } = rawData;
 
   // 1. Mapeamentos iniciais para busca rápida (O(1))
-  // user_profile.id é a chave de correlação com user_auth.id.
-  // Não existe user_profile.user_id na estrutura do banco.
   const profileMap = new Map<string, UserProfile>(
     profiles.map((profile) => [profile.id, profile])
   );
@@ -61,6 +59,29 @@ export function processDerivedData(
     });
   };
 
+  // Normaliza textos para permitir busca sem diferença de maiúsculas/minúsculas e acentos.
+  const normalizeText = (value?: string | null) =>
+    (value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+
+  const engagementSearch = normalizeText(
+    filters.engagementSearch
+  );
+
+  const hasEngagementSearch =
+    engagementSearch.length > 0;
+
+  const matchesEngagementSearch = (engagement: Engagement) => {
+    if (!hasEngagementSearch) {
+      return true;
+    }
+
+    return normalizeText(engagement.title) === engagementSearch;
+  };
+
   // 3. Filtragem de base
   const baseAuth = auth.filter(u => {
     const userDate = new Date(u.date_joined);
@@ -73,17 +94,17 @@ export function processDerivedData(
     return rawDate ? new Date(rawDate) : new Date(0);
   };
 
-  const filteredEngagements = engagements.filter((engagement) => {
-    const engagementDate = getEngagementPeriodDate(engagement);
-    const dateOk = engagementDate >= startCutoff && engagementDate <= endCutoff;
+  const scopedEngagements = engagements.filter((engagement) => {
     const dimensionOk = activeDimensionFilters.length === 0 || matchesDimensionFilters(engagement);
-
-    // A data de cadastro do criador não deve excluir um engajamento válido.
-    return dateOk && dimensionOk;
+    const engagementSearchOk = matchesEngagementSearch(engagement);
+    return dimensionOk && engagementSearchOk;
   });
 
-  // Usuários relacionados aos engajamentos filtrados: participantes e criadores.
-  // A correlação de participante é feita exclusivamente por user_id.
+  const filteredEngagements = scopedEngagements.filter((engagement) => {
+    const engagementDate = getEngagementPeriodDate(engagement);
+    return (engagementDate >= startCutoff && engagementDate <= endCutoff);
+  });
+
   const relatedUserIds = new Set<string>();
 
   filteredEngagements.forEach((engagement) => {
@@ -108,7 +129,7 @@ export function processDerivedData(
   ).length;
 
   const stats = {
-    totalUsers: profiles.length,
+    totalUsers: filteredProfiles.length,
     activeUsers: filteredAuth.filter((user) => user.is_active).length,
     totalEngagements: filteredEngagements.length,
     signedAgreements: signedCount
@@ -138,8 +159,28 @@ export function processDerivedData(
     const engDaily: Record<string, number> = {};
     dayList.forEach(d => { authDaily[d.key] = 0; engDaily[d.key] = 0; });
 
-    let authAcc = auth.filter(u => new Date(u.date_joined) < startCutoff).length;
-    let engAcc = engagements.filter(e => getEngagementPeriodDate(e) < startCutoff).length;
+    let authAcc = hasEngagementSearch
+      ? auth.filter(
+          (u) =>
+            relatedUserIds.has(u.id) &&
+            new Date(u.date_joined) < startCutoff
+        ).length
+      : auth.filter(
+          (u) =>
+            new Date(u.date_joined) < startCutoff
+        ).length;
+
+    let engAcc = hasEngagementSearch
+      ? scopedEngagements.filter(
+          (e) =>
+            getEngagementPeriodDate(e) <
+            startCutoff
+        ).length
+      : engagements.filter(
+          (e) =>
+            getEngagementPeriodDate(e) <
+            startCutoff
+        ).length;
 
     filteredAuth.forEach(u => {
       if (u.date_joined) {
@@ -178,8 +219,28 @@ export function processDerivedData(
     const engMonthly: Record<string, number> = {};
     monthList.forEach(m => { authMonthly[m.key] = 0; engMonthly[m.key] = 0; });
 
-    let authAcc = auth.filter(u => new Date(u.date_joined) < startCutoff).length;
-    let engAcc = engagements.filter(e => getEngagementPeriodDate(e) < startCutoff).length;
+    let authAcc = hasEngagementSearch
+      ? auth.filter(
+          (u) =>
+            relatedUserIds.has(u.id) &&
+            new Date(u.date_joined) < startCutoff
+        ).length
+      : auth.filter(
+          (u) =>
+            new Date(u.date_joined) < startCutoff
+        ).length;
+
+    let engAcc = hasEngagementSearch
+      ? scopedEngagements.filter(
+          (e) =>
+            getEngagementPeriodDate(e) <
+            startCutoff
+        ).length
+      : engagements.filter(
+          (e) =>
+            getEngagementPeriodDate(e) <
+            startCutoff
+        ).length;
 
     filteredAuth.forEach(u => {
       if (u.date_joined) {

@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { 
   Users, Activity, Target, Handshake, Globe2, BarChart3, ShieldAlert, Loader2, 
-  PieChart as PieIcon, Briefcase, Filter, Download, X, Layers3, Rows3, Waypoints
+  PieChart as PieIcon, Briefcase, Filter, Download, X, Layers3, Rows3, Waypoints, Search
 } from 'lucide-react';
 import { 
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -39,14 +39,27 @@ export default function EvidenciasStaff() {
     derivedData
   } = useEvidence();
 
+  const [isEngagementSearchOpen, setIsEngagementSearchOpen] = useState(false);
   const activeFiltersSummary = buildActiveFiltersSummary(filters);
-
   const { stats, timelineData, engagementTimelineData, referralData, organizationData, geoData, pillarsData, durationChart, municipalityChartData } = derivedData;
 
   // Estados para controle do Modal de Exportação
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [eventName, setEventName] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+
+  const normalizeText = (value: string = '') => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const normalizedEngagementSearch = normalizeText(filters.engagementSearch);
+  const engagementSuggestions =
+    normalizedEngagementSearch.length >= 2
+      ? filterOptions.engagements
+          .filter((title) =>
+            normalizeText(title).includes(
+              normalizedEngagementSearch
+            )
+          )
+          .slice(0, 4)
+      : [];
 
   useEffect(() => {
     if (!isAuthorized || geoData.length === 0 || !mapRef.current) return;
@@ -126,12 +139,150 @@ export default function EvidenciasStaff() {
           </div>
           
           <div className="flex-1 space-y-4">
-            <DateRangeFilter
-              startDate={filters.startDate}
-              endDate={filters.endDate}
-              onStartDateChange={(date) => handleFilterChange('startDate', date)}
-              onEndDateChange={(date) => handleFilterChange('endDate', date)}
-            />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-end">
+              {/* Busca por Engajamento */}
+              <div className="relative">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                  Engajamento
+                </label>
+
+                <div className="relative">
+                  <Search
+                    className="
+                      absolute
+                      left-3
+                      top-1/2
+                      -translate-y-1/2
+                      w-4 h-4
+                      text-slate-400
+                      pointer-events-none
+                    "
+                  />
+
+                  <input
+                    type="text"
+                    value={filters.engagementSearch}
+                    onFocus={() => setIsEngagementSearchOpen(true)}
+                    onBlur={() => setIsEngagementSearchOpen(false)}
+                    onChange={(e) => {
+                      handleFilterChange(
+                        'engagementSearch',
+                        e.target.value
+                      );
+
+                      setIsEngagementSearchOpen(true);
+                    }}
+                    placeholder="Buscar engajamento..."
+                    autoComplete="off"
+                    className="
+                      w-full
+                      pl-10 pr-10 py-2.5
+                      bg-slate-50
+                      border border-slate-200
+                      rounded-xl
+                      text-sm text-slate-800
+                      placeholder:text-slate-400
+                      outline-none
+                      focus:ring-2
+                      focus:ring-cyan-500
+                      focus:border-cyan-500
+                      transition-all
+                    "
+                  />
+
+                  {filters.engagementSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleFilterChange(
+                          'engagementSearch',
+                          ''
+                        );
+
+                        setIsEngagementSearchOpen(true);
+                      }}
+                      className="
+                        absolute
+                        right-3
+                        top-1/2
+                        -translate-y-1/2
+                        text-slate-400
+                        hover:text-slate-700
+                        transition-colors
+                      "
+                      aria-label="Limpar busca"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Sugestões */}
+                {isEngagementSearchOpen &&
+                  engagementSuggestions.length > 0 && (
+                    <div
+                      className="
+                        absolute
+                        z-50
+                        left-0 right-0
+                        mt-2
+                        bg-white
+                        border border-slate-200
+                        rounded-xl
+                        shadow-lg
+                        max-h-64
+                        overflow-y-auto
+                      "
+                    >
+                      {engagementSuggestions.map((title) => (
+                        <button
+                          key={title}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+
+                            handleFilterChange(
+                              'engagementSearch',
+                              title
+                            );
+
+                            setIsEngagementSearchOpen(false);
+                          }}
+                          className="
+                            w-full
+                            text-left
+                            px-4 py-3
+                            text-sm
+                            text-slate-700
+                            hover:bg-cyan-50
+                            hover:text-cyan-800
+                            transition-colors
+                            border-b
+                            border-slate-100
+                            last:border-b-0
+                          "
+                        >
+                          {title}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+              </div>
+
+              {/* Período */}
+              <div>
+                <DateRangeFilter
+                  startDate={filters.startDate}
+                  endDate={filters.endDate}
+                  onStartDateChange={(date) =>
+                    handleFilterChange('startDate', date)
+                  }
+                  onEndDateChange={(date) =>
+                    handleFilterChange('endDate', date)
+                  }
+                />
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <MultiSelectFilter

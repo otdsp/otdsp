@@ -1,6 +1,7 @@
 import type { Engagement, UserProfile, EvidenceFilterOptions } from '../types';
 
 export function buildFilterOptions(profiles: UserProfile[], engagements: Engagement[]): EvidenceFilterOptions {
+  const uniqueEngagements = new Set<string>();
   const uniqueVerticals = new Set<string>();
   const uniqueHorizontals = new Set<string>();
   const uniqueTransversals = new Set<string>();
@@ -12,6 +13,10 @@ export function buildFilterOptions(profiles: UserProfile[], engagements: Engagem
   });
 
   engagements.forEach((engagement) => {
+    const title = engagement.title?.trim();
+    if (title) {
+      uniqueEngagements.add(title);
+    }
     if (Array.isArray(engagement.vertical)) {
       engagement.vertical.forEach((value) => {
         const normalized = value?.trim();
@@ -33,9 +38,10 @@ export function buildFilterOptions(profiles: UserProfile[], engagements: Engagem
   });
 
   return {
+    engagements: Array.from(uniqueEngagements).sort(),
     verticals: Array.from(uniqueVerticals).sort(),
     horizontals: Array.from(uniqueHorizontals).sort(),
-    transversals: Array.from(uniqueTransversals).sort(),
+    transversals: Array.from(uniqueTransversals).sort()
   };
 }
 

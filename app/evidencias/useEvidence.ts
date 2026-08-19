@@ -38,12 +38,14 @@ export function useEvidence() {
 
   const [filterOptions, setFilterOptions] =
     useState<EvidenceFilterOptions>({
+      engagements: [],
       verticals: [],
       horizontals: [],
       transversals: []
     });
 
   const [filters, setFilters] = useState<EvidenceFilters>({
+    engagementSearch: '',
     startDate: '2026-04-01',
     endDate: '',
     vertical: {
@@ -89,6 +91,7 @@ export function useEvidence() {
               .from('engagements')
               .select(`
                 id,
+                title,
                 created_by,
                 status,
                 horizontal,
