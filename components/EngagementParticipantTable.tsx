@@ -365,7 +365,7 @@ export function EngagementParticipantTable({
                       onClick={() => handleSort('municipality')}
                       className="flex items-center gap-1 hover:text-cyan-600"
                     >
-                      Classificação <SortIcon field="municipality" />
+                      Município <SortIcon field="municipality" />
                     </button>
                   </th>
                   {isStaff && (

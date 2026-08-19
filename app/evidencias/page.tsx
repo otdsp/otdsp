@@ -69,8 +69,8 @@ export default function EvidenciasStaff() {
         link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(link);
       }
       if (!mapInstance.current) {
-        if (mapRef.current) mapInstance.current = L.map(mapRef.current).setView([-15.7801, -47.9292], 4);
-        L.tileLayer(LEAFLET_TILE_URL, { maxZoom: 20 }).addTo(mapInstance.current);
+        if (mapRef.current) mapInstance.current = L.map(mapRef.current, {preferCanvas: true}).setView([-15.7801, -47.9292], 4);
+        L.tileLayer(LEAFLET_TILE_URL, { maxZoom: 20, crossOrigin: true }).addTo(mapInstance.current);
       } else {
         mapInstance.current.eachLayer((layer: any) => { if (layer instanceof L.CircleMarker) mapInstance.current.removeLayer(layer); });
       }
@@ -79,7 +79,14 @@ export default function EvidenciasStaff() {
       geoData.forEach((city) => {
         const [lng, lat] = city.coordinates; 
         const mColor = getGeoMarkerColor(city.count);
-        const marker = L.circleMarker([lat, lng], { radius: Math.min(6 + city.count * 1.5, 25), fillColor: mColor, color: "#ffffff", weight: 1.5, fillOpacity: 0.75 }).addTo(mapInstance.current);
+        const marker = L.circleMarker([lat, lng], {
+          renderer: L.canvas({padding: 0.5}),
+          radius: Math.min(6 + city.count * 1.5, 25),
+          fillColor: mColor,
+          color: '#ffffff',
+          weight: 1.5,
+          fillOpacity: 0.75,
+        }).addTo(mapInstance.current);
         marker.bindPopup(`<div style="font-family: Inter; font-size: 13px;"><strong style="color: #0f172a;">${city.name}</strong><br/><span>${city.count} membros ativos</span></div>`);
         bounds.push([lat, lng]);
       });
@@ -89,10 +96,30 @@ export default function EvidenciasStaff() {
 
   const handleExport = async () => {
     setIsExporting(true);
-    await exportToPDF('pdf-content', eventName);
-    setIsExporting(false);
-    setIsModalOpen(false);
-    setEventName('');
+
+    try {
+      // Garante que o Leaflet recalculou dimensões e posições
+      if (mapInstance.current) {
+        mapInstance.current.invalidateSize();
+      }
+
+      // Espera o navegador terminar a renderização
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => resolve());
+        });
+      });
+
+      // Pequeno tempo para tiles/canvas terminarem
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      await exportToPDF('pdf-content', eventName);
+
+    } finally {
+      setIsExporting(false);
+      setIsModalOpen(false);
+      setEventName('');
+    }
   };
 
   if (isLoading) {
@@ -147,17 +174,7 @@ export default function EvidenciasStaff() {
                 </label>
 
                 <div className="relative">
-                  <Search
-                    className="
-                      absolute
-                      left-3
-                      top-1/2
-                      -translate-y-1/2
-                      w-4 h-4
-                      text-slate-400
-                      pointer-events-none
-                    "
-                  />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"/>
 
                   <input
                     type="text"
@@ -169,25 +186,11 @@ export default function EvidenciasStaff() {
                         'engagementSearch',
                         e.target.value
                       );
-
                       setIsEngagementSearchOpen(true);
                     }}
                     placeholder="Buscar engajamento..."
                     autoComplete="off"
-                    className="
-                      w-full
-                      pl-10 pr-10 py-2.5
-                      bg-slate-50
-                      border border-slate-200
-                      rounded-xl
-                      text-sm text-slate-800
-                      placeholder:text-slate-400
-                      outline-none
-                      focus:ring-2
-                      focus:ring-cyan-500
-                      focus:border-cyan-500
-                      transition-all
-                    "
+                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
                   />
 
                   {filters.engagementSearch && (
@@ -198,18 +201,9 @@ export default function EvidenciasStaff() {
                           'engagementSearch',
                           ''
                         );
-
                         setIsEngagementSearchOpen(true);
                       }}
-                      className="
-                        absolute
-                        right-3
-                        top-1/2
-                        -translate-y-1/2
-                        text-slate-400
-                        hover:text-slate-700
-                        transition-colors
-                      "
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
                       aria-label="Limpar busca"
                     >
                       <X className="w-4 h-4" />
@@ -220,47 +214,17 @@ export default function EvidenciasStaff() {
                 {/* Sugestões */}
                 {isEngagementSearchOpen &&
                   engagementSuggestions.length > 0 && (
-                    <div
-                      className="
-                        absolute
-                        z-50
-                        left-0 right-0
-                        mt-2
-                        bg-white
-                        border border-slate-200
-                        rounded-xl
-                        shadow-lg
-                        max-h-64
-                        overflow-y-auto
-                      "
-                    >
+                    <div className="absolute z-50 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
                       {engagementSuggestions.map((title) => (
                         <button
                           key={title}
                           type="button"
                           onMouseDown={(e) => {
                             e.preventDefault();
-
-                            handleFilterChange(
-                              'engagementSearch',
-                              title
-                            );
-
+                            handleFilterChange('engagementSearch', title);
                             setIsEngagementSearchOpen(false);
                           }}
-                          className="
-                            w-full
-                            text-left
-                            px-4 py-3
-                            text-sm
-                            text-slate-700
-                            hover:bg-cyan-50
-                            hover:text-cyan-800
-                            transition-colors
-                            border-b
-                            border-slate-100
-                            last:border-b-0
-                          "
+                          className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-cyan-50 hover:text-cyan-800 transition-colors border-b border-slate-100 last:border-b-0"
                         >
                           {title}
                         </button>

@@ -30,12 +30,13 @@ import { useRouter } from 'next/navigation'
 import { DateRangeFilter } from '@/components/DateRangeFilter'
 import { MultiSelectFilter } from '@/components/MultiSelectFilter'
 import { ParticipantManager } from '@/components/ParticipantManager'
+import { EngagementGrid } from '@/components/EngagementGrid'
 import { Engagement, Participant } from '@/types/engagement'
 
 const INTEREST_OPTIONS = ["Educação", "Saúde", "Segurança", "Meio Ambiente", "Infraestutura de TI"]
-const TECH_OPTIONS = ["5G", "IA", "Open hardware", "Open Semi Condoctors", "Computação Quântica", "Internet das coisas (IoT)"]
+const TECH_OPTIONS = ["5G", "IA", "Open hardware", "Open Semi Condoctors", "Computação Quântica", "Internet das coisas (IoT)", "Manufatura Aditiva"]
 const POLICY_OPTIONS = ["Igualdade de gênero", "Igualdade racial", "Acessibilidade"]
-const ACTIVITY_OPTIONS = ["Pitch Inicial", "Visita ao Showroom", "Apresentação Institucional", "Reunião de Plano de Trabalho", "Reunião de Adesão ao Convênio"]
+const ACTIVITY_OPTIONS = ["Pitch Inicial", "Apresentação do Showroom", "Apresentação Institucional do OTDSP", "Reunião de Plano de Trabalho", "Reunião de Adesão ao Convênio"]
 const LOCATION_OPTIONS = ["Remoto", "Inova USP"]
 
 type ParticipantVisualStatus = 'green' | 'yellow' | 'red'
@@ -513,20 +514,6 @@ export default function EngajamentosPage() {
     })
   }
 
-  const formatGridDate = (dateString: string) => {
-    if (!dateString) return { date: 'Não definida', time: '' }
-
-    const date = new Date(dateString)
-
-    return {
-      date: date.toLocaleDateString('pt-BR'),
-      time: date.toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    }
-  }
-
   const checkIsPast = useMemo(() => {
     return (eventDate: string, duration: number) => {
       if (!eventDate) return false;
@@ -781,21 +768,21 @@ export default function EngajamentosPage() {
                     {/* Seção 2: Tags e Categorias (Multi-selection Grid) */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 py-8 mt-10 border-y border-slate-100">
                       <BadgeToggleList
-                        label="Áreas de Interesse"
+                        label="Verticais"
                         icon={Heart}
                         options={INTEREST_OPTIONS}
                         selected={formData.vertical}
                         onToggle={(item: string) => toggleArrayItem('vertical', item)}
                       />
                       <BadgeToggleList
-                        label="Tecnologias"
+                        label="Horizontais"
                         icon={Monitor}
                         options={TECH_OPTIONS}
                         selected={formData.horizontal}
                         onToggle={(item: string) => toggleArrayItem('horizontal', item)}
                       />
                       <BadgeToggleList
-                        label="Políticas Públicas"
+                        label="Transversais"
                         icon={Briefcase}
                         options={POLICY_OPTIONS}
                         selected={formData.transversal}
@@ -1044,16 +1031,20 @@ export default function EngajamentosPage() {
                               const displayName = getParticipantDisplayName(p)
                               const participantStatus = getParticipantVisualStatus(p)
 
+                              const green = 'bg-slate-50 border-slate-200 text-slate-600'
+                              const yellow = 'bg-amber-50 border-amber-200 text-amber-700'
+                              const red = 'bg-red-50 border-red-200 text-red-700'
+
                               const statusClasses = {
-                                green: 'bg-slate-50 border-slate-200 text-slate-600',
-                                yellow: 'bg-amber-50 border-amber-200 text-amber-700',
-                                red: 'bg-red-50 border-red-200 text-red-700'
+                                green: green,
+                                yellow: yellow,
+                                red: red
                               }[participantStatus]
 
                               return (
                                 <span
                                   key={p.user_id || p.email || idx}
-                                  className={`text-[11px] font-semibold border px-2 py-0.5 rounded-md flex items-center gap-1 ${statusClasses}`}
+                                  className={`text-[11px] font-semibold border px-2 py-0.5 rounded-md flex items-center gap-1 ${green}`}
                                 >{displayName}
                                 </span>
                               )
@@ -1082,85 +1073,10 @@ export default function EngajamentosPage() {
                 })}
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                <table className="w-full table-fixed border-collapse text-left text-xs">
-                  <colgroup>
-                    <col className="w-[9%]" />
-                    <col className="w-[19%]" />
-                    <col className="w-[11%]" />
-                    <col className="w-[11%]" />
-                    <col className="w-[11%]" />
-                    <col className="w-[10%]" />
-                    <col className="w-[10%]" />
-                    <col className="w-[7%]" />
-                    <col className="w-[7%]" />
-                  </colgroup>
-                  <thead className="bg-slate-100 text-[10px] uppercase tracking-wide text-slate-500">
-                    <tr>
-                      <th className="border-b border-r border-slate-200 px-2 py-2.5 font-black">Status</th>
-                      <th className="border-b border-r border-slate-200 px-2 py-2.5 font-black">Engajamento</th>
-                      <th className="border-b border-r border-slate-200 px-2 py-2.5 font-black">Horizontal</th>
-                      <th className="border-b border-r border-slate-200 px-2 py-2.5 font-black">Vertical</th>
-                      <th className="border-b border-r border-slate-200 px-2 py-2.5 font-black">Transversal</th>
-                      <th className="border-b border-r border-slate-200 px-2 py-2.5 font-black">Data</th>
-                      <th className="border-b border-r border-slate-200 px-2 py-2.5 font-black">Local</th>
-                      <th className="border-b border-r border-slate-200 px-2 py-2.5 font-black">Duração</th>
-                      <th className="border-b border-slate-200 px-2 py-2.5 text-center font-black">Membros</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
-                    {filteredEngagements.map((eng) => (
-                      <tr
-                        key={eng.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => handleOpenDetails(eng)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault()
-                            handleOpenDetails(eng)
-                          }
-                        }}
-                        className="cursor-pointer outline-none transition-colors hover:bg-cyan-50/60 focus:bg-cyan-50/60 focus:ring-2 focus:ring-inset focus:ring-cyan-500"
-                      >
-                        <td className="border-r border-slate-200 px-2 py-2.5 align-top">
-                          <span className="inline-flex max-w-full truncate rounded-md bg-cyan-50 px-1.5 py-1 text-[9px] font-black uppercase tracking-wide text-cyan-700">{eng.status}</span>
-                        </td>
-                        <td className="border-r border-slate-200 px-2 py-2.5 align-top">
-                          <p className="truncate font-bold text-slate-900" title={eng.title}>{eng.title}</p>
-                          <p className="mt-0.5 truncate text-[11px] text-slate-500" title={eng.description || 'Sem descrição'}>{eng.description || 'Sem descrição'}</p>
-                        </td>
-                        <td className="border-r border-slate-200 px-2 py-2.5 align-top text-[11px] text-slate-600">
-                          <p className="line-clamp-2" title={eng.horizontal?.length ? eng.horizontal.join(', ') : '—'}>{eng.horizontal?.length ? eng.horizontal.join(', ') : '—'}</p>
-                        </td>
-                        <td className="border-r border-slate-200 px-2 py-2.5 align-top text-[11px] text-slate-600">
-                          <p className="line-clamp-2" title={eng.vertical?.length ? eng.vertical.join(', ') : '—'}>{eng.vertical?.length ? eng.vertical.join(', ') : '—'}</p>
-                        </td>
-                        <td className="border-r border-slate-200 px-2 py-2.5 align-top text-[11px] text-slate-600">
-                          <p className="line-clamp-2" title={eng.transversal?.length ? eng.transversal.join(', ') : '—'}>{eng.transversal?.length ? eng.transversal.join(', ') : '—'}</p>
-                        </td>
-                        <td className="border-r border-slate-200 px-2 py-2.5 align-top text-[11px] text-slate-600">
-                          <div className="min-w-0 leading-tight" title={formatDate(eng.event_date)}>
-                            <p className="whitespace-nowrap tabular-nums text-slate-700">
-                              {formatGridDate(eng.event_date).date}
-                            </p>
-                            {formatGridDate(eng.event_date).time && (
-                              <p className="mt-0.5 whitespace-nowrap text-[10px] tabular-nums text-slate-500">
-                                {formatGridDate(eng.event_date).time}
-                              </p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="border-r border-slate-200 px-2 py-2.5 align-top text-[11px] text-slate-600">
-                          <p className="truncate" title={eng.location || '—'}>{eng.location || '—'}</p>
-                        </td>
-                        <td className="border-r border-slate-200 px-2 py-2.5 align-top whitespace-nowrap text-[11px] text-slate-600">{eng.estimated_duration ? `${eng.estimated_duration} h` : '—'}</td>
-                        <td className="border-r border-slate-200 px-2 py-2.5 align-top whitespace-nowrap text-[11px] text-slate-600">{eng.engagement_participants?.length || 0}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <EngagementGrid
+                engagements={filteredEngagements}
+                onOpenDetails={handleOpenDetails}
+              />
             )}
           </div>
         </div>

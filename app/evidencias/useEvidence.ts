@@ -133,7 +133,6 @@ export function useEvidence() {
 
         const topCities = Object.entries(cityFreq)
           .sort((a, b) => b[1] - a[1])
-          .slice(0, 30)
           .map(([city]) => city);
 
         const newGeoData =
