@@ -12,19 +12,12 @@ import {
 import { useAdminAuth } from './useAdminAuth';
 import { fetchCityCoordinates } from './services/geocoding';
 import { processDerivedData } from './utils/evidenceProcessor';
-import {
-  buildCityFrequency,
-  buildFilterOptions
-} from './utils/dataTransforms';
+import { buildCityFrequency, buildFilterOptions } from './utils/dataTransforms';
 
 export function useEvidence() {
   const { isAuthorized, isAuthLoading } = useAdminAuth();
-
   const [isLoadingData, setIsLoadingData] = useState(true);
-
-  const [geocodeCache, setGeocodeCache] = useState<
-    Record<string, [number, number]>
-  >({});
+  const [geocodeCache, setGeocodeCache] = useState<Record<string, [number, number]>>({});
 
   const [rawData, setRawData] = useState<{
     auth: UserAuth[];

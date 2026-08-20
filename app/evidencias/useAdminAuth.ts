@@ -14,11 +14,11 @@ export function useAdminAuth() {
         
         if (!session?.user) return router.replace('/login');
 
-        const { data: userData, error } = await supabase
-          .from('user_auth')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
+        // const { data: userData, error } = await supabase
+        //   .from('user_auth')
+        //   .select('role')
+        //   .eq('id', session.user.id)
+        //   .single();
 
         //if (error || userData?.role !== 'staff' && userData?.role !== 'pesquisa') return router.replace('/');
 

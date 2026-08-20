@@ -3,7 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { 
   Users, Activity, Target, Handshake, Globe2, BarChart3, ShieldAlert, Loader2, 
-  PieChart as PieIcon, Briefcase, Filter, Download, X, Layers3, Rows3, Waypoints, Search
+  PieChart as PieIcon, Briefcase, Filter, Download, X, Layers3, Rows3, 
+  Waypoints, Search, Maximize2, Minimize2
 } from 'lucide-react';
 import { 
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -29,6 +30,8 @@ const LEAFLET_TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y
 export default function EvidenciasStaff() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
 
   const {
     isLoading,
@@ -93,6 +96,36 @@ export default function EvidenciasStaff() {
       if (bounds.length > 0) mapInstance.current.fitBounds(bounds, { padding: [40, 40] });
     });
   }, [geoData, isAuthorized]);
+
+  const toggleMapFullscreen = async () => {
+    if (!mapContainerRef.current) return;
+
+    try {
+      if (!document.fullscreenElement) {
+        await mapContainerRef.current.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (error) {
+      console.error('Erro ao alternar tela cheia:', error);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isFullscreen = document.fullscreenElement === mapContainerRef.current;
+      setIsMapFullscreen(isFullscreen);
+      requestAnimationFrame(() => {
+        mapInstance.current?.invalidateSize();
+      });
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -463,11 +496,43 @@ export default function EvidenciasStaff() {
               <Globe2 className="text-amber-600 w-6 h-6" />
               <h2 className="text-lg font-bold tracking-tight text-slate-800">Distribuição de Membros</h2>
             </div>
-            <div className="w-full h-[450px] rounded-xl overflow-hidden border border-slate-200 bg-slate-100 z-0">
+            <div
+              ref={mapContainerRef}
+              className={`
+                relative w-full overflow-hidden bg-slate-100
+                ${
+                  isMapFullscreen
+                    ? 'h-screen bg-white'
+                    : 'h-[450px] rounded-xl border border-slate-200'
+                }
+              `}
+            >
               <div ref={mapRef} className="w-full h-full" />
+
+              <button
+                type="button"
+                onClick={toggleMapFullscreen}
+                className="
+                  absolute top-3 right-3 z-[1000]
+                  flex items-center justify-center
+                  w-10 h-10
+                  bg-white hover:bg-slate-50
+                  border border-slate-200
+                  rounded-lg shadow-md
+                  text-slate-700
+                  transition-colors
+                "
+                title={isMapFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+                aria-label={isMapFullscreen ? 'Sair da tela cheia' : 'Abrir mapa em tela cheia'}
+              >
+                {isMapFullscreen ? (
+                  <Minimize2 className="w-5 h-5" />
+                ) : (
+                  <Maximize2 className="w-5 h-5" />
+                )}
+              </button>
             </div>
           </div>
-
         </div>
       </div>
 
