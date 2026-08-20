@@ -55,7 +55,7 @@ export interface MunicipalityChartRow {
 
 export interface KPIStats {
   totalUsers: number;
-  activeUsers: number;
+  attendedCities: number;
   totalEngagements: number;
   signedAgreements: number;
 }

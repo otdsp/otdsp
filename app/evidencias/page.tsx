@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { 
-  Users, Activity, Target, Handshake, Globe2, BarChart3, ShieldAlert, Loader2, 
+  Users, Globe2, Globe, Target, Handshake, BarChart3, ShieldAlert, Loader2, 
   PieChart as PieIcon, Briefcase, Filter, Download, X, Layers3, Rows3, 
   Waypoints, Search, Maximize2, Minimize2
 } from 'lucide-react';
@@ -362,7 +362,7 @@ export default function EvidenciasStaff() {
           {/* Cards Principais de Métricas */}
           <div className="avoid-break grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <KpiCard title="Total de Membros" value={stats.totalUsers} icon={Users} bgColor="bg-cyan-50" iconColor="text-cyan-600" />
-            <KpiCard title="Membros Ativos" value={stats.activeUsers} icon={Activity} bgColor="bg-emerald-50" iconColor="text-emerald-600" />
+            <KpiCard title="Municípios Atendidos" value={stats.attendedCities} icon={Globe} bgColor="bg-emerald-50" iconColor="text-emerald-600" />
             <KpiCard title="Engajamentos" value={stats.totalEngagements} icon={Target} bgColor="bg-amber-50" iconColor="text-amber-600" />
             <KpiCard title="Convênios Firmados" value={stats.signedAgreements} icon={Handshake} bgColor="bg-indigo-50" iconColor="text-indigo-600" />
           </div>

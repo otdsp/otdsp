@@ -12,7 +12,7 @@ export function processDerivedData(
   geocodeCache: Record<string, [number, number]>
 ): DerivedEvidenceData {
   const emptyResult: DerivedEvidenceData = {
-    stats: { totalUsers: 0, activeUsers: 0, totalEngagements: 0, signedAgreements: 0 },
+    stats: { totalUsers: 0, attendedCities: 0, totalEngagements: 0, signedAgreements: 0 },
     timelineData: [],
     engagementTimelineData: [],
     referralData: [],
@@ -130,7 +130,7 @@ export function processDerivedData(
 
   const stats = {
     totalUsers: filteredProfiles.length,
-    activeUsers: filteredAuth.filter((user) => user.is_active).length,
+    attendedCities: new Set(filteredProfiles.map(p => p.municipality)).size,
     totalEngagements: filteredEngagements.length,
     signedAgreements: signedCount
   };
