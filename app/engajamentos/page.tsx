@@ -455,14 +455,6 @@ export default function EngajamentosPage() {
           // 2. Insere a lista atualizada, incluindo automaticamente o criador como participante
           const participantsToSave: Array<{ engagement_id: string; user_id: string | null; email: string | null }> = []
 
-          if (user?.id) {
-            participantsToSave.push({
-              engagement_id: currentEngagementId,
-              user_id: user.id,
-              email: null
-            })
-          }
-
           formData.participants.forEach((p) => {
             const normalizedEmail = p.email?.trim() || null
             const normalizedUserId = p.user_id || null

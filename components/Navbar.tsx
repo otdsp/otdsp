@@ -144,7 +144,7 @@ export default function Navbar() {
       const loggedInDropdown = [
         { name: 'Meu Perfil', href: '/perfil', icon: User },
         ...(isStaff ? [{ name: 'Administração', href: '/admin', icon: Shield }] : []),
-        ...(isStaff || isPesquisa ? [{ name: 'Evidências', href: '/evidencias', icon: ChartColumn }] : []),
+        { name: 'Evidências', href: '/evidencias', icon: ChartColumn },
         { name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
         { name: 'Sair', href: '#', isLogout: true, icon: LogOut },
       ];
@@ -156,6 +156,7 @@ export default function Navbar() {
           : [
               { name: 'Entrar', href: '/login', icon: User },
               { name: 'Cadastro', href: '/cadastro', icon: UserPlus },
+              { name: 'Evidências', href: '/evidencias', icon: ChartColumn },
               { name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
             ],
       };

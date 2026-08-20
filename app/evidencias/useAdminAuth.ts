@@ -11,7 +11,8 @@ export function useAdminAuth() {
     const authenticate = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) return router.replace('/');
+        
+        if (!session?.user) return router.replace('/login');
 
         const { data: userData, error } = await supabase
           .from('user_auth')
@@ -19,12 +20,12 @@ export function useAdminAuth() {
           .eq('id', session.user.id)
           .single();
 
-        if (error || userData?.role !== 'staff' && userData?.role !== 'pesquisa') return router.replace('/');
+        //if (error || userData?.role !== 'staff' && userData?.role !== 'pesquisa') return router.replace('/');
 
         setIsAuthorized(true);
       } catch (error) {
         console.error("Erro na autenticação:", error);
-        router.replace('/');
+        router.replace('/login');
       } finally {
         setIsAuthLoading(false);
       }
