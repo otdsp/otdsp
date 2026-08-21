@@ -102,28 +102,19 @@ export function ParticipantManager({
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
 
+  const term = inputValue.trim()
+  const canSearch = isStaff && term.length >= 3
+
   useEffect(() => {
-    if (!isStaff) {
-      setSuggestions([])
-      setShowSuggestions(false)
-      setSearchError(null)
-      setIsSearching(false)
-      return
-    }
-
-    const term = inputValue.trim()
-
-    if (term.length < 3) {
-      setSuggestions([])
-      setShowSuggestions(false)
-      setSearchError(null)
-      setIsSearching(false)
-      return
-    }
+    // O effect agora simplesmente não faz nada enquanto
+    // não houver condições para executar uma busca.
+    if (!canSearch) return
 
     let cancelled = false
 
     const fetchUsers = async () => {
+      if (cancelled) return
+
       setIsSearching(true)
       setSearchError(null)
 
@@ -148,6 +139,8 @@ export function ParticipantManager({
 
         if (error) throw error
 
+        if (cancelled) return
+
         const alreadyAddedIds = new Set(
           participants
             .map(participant => participant.user_id)
@@ -164,37 +157,60 @@ export function ParticipantManager({
           )
           .slice(0, 10)
 
-        if (!cancelled) {
-          setSuggestions(nextSuggestions)
-          setShowSuggestions(nextSuggestions.length > 0)
-        }
+        setSuggestions(nextSuggestions)
+        setShowSuggestions(nextSuggestions.length > 0)
       } catch (error) {
         console.error('Erro ao buscar participantes:', error)
 
-        if (!cancelled) {
-          setSuggestions([])
-          setShowSuggestions(false)
-          setSearchError(
-            error instanceof Error
-              ? error.message
-              : 'Não foi possível buscar participantes.'
-          )
-        }
+        if (cancelled) return
+
+        setSuggestions([])
+        setShowSuggestions(false)
+        setSearchError(
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível buscar participantes.'
+        )
       } finally {
-        if (!cancelled) setIsSearching(false)
+        if (!cancelled) {
+          setIsSearching(false)
+        }
       }
     }
 
-    const timer = window.setTimeout(fetchUsers, 400)
+    const timer = window.setTimeout(() => {
+      void fetchUsers()
+    }, 400)
 
     return () => {
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [inputValue, participants, isStaff])
+  }, [canSearch, term, participants])
 
-  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(event.target.value)
+  const handleInputChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const value = event.target.value
+
+    setInputValue(value)
+    setSearchError(null)
+
+    // A limpeza que antes acontecia dentro do useEffect
+    // passa a acontecer como resposta direta ao evento.
+    if (value.trim().length < 3) {
+      setSuggestions([])
+      setShowSuggestions(false)
+      setIsSearching(false)
+    }
+  }
+
+  const resetInput = () => {
+    setInputValue('')
+    setSuggestions([])
+    setShowSuggestions(false)
+    setSearchError(null)
+    setIsSearching(false)
   }
 
   const handleAddSuggestion = (user: UserSuggestion) => {
@@ -212,17 +228,22 @@ export function ParticipantManager({
 
   const handleAddManual = () => {
     const value = inputValue.trim()
+
     if (!value) return
 
     const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 
     const alreadyExists = participants.some(participant => {
       if (isEmail) {
-        return participant.email?.trim().toLowerCase() === value.toLowerCase()
+        return (
+          participant.email?.trim().toLowerCase() ===
+          value.toLowerCase()
+        )
       }
 
       return (
-        participant.full_name?.trim().toLowerCase() === value.toLowerCase()
+        participant.full_name?.trim().toLowerCase() ===
+        value.toLowerCase()
       )
     })
 
@@ -243,14 +264,9 @@ export function ParticipantManager({
     resetInput()
   }
 
-  const resetInput = () => {
-    setInputValue('')
-    setSuggestions([])
-    setShowSuggestions(false)
-    setSearchError(null)
-  }
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) => {
     if (event.key !== 'Enter') return
 
     event.preventDefault()
@@ -265,7 +281,9 @@ export function ParticipantManager({
 
   const removeParticipant = (index: number) => {
     onChange(
-      participants.filter((_, participantIndex) => participantIndex !== index)
+      participants.filter(
+        (_, participantIndex) => participantIndex !== index
+      )
     )
   }
 
@@ -277,92 +295,108 @@ export function ParticipantManager({
             <div className="pointer-events-none absolute bottom-0 left-3 top-0 flex items-center">
               <Search className="h-4 w-4 text-slate-400" />
             </div>
-  
+
             <input
               type="text"
               value={inputValue}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              onFocus={() =>
-                suggestions.length > 0 && setShowSuggestions(true)
-              }
-              onBlur={() =>
-                window.setTimeout(() => setShowSuggestions(false), 200)
-              }
+              onFocus={() => {
+                if (
+                  inputValue.trim().length >= 3 &&
+                  suggestions.length > 0
+                ) {
+                  setShowSuggestions(true)
+                }
+              }}
+              onBlur={() => {
+                window.setTimeout(
+                  () => setShowSuggestions(false),
+                  200
+                )
+              }}
               placeholder="Busque por nome, instituição, cargo ou município..."
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-10 text-sm shadow-sm outline-none transition-all focus:ring-2 focus:ring-cyan-500"
             />
-  
-            {isSearching && (
+
+            {isSearching && canSearch && (
               <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-cyan-500" />
             )}
-  
-            {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
-                {suggestions.map(suggestion => (
-                  <button
-                    key={suggestion.id}
-                    type="button"
-                    onMouseDown={event => {
-                      event.preventDefault()
-                      handleAddSuggestion(suggestion)
-                    }}
-                    className="flex w-full items-center justify-between gap-3 border-b border-slate-50 px-4 py-3 text-left transition-colors last:border-0 hover:bg-cyan-50"
-                  >
-                    <div className="flex min-w-0 flex-col">
-                      <span className="truncate text-sm font-bold text-slate-700">
-                        {suggestion.full_name}
-                      </span>
-                      <span className="truncate text-[11px] font-medium text-slate-500">
-                        {[
-                          suggestion.job_title,
-                          suggestion.institution_organization,
-                          suggestion.municipality
-                        ]
-                          .filter(Boolean)
-                          .join(' • ') || 'Perfil sem classificação'}
-                      </span>
-                      {suggestion.missingFields.length > 0 && (
-                        <span
-                          className="truncate text-[10px] text-amber-600"
-                          title={`Dados faltantes: ${suggestion.missingFields.join(', ')}`}
-                        >
-                          {suggestion.missingFields.length}{' '}
-                          {suggestion.missingFields.length === 1
-                            ? 'dado pendente'
-                            : 'dados pendentes'}
+
+            {canSearch &&
+              showSuggestions &&
+              suggestions.length > 0 && (
+                <div className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
+                  {suggestions.map(suggestion => (
+                    <button
+                      key={suggestion.id}
+                      type="button"
+                      onMouseDown={event => {
+                        event.preventDefault()
+                        handleAddSuggestion(suggestion)
+                      }}
+                      className="flex w-full items-center justify-between gap-3 border-b border-slate-50 px-4 py-3 text-left transition-colors last:border-0 hover:bg-cyan-50"
+                    >
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate text-sm font-bold text-slate-700">
+                          {suggestion.full_name}
                         </span>
+
+                        <span className="truncate text-[11px] font-medium text-slate-500">
+                          {[
+                            suggestion.job_title,
+                            suggestion.institution_organization,
+                            suggestion.municipality
+                          ]
+                            .filter(Boolean)
+                            .join(' • ') ||
+                            'Perfil sem classificação'}
+                        </span>
+
+                        {suggestion.missingFields.length > 0 && (
+                          <span
+                            className="truncate text-[10px] text-amber-600"
+                            title={`Dados faltantes: ${suggestion.missingFields.join(
+                              ', '
+                            )}`}
+                          >
+                            {suggestion.missingFields.length}{' '}
+                            {suggestion.missingFields.length === 1
+                              ? 'dado pendente'
+                              : 'dados pendentes'}
+                          </span>
+                        )}
+                      </div>
+
+                      {suggestion.status === 'green' ? (
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
                       )}
-                    </div>
-  
-                    {suggestion.status === 'green' ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-  
-            {!isSearching &&
-              inputValue.trim().length >= 3 &&
+                    </button>
+                  ))}
+                </div>
+              )}
+
+            {canSearch &&
+              !isSearching &&
               !showSuggestions &&
               suggestions.length === 0 &&
               !searchError && (
                 <p className="mt-1 px-1 text-[11px] text-slate-500">
-                  Nenhum perfil encontrado. Use o botão “+” para adicionar um
-                  participante externo pelo nome ou e-mail.
+                  Nenhum perfil encontrado. Use o botão “+” para
+                  adicionar um participante externo pelo nome ou
+                  e-mail.
                 </p>
               )}
-  
+
             {searchError && (
               <p className="mt-1 px-1 text-[11px] text-rose-600">
                 {searchError}
               </p>
             )}
           </div>
-  
+
           <button
             type="button"
             onClick={handleAddManual}

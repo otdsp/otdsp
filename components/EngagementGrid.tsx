@@ -28,6 +28,19 @@ type SortConfig = {
   direction: SortDirection
 }
 
+type SortIconProps = {
+  sortKey: SortKey
+  sortConfig: SortConfig | null
+}
+
+type SortableHeaderProps = {
+  label: string
+  sortKey: SortKey
+  sortConfig: SortConfig | null
+  onSort: (key: SortKey) => void
+  className?: string
+}
+
 const formatGridDate = (dateString: string) => {
   if (!dateString) {
     return {
@@ -71,18 +84,157 @@ const normalizeText = (value: unknown) => {
     .toLocaleLowerCase('pt-BR')
 }
 
+/*
+ * Extrai o valor adequado para cada tipo de coluna.
+ *
+ * Mantido fora do componente para que sua referência
+ * permaneça estável entre renderizações.
+ */
+const getSortValue = (
+  engagement: Engagement,
+  key: SortKey
+): string | number => {
+  switch (key) {
+    case 'status':
+      return normalizeText(engagement.status)
+
+    case 'title':
+      return normalizeText(engagement.title)
+
+    case 'horizontal':
+      return normalizeText(
+        engagement.horizontal?.join(', ') || ''
+      )
+
+    case 'vertical':
+      return normalizeText(
+        engagement.vertical?.join(', ') || ''
+      )
+
+    case 'transversal':
+      return normalizeText(
+        engagement.transversal?.join(', ') || ''
+      )
+
+    case 'event_date':
+      return engagement.event_date
+        ? new Date(engagement.event_date).getTime()
+        : 0
+
+    case 'location':
+      return normalizeText(engagement.location)
+
+    case 'estimated_duration':
+      return engagement.estimated_duration ?? 0
+
+    case 'members':
+      return engagement.engagement_participants?.length ?? 0
+
+    default:
+      return ''
+  }
+}
+
+/*
+ * Ícone apresentado no cabeçalho.
+ *
+ * Importante:
+ * este componente fica FORA do EngagementGrid.
+ */
+function SortIcon({
+  sortKey,
+  sortConfig
+}: SortIconProps) {
+  if (sortConfig?.key !== sortKey) {
+    return (
+      <ArrowUpDown className="h-3 w-3 text-slate-400" />
+    )
+  }
+
+  if (sortConfig.direction === 'asc') {
+    return (
+      <ArrowUp className="h-3 w-3 text-cyan-600" />
+    )
+  }
+
+  return (
+    <ArrowDown className="h-3 w-3 text-cyan-600" />
+  )
+}
+
+/*
+ * Cabeçalho reutilizável das colunas.
+ *
+ * Também fica FORA do EngagementGrid para não ser
+ * recriado a cada renderização.
+ */
+function SortableHeader({
+  label,
+  sortKey,
+  sortConfig,
+  onSort,
+  className = ''
+}: SortableHeaderProps) {
+  const isActive = sortConfig?.key === sortKey
+
+  return (
+    <th
+      className={`
+        border-b
+        border-r
+        border-slate-200
+        p-0
+        font-black
+        ${className}
+      `}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={`
+          flex
+          w-full
+          items-center
+          gap-1.5
+          px-2
+          py-2.5
+          text-left
+          transition-colors
+          hover:bg-slate-200/70
+          focus:outline-none
+          focus:ring-2
+          focus:ring-inset
+          focus:ring-cyan-500
+          ${
+            isActive
+              ? 'text-cyan-700'
+              : 'text-slate-500'
+          }
+        `}
+      >
+        <span>{label}</span>
+
+        <SortIcon
+          sortKey={sortKey}
+          sortConfig={sortConfig}
+        />
+      </button>
+    </th>
+  )
+}
+
 export function EngagementGrid({
   engagements,
   onOpenDetails
 }: EngagementGridProps) {
-
   /*
    * Estado da classificação.
    *
    * null = nenhuma ordenação adicional.
    * Nesse caso mantemos a ordem recebida da página principal.
    */
-  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null)
+  const [sortConfig, setSortConfig] =
+    useState<SortConfig | null>(null)
 
   /*
    * Alterna:
@@ -92,13 +244,13 @@ export function EngagementGrid({
    */
   const handleSort = (key: SortKey) => {
     setSortConfig(current => {
-
       if (current?.key === key) {
         return {
           key,
-          direction: current.direction === 'asc'
-            ? 'desc'
-            : 'asc'
+          direction:
+            current.direction === 'asc'
+              ? 'desc'
+              : 'asc'
         }
       }
 
@@ -110,56 +262,6 @@ export function EngagementGrid({
   }
 
   /*
-   * Extrai o valor adequado para cada tipo de coluna.
-   */
-  const getSortValue = (
-    engagement: Engagement,
-    key: SortKey
-  ): string | number => {
-
-    switch (key) {
-
-      case 'status':
-        return normalizeText(engagement.status)
-
-      case 'title':
-        return normalizeText(engagement.title)
-
-      case 'horizontal':
-        return normalizeText(
-          engagement.horizontal?.join(', ') || ''
-        )
-
-      case 'vertical':
-        return normalizeText(
-          engagement.vertical?.join(', ') || ''
-        )
-
-      case 'transversal':
-        return normalizeText(
-          engagement.transversal?.join(', ') || ''
-        )
-
-      case 'event_date':
-        return engagement.event_date
-          ? new Date(engagement.event_date).getTime()
-          : 0
-
-      case 'location':
-        return normalizeText(engagement.location)
-
-      case 'estimated_duration':
-        return engagement.estimated_duration ?? 0
-
-      case 'members':
-        return engagement.engagement_participants?.length ?? 0
-
-      default:
-        return ''
-    }
-  }
-
-  /*
    * Lista ordenada.
    *
    * Importante:
@@ -167,13 +269,11 @@ export function EngagementGrid({
    * diretamente a propriedade recebida.
    */
   const sortedEngagements = useMemo(() => {
-
     if (!sortConfig) {
       return engagements
     }
 
     const sorted = [...engagements].sort((a, b) => {
-
       const valueA = getSortValue(a, sortConfig.key)
       const valueB = getSortValue(b, sortConfig.key)
 
@@ -210,102 +310,11 @@ export function EngagementGrid({
     })
 
     return sorted
-
   }, [engagements, sortConfig])
-
-  /*
-   * Ícone apresentado no cabeçalho.
-   */
-  const getSortIcon = (key: SortKey) => {
-
-    if (sortConfig?.key !== key) {
-      return (
-        <ArrowUpDown
-          className="h-3 w-3 text-slate-400"
-        />
-      )
-    }
-
-    if (sortConfig.direction === 'asc') {
-      return (
-        <ArrowUp
-          className="h-3 w-3 text-cyan-600"
-        />
-      )
-    }
-
-    return (
-      <ArrowDown
-        className="h-3 w-3 text-cyan-600"
-      />
-    )
-  }
-
-  /*
-   * Componente reutilizável para os cabeçalhos.
-   */
-  const SortableHeader = ({
-    label,
-    sortKey,
-    className = ''
-  }: {
-    label: string
-    sortKey: SortKey
-    className?: string
-  }) => {
-
-    const isActive = sortConfig?.key === sortKey
-
-    return (
-      <th
-        className={`
-          border-b
-          border-r
-          border-slate-200
-          p-0
-          font-black
-          ${className}
-        `}
-      >
-        <button
-          type="button"
-          onClick={() => handleSort(sortKey)}
-          className={`
-            flex
-            w-full
-            items-center
-            gap-1.5
-            px-2
-            py-2.5
-            text-left
-            transition-colors
-            hover:bg-slate-200/70
-            focus:outline-none
-            focus:ring-2
-            focus:ring-inset
-            focus:ring-cyan-500
-            ${
-              isActive
-                ? 'text-cyan-700'
-                : 'text-slate-500'
-            }
-          `}
-        >
-          <span>
-            {label}
-          </span>
-
-          {getSortIcon(sortKey)}
-        </button>
-      </th>
-    )
-  }
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-slate-200">
-
       <table className="w-full table-fixed border-collapse text-left text-xs">
-
         <colgroup>
           <col className="w-[9%]" />
           <col className="w-[19%]" />
@@ -320,77 +329,87 @@ export function EngagementGrid({
 
         {/* CABEÇALHO */}
         <thead className="bg-slate-100 text-[10px] uppercase tracking-wide">
-
           <tr>
-
             <SortableHeader
               label="Status"
               sortKey="status"
+              sortConfig={sortConfig}
+              onSort={handleSort}
             />
 
             <SortableHeader
               label="Engajamento"
               sortKey="title"
+              sortConfig={sortConfig}
+              onSort={handleSort}
             />
 
             <SortableHeader
               label="Horizontal"
               sortKey="horizontal"
+              sortConfig={sortConfig}
+              onSort={handleSort}
             />
 
             <SortableHeader
               label="Vertical"
               sortKey="vertical"
+              sortConfig={sortConfig}
+              onSort={handleSort}
             />
 
             <SortableHeader
               label="Transversal"
               sortKey="transversal"
+              sortConfig={sortConfig}
+              onSort={handleSort}
             />
 
             <SortableHeader
               label="Data"
               sortKey="event_date"
+              sortConfig={sortConfig}
+              onSort={handleSort}
             />
 
             <SortableHeader
               label="Local"
               sortKey="location"
+              sortConfig={sortConfig}
+              onSort={handleSort}
             />
 
             <SortableHeader
               label="Duração"
               sortKey="estimated_duration"
+              sortConfig={sortConfig}
+              onSort={handleSort}
             />
 
             <SortableHeader
               label="Membros"
               sortKey="members"
+              sortConfig={sortConfig}
+              onSort={handleSort}
               className="border-r-0"
             />
-
           </tr>
-
         </thead>
 
         {/* DADOS */}
         <tbody className="divide-y divide-slate-200 bg-white">
-
-          {sortedEngagements.map((eng) => {
-
-            const formattedDate =
-              formatGridDate(eng.event_date)
+          {sortedEngagements.map(eng => {
+            const formattedDate = formatGridDate(
+              eng.event_date
+            )
 
             return (
               <tr
                 key={eng.id}
                 role="button"
                 tabIndex={0}
-
                 onClick={() => onOpenDetails(eng)}
-
-                onKeyDown={(event) => {
-
+                onKeyDown={event => {
                   if (
                     event.key === 'Enter' ||
                     event.key === ' '
@@ -398,9 +417,7 @@ export function EngagementGrid({
                     event.preventDefault()
                     onOpenDetails(eng)
                   }
-
                 }}
-
                 className="
                   cursor-pointer
                   outline-none
@@ -412,10 +429,8 @@ export function EngagementGrid({
                   focus:ring-cyan-500
                 "
               >
-
                 {/* STATUS */}
                 <td className="border-r border-slate-200 px-2 py-2.5 align-top">
-
                   <span
                     className="
                       inline-flex
@@ -434,13 +449,10 @@ export function EngagementGrid({
                   >
                     {eng.status}
                   </span>
-
                 </td>
-
 
                 {/* ENGAJAMENTO */}
                 <td className="border-r border-slate-200 px-2 py-2.5 align-top">
-
                   <p
                     className="truncate font-bold text-slate-900"
                     title={eng.title}
@@ -450,116 +462,107 @@ export function EngagementGrid({
 
                   <p
                     className="mt-0.5 truncate text-[11px] text-slate-500"
-                    title={eng.description || 'Sem descrição'}
+                    title={
+                      eng.description ||
+                      'Sem descrição'
+                    }
                   >
-                    {eng.description || 'Sem descrição'}
+                    {eng.description ||
+                      'Sem descrição'}
                   </p>
-
                 </td>
-
 
                 {/* HORIZONTAL */}
                 <td className="border-r border-slate-200 px-2 py-2.5 align-top text-[11px] text-slate-600">
-
                   <p
                     className="line-clamp-2"
-                    title={formatDimension(eng.horizontal)}
+                    title={formatDimension(
+                      eng.horizontal
+                    )}
                   >
-                    {formatDimension(eng.horizontal)}
+                    {formatDimension(
+                      eng.horizontal
+                    )}
                   </p>
-
                 </td>
-
 
                 {/* VERTICAL */}
                 <td className="border-r border-slate-200 px-2 py-2.5 align-top text-[11px] text-slate-600">
-
                   <p
                     className="line-clamp-2"
-                    title={formatDimension(eng.vertical)}
+                    title={formatDimension(
+                      eng.vertical
+                    )}
                   >
-                    {formatDimension(eng.vertical)}
+                    {formatDimension(
+                      eng.vertical
+                    )}
                   </p>
-
                 </td>
-
 
                 {/* TRANSVERSAL */}
                 <td className="border-r border-slate-200 px-2 py-2.5 align-top text-[11px] text-slate-600">
-
                   <p
                     className="line-clamp-2"
-                    title={formatDimension(eng.transversal)}
+                    title={formatDimension(
+                      eng.transversal
+                    )}
                   >
-                    {formatDimension(eng.transversal)}
+                    {formatDimension(
+                      eng.transversal
+                    )}
                   </p>
-
                 </td>
-
 
                 {/* DATA */}
                 <td className="border-r border-slate-200 px-2 py-2.5 align-top text-[11px] text-slate-600">
-
                   <div
                     className="min-w-0 leading-tight"
-                    title={formatFullDate(eng.event_date)}
+                    title={formatFullDate(
+                      eng.event_date
+                    )}
                   >
-
                     <p className="whitespace-nowrap tabular-nums text-slate-700">
                       {formattedDate.date}
                     </p>
 
                     {formattedDate.time && (
-
                       <p className="mt-0.5 whitespace-nowrap text-[10px] tabular-nums text-slate-500">
                         {formattedDate.time}
                       </p>
-
                     )}
-
                   </div>
-
                 </td>
-
 
                 {/* LOCAL */}
                 <td className="border-r border-slate-200 px-2 py-2.5 align-top text-[11px] text-slate-600">
-
                   <p
                     className="truncate"
-                    title={eng.location || '—'}
+                    title={
+                      eng.location || '—'
+                    }
                   >
                     {eng.location || '—'}
                   </p>
-
                 </td>
 
-
                 {/* DURAÇÃO */}
-                <td className="border-r border-slate-200 px-2 py-2.5 align-top whitespace-nowrap text-[11px] text-slate-600">
-
+                <td className="whitespace-nowrap border-r border-slate-200 px-2 py-2.5 align-top text-[11px] text-slate-600">
                   {eng.estimated_duration
                     ? `${eng.estimated_duration} h`
                     : '—'}
-
                 </td>
-
 
                 {/* MEMBROS */}
-                <td className="px-2 py-2.5 text-center align-top whitespace-nowrap text-[11px] text-slate-600">
-
-                  {eng.engagement_participants?.length || 0}
-
+                <td className="whitespace-nowrap px-2 py-2.5 text-center align-top text-[11px] text-slate-600">
+                  {eng.engagement_participants
+                    ?.length || 0}
                 </td>
-
               </tr>
             )
           })}
-
         </tbody>
-
       </table>
-
     </div>
   )
 }

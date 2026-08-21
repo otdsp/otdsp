@@ -63,6 +63,12 @@ interface ParticipantRow {
   missingFields: string[]
 }
 
+interface SortIconProps {
+  field: SortField
+  sortField: SortField
+  sortDirection: SortDirection
+}
+
 const PROFILE_SELECT = `
   id,
   full_name,
@@ -118,6 +124,53 @@ const statusOrder: Record<VisualStatus, number> = {
   red: 2
 }
 
+function SortIcon({
+  field,
+  sortField,
+  sortDirection
+}: SortIconProps) {
+  if (sortField !== field) {
+    return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />
+  }
+
+  return sortDirection === 'asc' ? (
+    <ArrowUp className="h-3.5 w-3.5" />
+  ) : (
+    <ArrowDown className="h-3.5 w-3.5" />
+  )
+}
+
+function renderStatus(row: ParticipantRow) {
+  if (row.status === 'green') {
+    return (
+      <span className="inline-flex items-center justify-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+        <CheckCircle2 className="h-3.5 w-3.5" /> Completo
+      </span>
+    )
+  }
+
+  if (row.status === 'yellow') {
+    return (
+      <span
+        title={
+          row.missingFields.length
+            ? `Dados faltantes: ${row.missingFields.join(', ')}`
+            : undefined
+        }
+        className="inline-flex items-center justify-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700"
+      >
+        <AlertCircle className="h-3.5 w-3.5" /> Incompleto
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-center justify-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700">
+      <XCircle className="h-3.5 w-3.5" /> Externo
+    </span>
+  )
+}
+
 export function EngagementParticipantTable({
   participants,
   onRemove,
@@ -146,8 +199,6 @@ export function EngagementParticipantTable({
 
   useEffect(() => {
     if (registeredIds.length === 0) {
-      setDetailsById({})
-      setLoading(false)
       return
     }
 
@@ -156,45 +207,52 @@ export function EngagementParticipantTable({
     const fetchDetails = async () => {
       setLoading(true)
 
-      const { data, error } = await supabase
-        .from('user_profile')
-        .select(PROFILE_SELECT)
-        .in('id', registeredIds)
+      try {
+        const { data, error } = await supabase
+          .from('user_profile')
+          .select(PROFILE_SELECT)
+          .in('id', registeredIds)
 
-      if (cancelled) return
+        if (cancelled) return
 
-      if (error) {
-        console.error(
-          'Erro ao carregar perfis dos participantes:',
-          error.message
-        )
-        setDetailsById({})
-        setLoading(false)
-        return
+        if (error) {
+          console.error(
+            'Erro ao carregar perfis dos participantes:',
+            error.message
+          )
+          setDetailsById({})
+          return
+        }
+
+        const nextDetails = ((data ?? []) as UserProfileRow[]).reduce<
+          Record<string, ParticipantDetail>
+        >((accumulator, profile) => {
+          accumulator[profile.id] = buildParticipantDetail(profile)
+          return accumulator
+        }, {})
+
+        setDetailsById(nextDetails)
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
-
-      const nextDetails = ((data ?? []) as UserProfileRow[]).reduce<
-        Record<string, ParticipantDetail>
-      >((accumulator, profile) => {
-        accumulator[profile.id] = buildParticipantDetail(profile)
-        return accumulator
-      }, {})
-
-      setDetailsById(nextDetails)
-      setLoading(false)
     }
 
-    fetchDetails()
+    void fetchDetails()
 
     return () => {
       cancelled = true
     }
   }, [registeredIds])
 
+  const effectiveDetailsById =
+    registeredIds.length === 0 ? {} : detailsById
+
   const rows = useMemo<ParticipantRow[]>(() => {
     return participants.map((participant, originalIndex) => {
       const detail = participant.user_id
-        ? detailsById[participant.user_id]
+        ? effectiveDetailsById[participant.user_id]
         : undefined
 
       const status: VisualStatus = participant.user_id
@@ -221,7 +279,7 @@ export function EngagementParticipantTable({
         missingFields: detail?.missingFields || []
       }
     })
-  }, [participants, detailsById])
+  }, [participants, effectiveDetailsById])
 
   const sortedRows = useMemo(() => {
     return [...rows].sort((a, b) => {
@@ -255,7 +313,9 @@ export function EngagementParticipantTable({
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortDirection(current => (current === 'asc' ? 'desc' : 'asc'))
+      setSortDirection(current =>
+        current === 'asc' ? 'desc' : 'asc'
+      )
       return
     }
 
@@ -263,56 +323,14 @@ export function EngagementParticipantTable({
     setSortDirection('asc')
   }
 
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) {
-      return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />
-    }
-
-    return sortDirection === 'asc' ? (
-      <ArrowUp className="h-3.5 w-3.5" />
-    ) : (
-      <ArrowDown className="h-3.5 w-3.5" />
-    )
-  }
-
-  const renderStatus = (row: ParticipantRow) => {
-    if (row.status === 'green') {
-      return (
-        <span className="inline-flex items-center justify-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
-          <CheckCircle2 className="h-3.5 w-3.5" /> Completo
-        </span>
-      )
-    }
-
-    if (row.status === 'yellow') {
-      const pendingLabel = 'Incompleto'
-
-      return (
-        <span
-          title={
-            row.missingFields.length
-              ? `Dados faltantes: ${row.missingFields.join(', ')}`
-              : undefined
-          }
-          className="inline-flex items-center justify-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700"
-        >
-          <AlertCircle className="h-3.5 w-3.5" /> {pendingLabel}
-        </span>
-      )
-    }
-
-    return (
-      <span className="inline-flex items-center justify-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700">
-        <XCircle className="h-3.5 w-3.5" /> Externo
-      </span>
-    )
-  }
-
   if (participants.length === 0) return null
+
+  const isLoading =
+    registeredIds.length > 0 && loading
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      {loading && registeredIds.length > 0 ? (
+      {isLoading ? (
         <div className="flex items-center justify-center gap-2 py-7 text-xs text-slate-500">
           <Loader2 className="h-4 w-4 animate-spin text-cyan-500" />
           Carregando participantes...
@@ -347,27 +365,45 @@ export function EngagementParticipantTable({
                       onClick={() => handleSort('name')}
                       className="flex items-center gap-1 hover:text-cyan-600"
                     >
-                      Participante <SortIcon field="name" />
+                      Participante
+                      <SortIcon
+                        field="name"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                      />
                     </button>
                   </th>
+
                   <th className="px-4 py-3">
                     <button
                       type="button"
                       onClick={() => handleSort('institution')}
                       className="flex items-center gap-1 hover:text-cyan-600"
                     >
-                      Instituição / Atuação <SortIcon field="institution" />
+                      Instituição / Atuação
+                      <SortIcon
+                        field="institution"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                      />
                     </button>
                   </th>
+
                   <th className="px-4 py-3">
                     <button
                       type="button"
                       onClick={() => handleSort('municipality')}
                       className="flex items-center gap-1 hover:text-cyan-600"
                     >
-                      Município <SortIcon field="municipality" />
+                      Município
+                      <SortIcon
+                        field="municipality"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                      />
                     </button>
                   </th>
+
                   {isStaff && (
                     <th className="px-4 py-3 text-center">
                       <button
@@ -375,10 +411,16 @@ export function EngagementParticipantTable({
                         onClick={() => handleSort('status')}
                         className="mx-auto flex items-center justify-center gap-1.5 hover:text-cyan-600"
                       >
-                        Cadastro <SortIcon field="status" />
+                        Cadastro
+                        <SortIcon
+                          field="status"
+                          sortField={sortField}
+                          sortDirection={sortDirection}
+                        />
                       </button>
                     </th>
                   )}
+
                   {isStaff && !readOnly && (
                     <th className="px-3 py-3 text-center">Ação</th>
                   )}
@@ -399,6 +441,7 @@ export function EngagementParticipantTable({
                         >
                           {row.displayName}
                         </div>
+
                         {row.email && (
                           <div
                             className="mt-1 truncate text-xs text-slate-500"
@@ -418,6 +461,7 @@ export function EngagementParticipantTable({
                         >
                           {row.institution || 'Sem instituição'}
                         </div>
+
                         <div
                           className="mt-1 truncate text-xs text-slate-500"
                           title={row.jobTitle || undefined}
@@ -431,16 +475,22 @@ export function EngagementParticipantTable({
                       <div className="min-w-0">
                         <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-slate-600">
                           <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+
                           <span
                             className="truncate"
-                            title={[row.municipality, row.organizationType]
+                            title={[
+                              row.municipality,
+                              row.organizationType
+                            ]
                               .filter(Boolean)
                               .join(' • ')}
                           >
                             {row.municipality || 'Sem município'}
-                            {row.organizationType && ` • ${row.organizationType}`}
+                            {row.organizationType &&
+                              ` • ${row.organizationType}`}
                           </span>
                         </div>
+
                         <div
                           className="mt-1 truncate text-xs text-slate-400"
                           title={row.relationship || undefined}
@@ -491,14 +541,21 @@ export function EngagementParticipantTable({
                     >
                       {row.displayName}
                     </div>
+
                     <div className="mt-1 truncate text-xs text-slate-500">
-                      {row.jobTitle || row.institution || row.email || 'Sem dados complementares'}
+                      {row.jobTitle ||
+                        row.institution ||
+                        row.email ||
+                        'Sem dados complementares'}
                     </div>
+
                     <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-slate-400">
                       <MapPin className="h-3.5 w-3.5 shrink-0" />
+
                       <span className="truncate">
                         {row.municipality || 'Sem município'}
-                        {row.organizationType && ` • ${row.organizationType}`}
+                        {row.organizationType &&
+                          ` • ${row.organizationType}`}
                       </span>
                     </div>
                   </div>
@@ -506,16 +563,17 @@ export function EngagementParticipantTable({
                   {isStaff && (
                     <div className="flex shrink-0 items-center gap-1">
                       {renderStatus(row)}
+
                       {!readOnly && (
-                      <button
-                        type="button"
-                        onClick={() => onRemove(row.originalIndex)}
-                        className="rounded-md p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                        title={`Remover ${row.displayName}`}
-                        aria-label={`Remover ${row.displayName}`}
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => onRemove(row.originalIndex)}
+                          className="rounded-md p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                          title={`Remover ${row.displayName}`}
+                          aria-label={`Remover ${row.displayName}`}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
                       )}
                     </div>
                   )}

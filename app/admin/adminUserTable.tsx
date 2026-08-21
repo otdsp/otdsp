@@ -14,13 +14,38 @@ import {
   ArrowUp,
   ArrowDown,
 } from 'lucide-react'
-import { 
-  AdminUser, EditableUserFields, extractEmail, extractRole, 
-  extractDateJoined, extractIsActive, getUserStatus 
+import {
+  AdminUser,
+  EditableUserFields,
+  extractEmail,
+  extractRole,
+  extractDateJoined,
+  extractIsActive,
+  getUserStatus,
 } from './adminUserUtils'
 
 type SortField = 'name' | 'credentials' | 'status'
 type SortDirection = 'asc' | 'desc'
+
+interface SortIconProps {
+  field: SortField
+  sortField: SortField
+  sortDirection: SortDirection
+}
+
+function SortIcon({
+  field,
+  sortField,
+  sortDirection,
+}: SortIconProps) {
+  if (sortField !== field) {
+    return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />
+  }
+
+  return sortDirection === 'asc'
+    ? <ArrowUp className="h-3.5 w-3.5" />
+    : <ArrowDown className="h-3.5 w-3.5" />
+}
 
 interface AdminUserTableProps {
   users: AdminUser[]
@@ -33,7 +58,10 @@ interface AdminUserTableProps {
   savingUserId: string | null
   onStartEdit: (user: AdminUser) => void
   onCancelEdit: () => void
-  onDraftChange: (field: keyof EditableUserFields, value: string | boolean) => void
+  onDraftChange: (
+    field: keyof EditableUserFields,
+    value: string | boolean
+  ) => void
   onSaveUser: (user: AdminUser) => void
 }
 
@@ -99,16 +127,6 @@ export function AdminUserTable({
     })
   }, [users, sortField, sortDirection])
 
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) {
-      return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />
-    }
-
-    return sortDirection === 'asc'
-      ? <ArrowUp className="h-3.5 w-3.5" />
-      : <ArrowDown className="h-3.5 w-3.5" />
-  }
-
   if (loading) {
     return (
       <div className="flex justify-center p-12">
@@ -123,14 +141,20 @@ export function AdminUserTable({
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500">
             <th className="w-12 p-4 text-center">
-              <button onClick={onToggleAll} className="text-slate-400 transition-colors hover:text-cyan-600">
-                {selectedUserIds.size === users.length && users.length > 0 ? (
+              <button
+                type="button"
+                onClick={onToggleAll}
+                className="text-slate-400 transition-colors hover:text-cyan-600"
+              >
+                {selectedUserIds.size === users.length &&
+                users.length > 0 ? (
                   <CheckSquare className="h-5 w-5 text-cyan-600" />
                 ) : (
                   <Square className="h-5 w-5" />
                 )}
               </button>
             </th>
+
             <th className="p-4">
               <button
                 type="button"
@@ -138,7 +162,11 @@ export function AdminUserTable({
                 className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
               >
                 Usuário & Contato
-                <SortIcon field="name" />
+                <SortIcon
+                  field="name"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
               </button>
             </th>
 
@@ -149,7 +177,11 @@ export function AdminUserTable({
                 className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
               >
                 Credenciais & Nível
-                <SortIcon field="credentials" />
+                <SortIcon
+                  field="credentials"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
               </button>
             </th>
 
@@ -160,7 +192,11 @@ export function AdminUserTable({
                 className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
               >
                 Status
-                <SortIcon field="status" />
+                <SortIcon
+                  field="status"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
               </button>
             </th>
 
@@ -169,10 +205,14 @@ export function AdminUserTable({
             </th>
           </tr>
         </thead>
+
         <tbody className="divide-y divide-slate-100">
           {users.length === 0 ? (
             <tr>
-              <td colSpan={5} className="p-8 text-center text-slate-500">
+              <td
+                colSpan={5}
+                className="p-8 text-center text-slate-500"
+              >
                 Nenhum usuário encontrado com os filtros atuais.
               </td>
             </tr>
@@ -186,13 +226,17 @@ export function AdminUserTable({
               const isSaving = savingUserId === user.id
 
               return (
-                <tr key={user.id} className={`transition-colors hover:bg-slate-50 ${isSelected ? 'bg-cyan-50/30' : ''}`}>
+                <tr
+                  key={user.id}
+                  className={`transition-colors hover:bg-slate-50 ${
+                    isSelected ? 'bg-cyan-50/30' : ''
+                  }`}
+                >
                   {isEditing && editDraft ? (
                     <td colSpan={5} className="p-3">
                       <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4 shadow-sm">
                         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                           <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-12">
-                            {/* Nome */}
                             <div className="sm:col-span-1 xl:col-span-3">
                               <label
                                 htmlFor={`full-name-${user.id}`}
@@ -200,18 +244,21 @@ export function AdminUserTable({
                               >
                                 Nome
                               </label>
+
                               <input
                                 id={`full-name-${user.id}`}
                                 value={editDraft.full_name}
                                 onChange={event =>
-                                  onDraftChange('full_name', event.target.value)
+                                  onDraftChange(
+                                    'full_name',
+                                    event.target.value
+                                  )
                                 }
                                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
                                 placeholder="Nome completo"
                               />
                             </div>
 
-                            {/* E-mail */}
                             <div className="sm:col-span-1 xl:col-span-3">
                               <label
                                 htmlFor={`email-${user.id}`}
@@ -219,19 +266,22 @@ export function AdminUserTable({
                               >
                                 E-mail
                               </label>
+
                               <input
                                 id={`email-${user.id}`}
                                 type="email"
                                 value={editDraft.email}
                                 onChange={event =>
-                                  onDraftChange('email', event.target.value)
+                                  onDraftChange(
+                                    'email',
+                                    event.target.value
+                                  )
                                 }
                                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
                                 placeholder="usuario@exemplo.com"
                               />
                             </div>
 
-                            {/* Município */}
                             <div className="sm:col-span-1 xl:col-span-2">
                               <label
                                 htmlFor={`municipality-${user.id}`}
@@ -239,18 +289,21 @@ export function AdminUserTable({
                               >
                                 Município
                               </label>
+
                               <input
                                 id={`municipality-${user.id}`}
                                 value={editDraft.municipality ?? ''}
                                 onChange={event =>
-                                  onDraftChange('municipality', event.target.value)
+                                  onDraftChange(
+                                    'municipality',
+                                    event.target.value
+                                  )
                                 }
                                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
                                 placeholder="Ex.: Campinas"
                               />
                             </div>
 
-                            {/* Nível */}
                             <div className="sm:col-span-1 xl:col-span-2">
                               <label
                                 htmlFor={`role-${user.id}`}
@@ -258,21 +311,26 @@ export function AdminUserTable({
                               >
                                 Nível
                               </label>
+
                               <select
                                 id={`role-${user.id}`}
                                 value={editDraft.role}
                                 onChange={event =>
-                                  onDraftChange('role', event.target.value)
+                                  onDraftChange(
+                                    'role',
+                                    event.target.value
+                                  )
                                 }
                                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
                               >
                                 <option value="user">COMUM</option>
-                                <option value="pesquisa">PESQUISA</option>
+                                <option value="pesquisa">
+                                  PESQUISA
+                                </option>
                                 <option value="staff">STAFF</option>
                               </select>
                             </div>
 
-                            {/* Status */}
                             <div className="sm:col-span-1 xl:col-span-2">
                               <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                                 Status
@@ -283,16 +341,23 @@ export function AdminUserTable({
                                   type="checkbox"
                                   checked={editDraft.is_active}
                                   onChange={event =>
-                                    onDraftChange('is_active', event.target.checked)
+                                    onDraftChange(
+                                      'is_active',
+                                      event.target.checked
+                                    )
                                   }
                                   className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
                                 />
-                                <span>{editDraft.is_active ? 'Ativo' : 'Inativo'}</span>
+
+                                <span>
+                                  {editDraft.is_active
+                                    ? 'Ativo'
+                                    : 'Inativo'}
+                                </span>
                               </label>
                             </div>
                           </div>
 
-                          {/* Ações */}
                           <div className="flex shrink-0 items-center justify-end gap-2 border-t border-cyan-100 pt-3 xl:border-t-0 xl:pt-0">
                             <button
                               type="button"
@@ -316,7 +381,9 @@ export function AdminUserTable({
                                 <Save className="h-4 w-4" />
                               )}
 
-                              {isSaving ? 'Salvando...' : 'Salvar'}
+                              {isSaving
+                                ? 'Salvando...'
+                                : 'Salvar'}
                             </button>
                           </div>
                         </div>
@@ -325,20 +392,40 @@ export function AdminUserTable({
                   ) : (
                     <>
                       <td className="p-4 text-center">
-                        <button onClick={() => onToggleSelection(user.id)} className="text-slate-400 transition-colors hover:text-cyan-600">
-                          {isSelected ? <CheckSquare className="h-5 w-5 text-cyan-600" /> : <Square className="h-5 w-5" />}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onToggleSelection(user.id)
+                          }
+                          className="text-slate-400 transition-colors hover:text-cyan-600"
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="h-5 w-5 text-cyan-600" />
+                          ) : (
+                            <Square className="h-5 w-5" />
+                          )}
                         </button>
                       </td>
 
                       <td className="p-4">
                         <div className="flex flex-col">
-                          <span className="font-bold text-slate-800">{user.full_name || 'Usuário Sem Nome'}</span>
-                          <span className="mt-0.5 text-xs text-slate-500">
-                            {user.phone || 'Sem telefone'} • {user.municipality || 'Sem município'}
+                          <span className="font-bold text-slate-800">
+                            {user.full_name ||
+                              'Usuário Sem Nome'}
                           </span>
+
+                          <span className="mt-0.5 text-xs text-slate-500">
+                            {user.phone || 'Sem telefone'} •{' '}
+                            {user.municipality ||
+                              'Sem município'}
+                          </span>
+
                           {joinedDate && (
                             <span className="mt-0.5 text-[10px] font-medium text-slate-400">
-                              Cadastrado em: {new Date(joinedDate).toLocaleDateString('pt-BR')}
+                              Cadastrado em:{' '}
+                              {new Date(
+                                joinedDate
+                              ).toLocaleDateString('pt-BR')}
                             </span>
                           )}
                         </div>
@@ -346,10 +433,19 @@ export function AdminUserTable({
 
                       <td className="p-4">
                         <div className="flex flex-col">
-                          <span className="text-sm text-slate-700">{extractEmail(user)}</span>
+                          <span className="text-sm text-slate-700">
+                            {extractEmail(user)}
+                          </span>
+
                           <span className="mt-0.5 text-xs font-medium text-slate-500">
-                            <span className="font-mono">{user.cpf ? `CPF: ${user.cpf}` : 'Sem CPF'}</span>
-                            {userRole && ` • Nível: ${userRole.toUpperCase()}`}
+                            <span className="font-mono">
+                              {user.cpf
+                                ? `CPF: ${user.cpf}`
+                                : 'Sem CPF'}
+                            </span>
+
+                            {userRole &&
+                              ` • Nível: ${userRole.toUpperCase()}`}
                           </span>
                         </div>
                       </td>
@@ -358,21 +454,36 @@ export function AdminUserTable({
                         <div className="flex flex-col gap-2">
                           {status === 'green' && (
                             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
-                              <CheckCircle2 className="h-3.5 w-3.5" /> Completo
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Completo
                             </span>
                           )}
+
                           {status === 'yellow' && (
                             <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
-                              <AlertCircle className="h-3.5 w-3.5" /> Incompleto
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              Incompleto
                             </span>
                           )}
+
                           {status === 'red' && (
                             <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700">
-                              <XCircle className="h-3.5 w-3.5" /> Sem Dados
+                              <XCircle className="h-3.5 w-3.5" />
+                              Sem Dados
                             </span>
                           )}
-                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${extractIsActive(user) ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                            <Activity className="h-3.5 w-3.5" /> {extractIsActive(user) ? 'Ativo' : 'Inativo'}
+
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                              extractIsActive(user)
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            <Activity className="h-3.5 w-3.5" />
+                            {extractIsActive(user)
+                              ? 'Ativo'
+                              : 'Inativo'}
                           </span>
                         </div>
                       </td>
@@ -380,6 +491,7 @@ export function AdminUserTable({
                       <td className="p-4">
                         <div className="flex items-center justify-end gap-2">
                           <button
+                            type="button"
                             onClick={() => onStartEdit(user)}
                             title="Editar usuário"
                             className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-cyan-50 hover:text-cyan-600"
