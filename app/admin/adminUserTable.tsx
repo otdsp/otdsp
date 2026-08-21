@@ -1,11 +1,26 @@
-'use client'
-
-import React from 'react'
-import { CheckSquare, Square, CheckCircle2, AlertCircle, XCircle, Activity, PencilLine, X, Save, Loader2 } from 'lucide-react'
+import React, { useMemo, useState } from 'react'
+import {
+  CheckSquare,
+  Square,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  Activity,
+  PencilLine,
+  X,
+  Save,
+  Loader2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from 'lucide-react'
 import { 
   AdminUser, EditableUserFields, extractEmail, extractRole, 
   extractDateJoined, extractIsActive, getUserStatus 
-} from './adminUtils'
+} from './adminUserUtils'
+
+type SortField = 'name' | 'credentials' | 'status'
+type SortDirection = 'asc' | 'desc'
 
 interface AdminUserTableProps {
   users: AdminUser[]
@@ -34,8 +49,65 @@ export function AdminUserTable({
   onStartEdit,
   onCancelEdit,
   onDraftChange,
-  onSaveUser
+  onSaveUser,
 }: AdminUserTableProps) {
+  const [sortField, setSortField] = useState<SortField>('name')
+  const [sortDirection, setSortDirection] =
+    useState<SortDirection>('asc')
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(current =>
+        current === 'asc' ? 'desc' : 'asc'
+      )
+      return
+    }
+
+    setSortField(field)
+    setSortDirection('asc')
+  }
+
+  const sortedUsers = useMemo(() => {
+    return [...users].sort((a, b) => {
+      let valueA = ''
+      let valueB = ''
+
+      switch (sortField) {
+        case 'name':
+          valueA = a.full_name || ''
+          valueB = b.full_name || ''
+          break
+
+        case 'credentials':
+          valueA = extractDateJoined(a) || ''
+          valueB = extractDateJoined(b) || ''
+          break
+
+        case 'status':
+          valueA = getUserStatus(a)
+          valueB = getUserStatus(b)
+          break
+      }
+
+      const comparison = valueA.localeCompare(valueB, 'pt-BR', {
+        sensitivity: 'base',
+      })
+
+      return sortDirection === 'asc'
+        ? comparison
+        : -comparison
+    })
+  }, [users, sortField, sortDirection])
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />
+    }
+
+    return sortDirection === 'asc'
+      ? <ArrowUp className="h-3.5 w-3.5" />
+      : <ArrowDown className="h-3.5 w-3.5" />
+  }
 
   if (loading) {
     return (
@@ -59,10 +131,42 @@ export function AdminUserTable({
                 )}
               </button>
             </th>
-            <th className="p-4">Usuário & Contato</th>
-            <th className="p-4">Credenciais & Nível</th>
-            <th className="p-4">Status</th>
-            <th className="p-4 text-right">Ações</th>
+            <th className="p-4">
+              <button
+                type="button"
+                onClick={() => handleSort('name')}
+                className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
+              >
+                Usuário & Contato
+                <SortIcon field="name" />
+              </button>
+            </th>
+
+            <th className="p-4">
+              <button
+                type="button"
+                onClick={() => handleSort('credentials')}
+                className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
+              >
+                Credenciais & Nível
+                <SortIcon field="credentials" />
+              </button>
+            </th>
+
+            <th className="p-4">
+              <button
+                type="button"
+                onClick={() => handleSort('status')}
+                className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
+              >
+                Status
+                <SortIcon field="status" />
+              </button>
+            </th>
+
+            <th className="p-4 text-right">
+              Ações
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -73,7 +177,7 @@ export function AdminUserTable({
               </td>
             </tr>
           ) : (
-            users.map(user => {
+            sortedUsers.map(user => {
               const isSelected = selectedUserIds.has(user.id)
               const isEditing = editingUserId === user.id
               const status = getUserStatus(user)
@@ -85,41 +189,82 @@ export function AdminUserTable({
                 <tr key={user.id} className={`transition-colors hover:bg-slate-50 ${isSelected ? 'bg-cyan-50/30' : ''}`}>
                   {isEditing && editDraft ? (
                     <td colSpan={5} className="p-3">
-                      <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-3 shadow-sm">
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                          <div className="flex flex-1 flex-wrap gap-2">
-                            <div className="min-w-[180px] flex-1">
-                              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                      <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4 shadow-sm">
+                        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                          <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-12">
+                            {/* Nome */}
+                            <div className="sm:col-span-1 xl:col-span-3">
+                              <label
+                                htmlFor={`full-name-${user.id}`}
+                                className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500"
+                              >
                                 Nome
                               </label>
                               <input
+                                id={`full-name-${user.id}`}
                                 value={editDraft.full_name}
-                                onChange={event => onDraftChange('full_name', event.target.value)}
-                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500"
-                                placeholder="Nome"
+                                onChange={event =>
+                                  onDraftChange('full_name', event.target.value)
+                                }
+                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                                placeholder="Nome completo"
                               />
                             </div>
 
-                            <div className="min-w-[180px] flex-1">
-                              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                            {/* E-mail */}
+                            <div className="sm:col-span-1 xl:col-span-3">
+                              <label
+                                htmlFor={`email-${user.id}`}
+                                className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500"
+                              >
                                 E-mail
                               </label>
                               <input
+                                id={`email-${user.id}`}
+                                type="email"
                                 value={editDraft.email}
-                                onChange={event => onDraftChange('email', event.target.value)}
-                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500"
-                                placeholder="E-mail"
+                                onChange={event =>
+                                  onDraftChange('email', event.target.value)
+                                }
+                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                                placeholder="usuario@exemplo.com"
                               />
                             </div>
 
-                            <div className="min-w-[120px]">
-                              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                            {/* Município */}
+                            <div className="sm:col-span-1 xl:col-span-2">
+                              <label
+                                htmlFor={`municipality-${user.id}`}
+                                className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500"
+                              >
+                                Município
+                              </label>
+                              <input
+                                id={`municipality-${user.id}`}
+                                value={editDraft.municipality ?? ''}
+                                onChange={event =>
+                                  onDraftChange('municipality', event.target.value)
+                                }
+                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                                placeholder="Ex.: Campinas"
+                              />
+                            </div>
+
+                            {/* Nível */}
+                            <div className="sm:col-span-1 xl:col-span-2">
+                              <label
+                                htmlFor={`role-${user.id}`}
+                                className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500"
+                              >
                                 Nível
                               </label>
                               <select
+                                id={`role-${user.id}`}
                                 value={editDraft.role}
-                                onChange={event => onDraftChange('role', event.target.value)}
-                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500"
+                                onChange={event =>
+                                  onDraftChange('role', event.target.value)
+                                }
+                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
                               >
                                 <option value="user">COMUM</option>
                                 <option value="pesquisa">PESQUISA</option>
@@ -127,36 +272,51 @@ export function AdminUserTable({
                               </select>
                             </div>
 
-                            <div className="min-w-[120px]">
-                              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                            {/* Status */}
+                            <div className="sm:col-span-1 xl:col-span-2">
+                              <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                                 Status
-                              </label>
-                              <label className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700">
+                              </span>
+
+                              <label className="flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
                                 <input
                                   type="checkbox"
                                   checked={editDraft.is_active}
-                                  onChange={event => onDraftChange('is_active', event.target.checked)}
+                                  onChange={event =>
+                                    onDraftChange('is_active', event.target.checked)
+                                  }
                                   className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
                                 />
-                                {editDraft.is_active ? 'Ativo' : 'Inativo'}
+                                <span>{editDraft.is_active ? 'Ativo' : 'Inativo'}</span>
                               </label>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2">
+                          {/* Ações */}
+                          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-cyan-100 pt-3 xl:border-t-0 xl:pt-0">
                             <button
+                              type="button"
                               onClick={onCancelEdit}
-                              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                              disabled={isSaving}
+                              className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                              <X className="h-4 w-4" /> Cancelar
+                              <X className="h-4 w-4" />
+                              Cancelar
                             </button>
+
                             <button
+                              type="button"
                               onClick={() => onSaveUser(user)}
                               disabled={isSaving}
-                              className="flex items-center gap-2 rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-70"
+                              className="flex h-10 items-center gap-2 rounded-lg bg-cyan-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
                             >
-                              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                              Salvar
+                              {isSaving ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Save className="h-4 w-4" />
+                              )}
+
+                              {isSaving ? 'Salvando...' : 'Salvar'}
                             </button>
                           </div>
                         </div>

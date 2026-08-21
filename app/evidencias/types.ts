@@ -24,6 +24,7 @@ export interface EngagementParticipant {
 
 export interface Engagement {
   id: string;
+  title: string;
   created_by: string;
   status: string | null;
   horizontal: string[] | null;
@@ -54,7 +55,7 @@ export interface MunicipalityChartRow {
 
 export interface KPIStats {
   totalUsers: number;
-  activeUsers: number;
+  attendedCities: number;
   totalEngagements: number;
   signedAgreements: number;
 }
@@ -72,6 +73,7 @@ export interface DimensionFilter {
 }
 
 export interface EvidenceFilters {
+  engagementSearch: string;
   startDate: string;
   endDate: string;
   vertical: DimensionFilter;
@@ -80,6 +82,7 @@ export interface EvidenceFilters {
 }
 
 export interface EvidenceFilterOptions {
+  engagements: string[];
   verticals: string[];
   horizontals: string[];
   transversals: string[];

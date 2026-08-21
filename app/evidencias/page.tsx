@@ -2,8 +2,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { 
-  Users, Activity, Target, Handshake, Globe2, BarChart3, ShieldAlert, Loader2, 
-  PieChart as PieIcon, Briefcase, Filter, Download, X, Layers3, Rows3, Waypoints
+  Users, Globe2, Globe, Target, Handshake, BarChart3, ShieldAlert, Loader2, 
+  PieChart as PieIcon, Briefcase, Filter, Download, X, Layers3, Rows3, 
+  Waypoints, Search, Maximize2, Minimize2
 } from 'lucide-react';
 import { 
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -29,6 +30,8 @@ const LEAFLET_TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y
 export default function EvidenciasStaff() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
 
   const {
     isLoading,
@@ -39,14 +42,27 @@ export default function EvidenciasStaff() {
     derivedData
   } = useEvidence();
 
+  const [isEngagementSearchOpen, setIsEngagementSearchOpen] = useState(false);
   const activeFiltersSummary = buildActiveFiltersSummary(filters);
-
   const { stats, timelineData, engagementTimelineData, referralData, organizationData, geoData, pillarsData, durationChart, municipalityChartData } = derivedData;
 
   // Estados para controle do Modal de Exportação
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [eventName, setEventName] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+
+  const normalizeText = (value: string = '') => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const normalizedEngagementSearch = normalizeText(filters.engagementSearch);
+  const engagementSuggestions =
+    normalizedEngagementSearch.length >= 2
+      ? filterOptions.engagements
+          .filter((title) =>
+            normalizeText(title).includes(
+              normalizedEngagementSearch
+            )
+          )
+          .slice(0, 4)
+      : [];
 
   useEffect(() => {
     if (!isAuthorized || geoData.length === 0 || !mapRef.current) return;
@@ -56,8 +72,8 @@ export default function EvidenciasStaff() {
         link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(link);
       }
       if (!mapInstance.current) {
-        if (mapRef.current) mapInstance.current = L.map(mapRef.current).setView([-15.7801, -47.9292], 4);
-        L.tileLayer(LEAFLET_TILE_URL, { maxZoom: 20 }).addTo(mapInstance.current);
+        if (mapRef.current) mapInstance.current = L.map(mapRef.current, {preferCanvas: true}).setView([-15.7801, -47.9292], 4);
+        L.tileLayer(LEAFLET_TILE_URL, { maxZoom: 20, crossOrigin: true }).addTo(mapInstance.current);
       } else {
         mapInstance.current.eachLayer((layer: any) => { if (layer instanceof L.CircleMarker) mapInstance.current.removeLayer(layer); });
       }
@@ -66,7 +82,14 @@ export default function EvidenciasStaff() {
       geoData.forEach((city) => {
         const [lng, lat] = city.coordinates; 
         const mColor = getGeoMarkerColor(city.count);
-        const marker = L.circleMarker([lat, lng], { radius: Math.min(6 + city.count * 1.5, 25), fillColor: mColor, color: "#ffffff", weight: 1.5, fillOpacity: 0.75 }).addTo(mapInstance.current);
+        const marker = L.circleMarker([lat, lng], {
+          renderer: L.canvas({padding: 0.5}),
+          radius: Math.min(6 + city.count * 1.5, 25),
+          fillColor: mColor,
+          color: '#ffffff',
+          weight: 1.5,
+          fillOpacity: 0.75,
+        }).addTo(mapInstance.current);
         marker.bindPopup(`<div style="font-family: Inter; font-size: 13px;"><strong style="color: #0f172a;">${city.name}</strong><br/><span>${city.count} membros ativos</span></div>`);
         bounds.push([lat, lng]);
       });
@@ -74,12 +97,62 @@ export default function EvidenciasStaff() {
     });
   }, [geoData, isAuthorized]);
 
+  const toggleMapFullscreen = async () => {
+    if (!mapContainerRef.current) return;
+
+    try {
+      if (!document.fullscreenElement) {
+        await mapContainerRef.current.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (error) {
+      console.error('Erro ao alternar tela cheia:', error);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isFullscreen = document.fullscreenElement === mapContainerRef.current;
+      setIsMapFullscreen(isFullscreen);
+      requestAnimationFrame(() => {
+        mapInstance.current?.invalidateSize();
+      });
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   const handleExport = async () => {
     setIsExporting(true);
-    await exportToPDF('pdf-content', eventName);
-    setIsExporting(false);
-    setIsModalOpen(false);
-    setEventName('');
+
+    try {
+      // Garante que o Leaflet recalculou dimensões e posições
+      if (mapInstance.current) {
+        mapInstance.current.invalidateSize();
+      }
+
+      // Espera o navegador terminar a renderização
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => resolve());
+        });
+      });
+
+      // Pequeno tempo para tiles/canvas terminarem
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      await exportToPDF('pdf-content', eventName);
+
+    } finally {
+      setIsExporting(false);
+      setIsModalOpen(false);
+      setEventName('');
+    }
   };
 
   if (isLoading) {
@@ -126,12 +199,87 @@ export default function EvidenciasStaff() {
           </div>
           
           <div className="flex-1 space-y-4">
-            <DateRangeFilter
-              startDate={filters.startDate}
-              endDate={filters.endDate}
-              onStartDateChange={(date) => handleFilterChange('startDate', date)}
-              onEndDateChange={(date) => handleFilterChange('endDate', date)}
-            />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-end">
+              {/* Busca por Engajamento */}
+              <div className="relative">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                  Engajamento
+                </label>
+
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"/>
+
+                  <input
+                    type="text"
+                    value={filters.engagementSearch}
+                    onFocus={() => setIsEngagementSearchOpen(true)}
+                    onBlur={() => setIsEngagementSearchOpen(false)}
+                    onChange={(e) => {
+                      handleFilterChange(
+                        'engagementSearch',
+                        e.target.value
+                      );
+                      setIsEngagementSearchOpen(true);
+                    }}
+                    placeholder="Buscar engajamento..."
+                    autoComplete="off"
+                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+                  />
+
+                  {filters.engagementSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleFilterChange(
+                          'engagementSearch',
+                          ''
+                        );
+                        setIsEngagementSearchOpen(true);
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
+                      aria-label="Limpar busca"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Sugestões */}
+                {isEngagementSearchOpen &&
+                  engagementSuggestions.length > 0 && (
+                    <div className="absolute z-50 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                      {engagementSuggestions.map((title) => (
+                        <button
+                          key={title}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleFilterChange('engagementSearch', title);
+                            setIsEngagementSearchOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-cyan-50 hover:text-cyan-800 transition-colors border-b border-slate-100 last:border-b-0"
+                        >
+                          {title}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+              </div>
+
+              {/* Período */}
+              <div>
+                <DateRangeFilter
+                  startDate={filters.startDate}
+                  endDate={filters.endDate}
+                  onStartDateChange={(date) =>
+                    handleFilterChange('startDate', date)
+                  }
+                  onEndDateChange={(date) =>
+                    handleFilterChange('endDate', date)
+                  }
+                />
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <MultiSelectFilter
@@ -214,7 +362,7 @@ export default function EvidenciasStaff() {
           {/* Cards Principais de Métricas */}
           <div className="avoid-break grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <KpiCard title="Total de Membros" value={stats.totalUsers} icon={Users} bgColor="bg-cyan-50" iconColor="text-cyan-600" />
-            <KpiCard title="Membros Ativos" value={stats.activeUsers} icon={Activity} bgColor="bg-emerald-50" iconColor="text-emerald-600" />
+            <KpiCard title="Municípios Atendidos" value={stats.attendedCities} icon={Globe} bgColor="bg-emerald-50" iconColor="text-emerald-600" />
             <KpiCard title="Engajamentos" value={stats.totalEngagements} icon={Target} bgColor="bg-amber-50" iconColor="text-amber-600" />
             <KpiCard title="Convênios Firmados" value={stats.signedAgreements} icon={Handshake} bgColor="bg-indigo-50" iconColor="text-indigo-600" />
           </div>
@@ -348,11 +496,43 @@ export default function EvidenciasStaff() {
               <Globe2 className="text-amber-600 w-6 h-6" />
               <h2 className="text-lg font-bold tracking-tight text-slate-800">Distribuição de Membros</h2>
             </div>
-            <div className="w-full h-[450px] rounded-xl overflow-hidden border border-slate-200 bg-slate-100 z-0">
+            <div
+              ref={mapContainerRef}
+              className={`
+                relative w-full overflow-hidden bg-slate-100
+                ${
+                  isMapFullscreen
+                    ? 'h-screen bg-white'
+                    : 'h-[450px] rounded-xl border border-slate-200'
+                }
+              `}
+            >
               <div ref={mapRef} className="w-full h-full" />
+
+              <button
+                type="button"
+                onClick={toggleMapFullscreen}
+                className="
+                  absolute top-3 right-3 z-[1000]
+                  flex items-center justify-center
+                  w-10 h-10
+                  bg-white hover:bg-slate-50
+                  border border-slate-200
+                  rounded-lg shadow-md
+                  text-slate-700
+                  transition-colors
+                "
+                title={isMapFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+                aria-label={isMapFullscreen ? 'Sair da tela cheia' : 'Abrir mapa em tela cheia'}
+              >
+                {isMapFullscreen ? (
+                  <Minimize2 className="w-5 h-5" />
+                ) : (
+                  <Maximize2 className="w-5 h-5" />
+                )}
+              </button>
             </div>
           </div>
-
         </div>
       </div>
 

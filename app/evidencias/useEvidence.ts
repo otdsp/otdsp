@@ -12,19 +12,12 @@ import {
 import { useAdminAuth } from './useAdminAuth';
 import { fetchCityCoordinates } from './services/geocoding';
 import { processDerivedData } from './utils/evidenceProcessor';
-import {
-  buildCityFrequency,
-  buildFilterOptions
-} from './utils/dataTransforms';
+import { buildCityFrequency, buildFilterOptions } from './utils/dataTransforms';
 
 export function useEvidence() {
   const { isAuthorized, isAuthLoading } = useAdminAuth();
-
   const [isLoadingData, setIsLoadingData] = useState(true);
-
-  const [geocodeCache, setGeocodeCache] = useState<
-    Record<string, [number, number]>
-  >({});
+  const [geocodeCache, setGeocodeCache] = useState<Record<string, [number, number]>>({});
 
   const [rawData, setRawData] = useState<{
     auth: UserAuth[];
@@ -38,12 +31,14 @@ export function useEvidence() {
 
   const [filterOptions, setFilterOptions] =
     useState<EvidenceFilterOptions>({
+      engagements: [],
       verticals: [],
       horizontals: [],
       transversals: []
     });
 
   const [filters, setFilters] = useState<EvidenceFilters>({
+    engagementSearch: '',
     startDate: '2026-04-01',
     endDate: '',
     vertical: {
@@ -89,6 +84,7 @@ export function useEvidence() {
               .from('engagements')
               .select(`
                 id,
+                title,
                 created_by,
                 status,
                 horizontal,
@@ -130,7 +126,6 @@ export function useEvidence() {
 
         const topCities = Object.entries(cityFreq)
           .sort((a, b) => b[1] - a[1])
-          .slice(0, 30)
           .map(([city]) => city);
 
         const newGeoData =

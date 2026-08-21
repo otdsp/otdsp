@@ -22,6 +22,10 @@ export const extractEmail = (user: AdminUser) => {
   return user.user_auth?.email || ''
 }
 
+export const extractMunicipality = (user: AdminUser) => {
+  return user?.municipality?.trim() || ''
+}
+
 export const extractRole = (user: any) => {
   if (!user) return ''
   if (Array.isArray(user.user_auth)) return user.user_auth[0]?.role || ''

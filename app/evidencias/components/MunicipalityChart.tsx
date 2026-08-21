@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -10,100 +10,243 @@ import {
   Tooltip,
   Bar,
   Legend,
-} from 'recharts';
+} from "recharts";
 
-import type { MunicipalityChartRow } from '../types';
+import type { MunicipalityChartRow } from "../types";
 
 type TooltipProps = {
   active?: boolean;
-  payload?: any;
-  label?: string;
+  payload?: any[];
 };
 
 function MunicipalityTooltip({ active, payload }: TooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
 
-  const data = payload[0].payload as MunicipalityChartRow;
+  const data = payload[0]?.payload as MunicipalityChartRow;
+
+  if (!data) return null;
+
+  // Garante participantes únicos pelo e-mail
+  const uniqueParticipants = Array.from(
+    new Map(
+      (data.participants ?? []).map((participant) => [
+        participant.email,
+        participant,
+      ])
+    ).values()
+  );
+
+  const participantCount = uniqueParticipants.length;
+
   return (
-    <div className="rounded-2xl bg-white border border-slate-100 p-4 shadow-xl text-slate-900 backdrop-blur-md bg-white/95" style={{ width: 280 }}>
-      <p className="text-sm font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">{data.municipality}</p>
-      
-      {/* Mini KPIs Internos */}
-      <div className="grid grid-cols-3 gap-1.5 mb-3 text-[11px]">
-        <div className="rounded-xl bg-sky-50/70 border border-sky-200 p-2 text-center">
-          <p className="font-medium text-sky-700">Horizontal</p>
-          <p className="font-bold text-sky-900 text-sm mt-0.5">{data.horizontalCount}</p>
-        </div>
-        <div className="rounded-xl bg-emerald-50/70 border border-emerald-200 p-2 text-center">
-          <p className="font-medium text-emerald-700">Vertical</p>
-          <p className="font-bold text-emerald-900 text-sm mt-0.5">{data.verticalCount}</p>
-        </div>
-        <div className="rounded-xl bg-amber-50/70 border border-amber-200 p-2 text-center">
-          <p className="font-medium text-amber-700">Transv.</p>
-          <p className="font-bold text-amber-900 text-sm mt-0.5">{data.transversalCount}</p>
-        </div>
+    <div
+      className="
+        w-[230px]
+        rounded-lg
+        border border-slate-200
+        bg-white
+        shadow-lg
+      "
+    >
+      {/* Cabeçalho */}
+      <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-2">
+        <p className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-800">
+          {data.municipality}
+        </p>
+
+        <span className="shrink-0 text-[10px] font-medium text-slate-500">
+          {participantCount}{" "}
+          {participantCount === 1 ? "participante" : "participantes"}
+        </span>
       </div>
-      
-      <p className="text-xs text-slate-500 mb-2 font-medium">
-        Participantes únicos: <span className="text-slate-800 font-bold">{data.count}</span>
-      </p>
-      
-      {/* Lista de Participantes */}
-      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200">
-        {data.participants.map((participant) => (
-          <div key={participant.email} className="rounded-lg bg-slate-50 p-2 border border-slate-100/80 transition-colors hover:bg-slate-100/50">
-            <p className="text-xs font-semibold text-slate-700 truncate">{participant.name}</p>
-            <p className="text-[10px] text-slate-400 truncate">{participant.role}</p>
-          </div>
-        ))}
+
+      {/* Lista */}
+      <div
+        className="
+          max-h-[160px]
+          overflow-y-auto
+          overscroll-contain
+
+          [scrollbar-width:thin]
+
+          [&::-webkit-scrollbar]:w-1
+          [&::-webkit-scrollbar-track]:bg-transparent
+          [&::-webkit-scrollbar-thumb]:rounded-full
+          [&::-webkit-scrollbar-thumb]:bg-slate-300
+        "
+      >
+        {uniqueParticipants.length > 0 ? (
+          uniqueParticipants.map((participant) => (
+            <div
+              key={participant.email}
+              className="
+                border-b border-slate-50
+                px-3 py-1.5
+                last:border-b-0
+                hover:bg-slate-50
+              "
+            >
+              <p className="truncate text-[11px] font-medium leading-tight text-slate-700">
+                {participant.name}
+              </p>
+
+              {participant.role && (
+                <p className="mt-0.5 truncate text-[9px] leading-tight text-slate-400">
+                  {participant.role}
+                </p>
+              )}
+            </div>
+          ))
+        ) : (
+          <p className="px-3 py-4 text-center text-[10px] text-slate-400">
+            Nenhum participante
+          </p>
+        )}
       </div>
     </div>
   );
 }
 
-export default function MunicipalityChart({ data }: { data: MunicipalityChartRow[] }) {
+export default function MunicipalityChart({
+  data,
+}: {
+  data: MunicipalityChartRow[];
+}) {
   const chartData = useMemo(() => data.slice(0, 12), [data]);
 
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleBarClick = () => {
+    setTooltipVisible(true);
+
+    // Dá foco ao container para permitir fechar com onBlur
+    requestAnimationFrame(() => {
+      chartContainerRef.current?.focus();
+    });
+  };
+
+  const handleBlur = (
+    event: React.FocusEvent<HTMLDivElement>
+  ) => {
+    /*
+     * Só fecha se o novo elemento em foco
+     * estiver realmente fora do gráfico.
+     */
+    const nextFocusedElement = event.relatedTarget as Node | null;
+
+    if (
+      !nextFocusedElement ||
+      !event.currentTarget.contains(nextFocusedElement)
+    ) {
+      setTooltipVisible(false);
+    }
+  };
+
   return (
-    <div className="w-full h-[420px]">
+    <div
+      ref={chartContainerRef}
+      tabIndex={-1}
+      onBlur={handleBlur}
+      onMouseLeave={() => setTooltipVisible(false)}
+      className="h-[390px] w-full outline-none"
+    >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 40 }}>
-          {/* Grid apenas horizontal e bem sutil */}
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-          
+        <BarChart
+          data={chartData}
+          margin={{
+            top: 8,
+            right: 10,
+            left: -25,
+            bottom: 40,
+          }}
+        >
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="#f1f5f9"
+            vertical={false}
+          />
+
           <XAxis
             dataKey="municipality"
             stroke="#94a3b8"
-            fontSize={12}
+            fontSize={11}
             tickLine={false}
             axisLine={false}
             angle={-30}
             textAnchor="end"
             interval={0}
-            height={50}
+            height={55}
           />
-          <YAxis 
-            stroke="#94a3b8" 
-            fontSize={12} 
-            tickLine={false} 
-            axisLine={false} 
+
+          <YAxis
+            stroke="#94a3b8"
+            fontSize={11}
+            tickLine={false}
+            axisLine={false}
+            allowDecimals={false}
           />
-          
-          <Tooltip content={<MunicipalityTooltip />} cursor={{ fill: '#f8fafc', opacity: 0.6 }} />
-          
-          <Legend 
-            verticalAlign="top" 
+
+          <Tooltip
+            content={<MunicipalityTooltip />}
+            trigger="click"
+            active={tooltipVisible}
+            wrapperStyle={{
+              pointerEvents: "auto",
+              zIndex: 50,
+            }}
+            allowEscapeViewBox={{
+              x: true,
+              y: true,
+            }}
+            isAnimationActive={false}
+            cursor={{
+              fill: "#f8fafc",
+              opacity: 0.8,
+            }}
+          />
+
+          <Legend
+            verticalAlign="top"
             align="right"
             height={24}
             iconType="circle"
-            iconSize={8}
-            wrapperStyle={{ fontSize: 11, color: '#64748b', fontWeight: 500, paddingTop: 2 }} 
+            iconSize={7}
+            wrapperStyle={{
+              fontSize: 10,
+              color: "#64748b",
+              fontWeight: 500,
+              paddingTop: 2,
+            }}
           />
-          
-          {/* Barras Empilhadas com paleta de cores moderna */}
-          <Bar dataKey="horizontalCount" stackId="a" name="Horizontal" fill="#0ea5e9" barSize={24} />
-          <Bar dataKey="verticalCount" stackId="a" name="Vertical" fill="#10b981" barSize={24} />
-          <Bar dataKey="transversalCount" stackId="a" name="Transversal" fill="#e9910e" barSize={24} />
+
+          <Bar
+            dataKey="verticalCount"
+            stackId="a"
+            name="Vertical"
+            fill="#10b981"
+            barSize={20}
+            onClick={handleBarClick}
+          />
+
+          <Bar
+            dataKey="horizontalCount"
+            stackId="a"
+            name="Horizontal"
+            fill="#0ea5e9"
+            barSize={20}
+            onClick={handleBarClick}
+          />
+
+          <Bar
+            dataKey="transversalCount"
+            stackId="a"
+            name="Transversal"
+            fill="#e9910e"
+            barSize={20}
+            onClick={handleBarClick}
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>

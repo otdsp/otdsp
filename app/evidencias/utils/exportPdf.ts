@@ -8,6 +8,18 @@ export const exportToPDF = async (elementId: string, eventName: string) => {
   const header = document.getElementById('pdf-header');
   if (header) header.style.display = 'block';
 
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        resolve();
+      });
+    });
+  });
+
+  await new Promise((resolve) =>
+    setTimeout(resolve, 300)
+  );
+
   const sanitizedName = eventName
     .toLowerCase()
     .normalize("NFD")
@@ -24,8 +36,10 @@ export const exportToPDF = async (elementId: string, eventName: string) => {
     const canvas = await html2canvasPro(element, {
       scale: scale,
       useCORS: true,
+      allowTaint: true,
       logging: false,
-      backgroundColor: '#f8fafc' 
+      backgroundColor: '#f8fafc',
+      imageTimeout: 15000
     });
 
     // 2. Mapeamento Matemático das "Zonas de Perigo" (Elementos que não podem ser cortados)

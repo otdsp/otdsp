@@ -12,7 +12,7 @@ export function processDerivedData(
   geocodeCache: Record<string, [number, number]>
 ): DerivedEvidenceData {
   const emptyResult: DerivedEvidenceData = {
-    stats: { totalUsers: 0, activeUsers: 0, totalEngagements: 0, signedAgreements: 0 },
+    stats: { totalUsers: 0, attendedCities: 0, totalEngagements: 0, signedAgreements: 0 },
     timelineData: [],
     engagementTimelineData: [],
     referralData: [],
@@ -29,8 +29,6 @@ export function processDerivedData(
   const { auth, profiles, engagements } = rawData;
 
   // 1. Mapeamentos iniciais para busca rápida (O(1))
-  // user_profile.id é a chave de correlação com user_auth.id.
-  // Não existe user_profile.user_id na estrutura do banco.
   const profileMap = new Map<string, UserProfile>(
     profiles.map((profile) => [profile.id, profile])
   );
@@ -61,6 +59,29 @@ export function processDerivedData(
     });
   };
 
+  // Normaliza textos para permitir busca sem diferença de maiúsculas/minúsculas e acentos.
+  const normalizeText = (value?: string | null) =>
+    (value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+
+  const engagementSearch = normalizeText(
+    filters.engagementSearch
+  );
+
+  const hasEngagementSearch =
+    engagementSearch.length > 0;
+
+  const matchesEngagementSearch = (engagement: Engagement) => {
+    if (!hasEngagementSearch) {
+      return true;
+    }
+
+    return normalizeText(engagement.title) === engagementSearch;
+  };
+
   // 3. Filtragem de base
   const baseAuth = auth.filter(u => {
     const userDate = new Date(u.date_joined);
@@ -73,17 +94,17 @@ export function processDerivedData(
     return rawDate ? new Date(rawDate) : new Date(0);
   };
 
-  const filteredEngagements = engagements.filter((engagement) => {
-    const engagementDate = getEngagementPeriodDate(engagement);
-    const dateOk = engagementDate >= startCutoff && engagementDate <= endCutoff;
+  const scopedEngagements = engagements.filter((engagement) => {
     const dimensionOk = activeDimensionFilters.length === 0 || matchesDimensionFilters(engagement);
-
-    // A data de cadastro do criador não deve excluir um engajamento válido.
-    return dateOk && dimensionOk;
+    const engagementSearchOk = matchesEngagementSearch(engagement);
+    return dimensionOk && engagementSearchOk;
   });
 
-  // Usuários relacionados aos engajamentos filtrados: participantes e criadores.
-  // A correlação de participante é feita exclusivamente por user_id.
+  const filteredEngagements = scopedEngagements.filter((engagement) => {
+    const engagementDate = getEngagementPeriodDate(engagement);
+    return (engagementDate >= startCutoff && engagementDate <= endCutoff);
+  });
+
   const relatedUserIds = new Set<string>();
 
   filteredEngagements.forEach((engagement) => {
@@ -108,8 +129,8 @@ export function processDerivedData(
   ).length;
 
   const stats = {
-    totalUsers: profiles.length,
-    activeUsers: filteredAuth.filter((user) => user.is_active).length,
+    totalUsers: filteredProfiles.length,
+    attendedCities: new Set(filteredProfiles.map(p => p.municipality)).size,
     totalEngagements: filteredEngagements.length,
     signedAgreements: signedCount
   };
@@ -138,8 +159,28 @@ export function processDerivedData(
     const engDaily: Record<string, number> = {};
     dayList.forEach(d => { authDaily[d.key] = 0; engDaily[d.key] = 0; });
 
-    let authAcc = auth.filter(u => new Date(u.date_joined) < startCutoff).length;
-    let engAcc = engagements.filter(e => getEngagementPeriodDate(e) < startCutoff).length;
+    let authAcc = hasEngagementSearch
+      ? auth.filter(
+          (u) =>
+            relatedUserIds.has(u.id) &&
+            new Date(u.date_joined) < startCutoff
+        ).length
+      : auth.filter(
+          (u) =>
+            new Date(u.date_joined) < startCutoff
+        ).length;
+
+    let engAcc = hasEngagementSearch
+      ? scopedEngagements.filter(
+          (e) =>
+            getEngagementPeriodDate(e) <
+            startCutoff
+        ).length
+      : engagements.filter(
+          (e) =>
+            getEngagementPeriodDate(e) <
+            startCutoff
+        ).length;
 
     filteredAuth.forEach(u => {
       if (u.date_joined) {
@@ -178,8 +219,28 @@ export function processDerivedData(
     const engMonthly: Record<string, number> = {};
     monthList.forEach(m => { authMonthly[m.key] = 0; engMonthly[m.key] = 0; });
 
-    let authAcc = auth.filter(u => new Date(u.date_joined) < startCutoff).length;
-    let engAcc = engagements.filter(e => getEngagementPeriodDate(e) < startCutoff).length;
+    let authAcc = hasEngagementSearch
+      ? auth.filter(
+          (u) =>
+            relatedUserIds.has(u.id) &&
+            new Date(u.date_joined) < startCutoff
+        ).length
+      : auth.filter(
+          (u) =>
+            new Date(u.date_joined) < startCutoff
+        ).length;
+
+    let engAcc = hasEngagementSearch
+      ? scopedEngagements.filter(
+          (e) =>
+            getEngagementPeriodDate(e) <
+            startCutoff
+        ).length
+      : engagements.filter(
+          (e) =>
+            getEngagementPeriodDate(e) <
+            startCutoff
+        ).length;
 
     filteredAuth.forEach(u => {
       if (u.date_joined) {
@@ -326,8 +387,8 @@ export function processDerivedData(
   filteredEngagements.forEach(eng => {
     const dur = typeof eng.estimated_duration === 'number' ? eng.estimated_duration : Number(eng.estimated_duration) || 0;
     
-    if (Array.isArray(eng.horizontal)) eng.horizontal.forEach(i => { if (i) { const k = i.trim(); iCounts[k] = (iCounts[k] || 0) + 1; const cur = horizDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; horizDurMap[k] = cur; } });
-    if (Array.isArray(eng.vertical)) eng.vertical.forEach(t => { if (t) { const k = t.trim(); tCounts[k] = (tCounts[k] || 0) + 1; const cur = vertDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; vertDurMap[k] = cur; } });
+    if (Array.isArray(eng.horizontal)) eng.horizontal.forEach(i => { if (i) { const k = i.trim(); tCounts[k] = (tCounts[k] || 0) + 1; const cur = horizDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; horizDurMap[k] = cur; } });
+    if (Array.isArray(eng.vertical)) eng.vertical.forEach(t => { if (t) { const k = t.trim(); iCounts[k] = (iCounts[k] || 0) + 1; const cur = vertDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; vertDurMap[k] = cur; } });
     if (Array.isArray(eng.transversal)) eng.transversal.forEach(p => { if (p) { const k = p.trim(); pCounts[k] = (pCounts[k] || 0) + 1; const cur = transDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; transDurMap[k] = cur; } });
     if (Array.isArray(eng.planned_activities)) eng.planned_activities.forEach(activity => { if (activity) { const k = activity.trim(); paCounts[k] = (paCounts[k] || 0) + 1; } });
 
