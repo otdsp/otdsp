@@ -1,4 +1,4 @@
-import emailjs from '@emailjs/browser';
+import { supabase } from './supabase';
 
 interface SendEmailProps {
   emails: string[];
@@ -6,23 +6,25 @@ interface SendEmailProps {
   htmlContent: string;
 }
 
-export async function sendSystemEmail({ emails, subject, htmlContent }: SendEmailProps) {
-  // Configurações do EmailJS
-  const SERVICE_ID = process.env.NEXT_PUBLIC_SERVICE_ID || 'seu_service_id_do_emailjs';
-  const TEMPLATE_ID = process.env.NEXT_PUBLIC_TEMPLATE_ID || 'seu_template_id_do_emailjs';
-  const PUBLIC_KEY = process.env.NEXT_PUBLIC_PUBLIC_KEY || 'sua_chave_publica_do_emailjs';
+export async function sendSystemEmail({
+  emails,
+  subject,
+  htmlContent,
+}: SendEmailProps) {
+  const { data, error } = await supabase.functions.invoke(
+    'send-system-email',
+    {
+      body: {
+        emails,
+        subject,
+        htmlContent,
+      },
+    }
+  );
 
-  // Como o EmailJS envia por destinatário individual, fazemos um laço rápido
-  const promises = emails.map((email) => {
-    const templateParams = {
-      to_email: email,
-      subject: subject,
-      message: htmlContent,
-    };
+  if (error) {
+    throw error;
+  }
 
-    return emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams, PUBLIC_KEY);
-  });
-
-  // Aguarda todos os disparos terminarem
-  return Promise.all(promises);
+  return data;
 }
