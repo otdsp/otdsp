@@ -23,6 +23,7 @@ interface EngagementParticipantTableProps {
   onRemove: (index: number) => void
   readOnly?: boolean
   isStaff?: boolean
+  filterTerm?: string
 }
 
 interface UserProfileRow {
@@ -175,15 +176,13 @@ export function EngagementParticipantTable({
   participants,
   onRemove,
   readOnly = false,
-  isStaff = false
+  isStaff = false,
+  filterTerm = ''
 }: EngagementParticipantTableProps) {
-  const [detailsById, setDetailsById] = useState<
-    Record<string, ParticipantDetail>
-  >({})
+  const [detailsById, setDetailsById] = useState<Record<string, ParticipantDetail>>({})
   const [loading, setLoading] = useState(false)
   const [sortField, setSortField] = useState<SortField>('name')
-  const [sortDirection, setSortDirection] =
-    useState<SortDirection>('asc')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
 
   const registeredIds = useMemo(
     () =>
@@ -281,8 +280,39 @@ export function EngagementParticipantTable({
     })
   }, [participants, effectiveDetailsById])
 
+  const normalizeText = (value: unknown) =>
+    String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLocaleLowerCase('pt-BR')
+
+  const filteredRows = useMemo(() => {
+    const term = normalizeText(filterTerm)
+
+    if (!term) {
+      return rows
+    }
+
+    return rows.filter(row => {
+      const searchableText = [
+        row.displayName,
+        row.email,
+        row.institution,
+        row.organizationType,
+        row.jobTitle,
+        row.relationship,
+        row.municipality
+      ]
+        .map(normalizeText)
+        .join(' ')
+
+      return searchableText.includes(term)
+    })
+  }, [rows, filterTerm])
+
   const sortedRows = useMemo(() => {
-    return [...rows].sort((a, b) => {
+    return [...filteredRows].sort((a, b) => {
       let comparison = 0
 
       if (sortField === 'status') {
@@ -309,7 +339,7 @@ export function EngagementParticipantTable({
 
       return sortDirection === 'asc' ? comparison : -comparison
     })
-  }, [rows, sortField, sortDirection])
+  }, [filteredRows, sortField, sortDirection])
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -325,8 +355,7 @@ export function EngagementParticipantTable({
 
   if (participants.length === 0) return null
 
-  const isLoading =
-    registeredIds.length > 0 && loading
+  const isLoading = registeredIds.length > 0 && loading
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">

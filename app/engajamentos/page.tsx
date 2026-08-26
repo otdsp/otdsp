@@ -132,7 +132,10 @@ const getParticipantVisualStatus = (participant: any): ParticipantVisualStatus =
 
 export default function EngajamentosPage() {
   const [user, setUser] = useState<any>(null)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [isStaff, setIsStaff] = useState(false)
+  const isResearch = userRole === 'pesquisa'
+  const canFilterParticipants = isStaff || isResearch
   const [loading, setLoading] = useState(true)
   const [engagements, setEngagements] = useState<Engagement[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -296,12 +299,14 @@ export default function EngajamentosPage() {
         .select('role')
         .eq('id', session.user.id)
         .single()
-        
-      setIsStaff(authData?.role === 'staff')
+
+      const role = authData?.role ?? null
+
+      setUserRole(role)
+      setIsStaff(role === 'staff')
       fetchEngajamentos()
     }
     getSession()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -788,25 +793,25 @@ export default function EngajamentosPage() {
                         onToggle={(item: string) => toggleArrayItem('planned_activities', item)}
                       />
                     </div>
-
-                    {/* Seção 3: Participantes (Largura Total / Full Width) */}
-                    <div className={`space-y-3 pt-8 mt-8 border-t border-slate-100 ${isFormLocked ? 'pointer-events-none' : ''}`}>
-                      <div className="flex flex-col mb-4">
-                        <label className="text-lg font-bold text-slate-800 ml-1">Convidar e Gerenciar Participantes</label>
-                        <p className="text-sm text-slate-500 ml-1">Adicione os participantes deste engajamento.</p>
-                      </div>
-                      <div className="bg-slate-50/50 rounded-2xl p-4 sm:p-6 border border-slate-100">
-                        <ParticipantManager
-                          participants={formData.participants}
-                          isStaff={isStaff}
-                          onChange={(newParticipants) => {
-                            if (!isFormLocked) setFormData(prev => ({ ...prev, participants: newParticipants }))
-                          }}
-                        />
-                      </div>
-                    </div>
-                    
+                  
                   </fieldset>
+
+                  {/* Seção 3: Participantes */}
+                  <div className={"space-y-3 pt-8 mt-8 border-t border-slate-100"}>
+                    <div className="flex flex-col mb-4">
+                      <label className="text-lg font-bold text-slate-800 ml-1">Convidar e Gerenciar Participantes</label>
+                    </div>
+                    <div className="bg-slate-50/50 rounded-2xl p-4 sm:p-6 border border-slate-100">
+                      <ParticipantManager
+                        participants={formData.participants}
+                        isStaff={isStaff}
+                        canFilter={canFilterParticipants}
+                        onChange={(newParticipants) => {
+                          if (!isFormLocked) setFormData(prev => ({ ...prev, participants: newParticipants }))
+                        }}
+                      />
+                    </div>
+                  </div>
 
                   {/* Botões de Ação */}
                   <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-4">
@@ -892,15 +897,6 @@ export default function EngajamentosPage() {
               
               <div className="flex-1 space-y-4">
                 <div className="flex flex-col md:flex-row gap-4 items-end">
-                  <div className="flex-1 w-full">
-                    <DateRangeFilter
-                      startDate={periodFilters.startDate}
-                      endDate={periodFilters.endDate}
-                      onStartDateChange={(date) => handleFilterChange('startDate', date)}
-                      onEndDateChange={(date) => handleFilterChange('endDate', date)}
-                    />
-                  </div>
-                  
                   <div className="w-full md:w-80 flex flex-col space-y-1">
                     <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-1">Buscar</label>
                     <div className="relative flex items-center">
@@ -913,6 +909,15 @@ export default function EngajamentosPage() {
                         className="w-full bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-xl py-2 pl-9 pr-4 text-sm text-slate-700 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none transition-all" 
                       />
                     </div>
+                  </div>
+
+                  <div className="flex-1 w-full">
+                    <DateRangeFilter
+                      startDate={periodFilters.startDate}
+                      endDate={periodFilters.endDate}
+                      onStartDateChange={(date) => handleFilterChange('startDate', date)}
+                      onEndDateChange={(date) => handleFilterChange('endDate', date)}
+                    />
                   </div>
                 </div>
 

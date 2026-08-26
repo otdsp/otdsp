@@ -172,6 +172,41 @@ export default function EvidenciasStaff() {
     );
   }
 
+  console.log('Stats:', stats);
+
+  if (stats.totalEngagements === 0) {
+    return (
+      <div className="min-h-screen bg-slate-50 px-6 pt-28 font-sans">
+        <div className="max-w-7xl mx-auto">
+
+          <header className="border-b border-slate-200 pb-6 mb-8">
+            <h1 className="text-4xl md:text-5xl font-extrabold text-[#0F172A] tracking-tight mb-2">
+              Painel de Evidências
+            </h1>
+
+            <p className="text-slate-500 text-lg font-light tracking-wide">
+              Inteligência operacional e métricas da comunidade{' '}
+              <span className="text-cyan-600 font-medium">OTDSP</span>
+            </p>
+          </header>
+
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-16 text-center">
+            <Target className="w-10 h-10 text-slate-300 mx-auto mb-4" />
+
+            <h3 className="text-lg font-bold text-slate-700">
+              Nenhum engajamento encontrado
+            </h3>
+
+            <p className="text-sm text-slate-500 mt-1">
+              Você ainda não está inserido em nenhum engajamento para poder visualizar métricas.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-[#0F172A] p-6 pt-28 font-sans relative">
       <div className="max-w-7xl mx-auto space-y-8">
