@@ -25,7 +25,7 @@ import { buildActiveFiltersSummary, getGeoMarkerColor } from './utils/presentati
 const PIE_COLORS = ['#0891b2', '#059669', '#d97706', '#7c3aed', '#db2777', '#475569'];
 const ORG_COLORS = ['#4f46e5', '#ea580c', '#0284c7', '#16a34a', '#9333ea', '#64748b'];
 
-const LEAFLET_TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+const LEAFLET_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 export default function EvidenciasStaff() {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -52,7 +52,8 @@ export default function EvidenciasStaff() {
   const [isExporting, setIsExporting] = useState(false);
 
   const normalizeText = (value: string = '') => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-  const normalizedEngagementSearch = normalizeText(filters.engagementSearch);
+  const [engagementSearchInput, setEngagementSearchInput] = useState('');
+  const normalizedEngagementSearch = normalizeText(engagementSearchInput);
   const engagementSuggestions =
     normalizedEngagementSearch.length >= 2
       ? filterOptions.engagements
@@ -174,7 +175,7 @@ export default function EvidenciasStaff() {
 
   console.log('Stats:', stats);
 
-  if (stats.totalEngagements === 0) {
+  if (stats.totalEngagements === 0 && !filters.engagementSearch.trim()) {
     return (
       <div className="min-h-screen bg-slate-50 px-6 pt-28 font-sans">
         <div className="max-w-7xl mx-auto">
@@ -246,14 +247,11 @@ export default function EvidenciasStaff() {
 
                   <input
                     type="text"
-                    value={filters.engagementSearch}
+                    value={engagementSearchInput}
                     onFocus={() => setIsEngagementSearchOpen(true)}
                     onBlur={() => setIsEngagementSearchOpen(false)}
                     onChange={(e) => {
-                      handleFilterChange(
-                        'engagementSearch',
-                        e.target.value
-                      );
+                      setEngagementSearchInput(e.target.value);
                       setIsEngagementSearchOpen(true);
                     }}
                     placeholder="Buscar engajamento..."
@@ -261,14 +259,12 @@ export default function EvidenciasStaff() {
                     className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
                   />
 
-                  {filters.engagementSearch && (
+                  {engagementSearchInput && (
                     <button
                       type="button"
                       onClick={() => {
-                        handleFilterChange(
-                          'engagementSearch',
-                          ''
-                        );
+                        setEngagementSearchInput('');
+                        handleFilterChange('engagementSearch', '');
                         setIsEngagementSearchOpen(true);
                       }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
@@ -289,6 +285,7 @@ export default function EvidenciasStaff() {
                           type="button"
                           onMouseDown={(e) => {
                             e.preventDefault();
+                            setEngagementSearchInput(title);
                             handleFilterChange('engagementSearch', title);
                             setIsEngagementSearchOpen(false);
                           }}
