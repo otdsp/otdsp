@@ -354,9 +354,10 @@ export function processDerivedData(
 
   const municipalityBuckets: Record<string, {
     engagementIds: Set<string>;
-    horizontalEngagements: Set<string>;
-    verticalEngagements: Set<string>;
-    transversalEngagements: Set<string>;
+    totalHours: number;
+    verticalHours: number;
+    horizontalHours: number;
+    transversalHours: number;
     participants: Record<string, ParticipantData>;
   }> = {};
 
@@ -364,12 +365,14 @@ export function processDerivedData(
     if (!municipalityBuckets[municipality]) {
       municipalityBuckets[municipality] = {
         engagementIds: new Set(),
-        horizontalEngagements: new Set(),
-        verticalEngagements: new Set(),
-        transversalEngagements: new Set(),
+        totalHours: 0,
+        horizontalHours: 0,
+        verticalHours: 0,
+        transversalHours: 0,
         participants: {}
       };
     }
+
     return municipalityBuckets[municipality];
   };
 
@@ -522,26 +525,43 @@ export function processDerivedData(
 
     associatedMunicipalities.forEach((municipality) => {
       const bucket = ensureMunicipalityBucket(municipality);
-      bucket.engagementIds.add(eng.id);
-      if (hasVertical) bucket.verticalEngagements.add(eng.id);
-      if (hasHorizontal) bucket.horizontalEngagements.add(eng.id);
-      if (hasTransversal) bucket.transversalEngagements.add(eng.id);
+
+      if (!bucket.engagementIds.has(eng.id)) {
+        bucket.engagementIds.add(eng.id);
+        bucket.totalHours += dur;
+
+        if (hasVertical) {
+          bucket.verticalHours += dur;
+        }
+
+        if (hasHorizontal) {
+          bucket.horizontalHours += dur;
+        }
+
+        if (hasTransversal) {
+          bucket.transversalHours += dur;
+        }
+      }
     });
   });
 
-  const municipalityChartData = Object.entries(municipalityBuckets)
-    .map(([municipality, bucket]) => {
-      const participantsList = Object.values(bucket.participants).sort((a, b) => a.name.localeCompare(b.name));
-      return {
-        municipality,
-        count: participantsList.length,
-        verticalCount: bucket.verticalEngagements.size,
-        horizontalCount: bucket.horizontalEngagements.size,
-        transversalCount: bucket.transversalEngagements.size,
-        participants: participantsList
-      };
-    })
-    .sort((a, b) => b.count - a.count);
+  const municipalityChartData = Object.entries(municipalityBuckets).map(([municipality, bucket]) => {
+    const participantsList = Object.values(bucket.participants).sort((a, b) => a.name.localeCompare(b.name));
+
+    return {
+      municipality,
+      count: participantsList.length,
+      engagementCount: bucket.engagementIds.size,
+      totalHours: +bucket.totalHours.toFixed(2),
+      verticalHours: +bucket.verticalHours.toFixed(2),
+      horizontalHours: +bucket.horizontalHours.toFixed(2),
+      transversalHours: +bucket.transversalHours.toFixed(2),
+      participants: participantsList
+    };
+  })
+
+  // Recomendo agora ordenar pelo total de horas
+  .sort((a, b) => b.totalHours - a.totalHours);
 
   const formatGroup = (obj: Record<string, number>) => Object.entries(obj).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
   

@@ -461,7 +461,7 @@ export default function EvidenciasStaff() {
           <div className="avoid-break bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <Globe2 className="text-amber-600 w-6 h-6" />
-              <h2 className="text-lg font-bold tracking-tight text-slate-800">Municípios Envolvidos</h2>
+              <h2 className="text-lg font-bold tracking-tight text-slate-800">Engajamento dos Municípios</h2>
             </div>
             <div className="w-full h-[420px]">
               <MunicipalityChart data={municipalityChartData} />
