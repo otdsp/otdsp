@@ -113,23 +113,13 @@ export function useEvidence() {
         }
 
         const safeAuth = (authRes.data ?? []) as UserAuth[];
-        const safeProfiles =
-          (profileRes.data ?? []) as UserProfile[];
-        const safeEng =
-          (engRes.data ?? []) as Engagement[];
+        const safeProfiles = (profileRes.data ?? []) as UserProfile[];
+        const safeEng = (engRes.data ?? []) as Engagement[];
 
-        const cityFreq =
-          buildCityFrequency(safeProfiles);
-
-        const nextFilterOptions =
-          buildFilterOptions(safeProfiles, safeEng);
-
-        const topCities = Object.entries(cityFreq)
-          .sort((a, b) => b[1] - a[1])
-          .map(([city]) => city);
-
-        const newGeoData =
-          await fetchCityCoordinates(topCities);
+        const cityFreq = buildCityFrequency(safeProfiles);
+        const nextFilterOptions = buildFilterOptions(safeProfiles, safeEng);
+        const topCities = Object.entries(cityFreq).sort((a, b) => b[1] - a[1]).map(([city]) => city);
+        const newGeoData = await fetchCityCoordinates(topCities);
 
         if (!isMounted) {
           return;
