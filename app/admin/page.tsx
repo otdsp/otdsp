@@ -57,6 +57,8 @@ export default function AdminPage() {
         id,
         full_name,
         municipality,
+        institution_organization,
+        job_title,
         user_auth!inner(id, email, role, date_joined, is_active, cpf, phone)
       `)
 
@@ -70,6 +72,8 @@ export default function AdminPage() {
           cpf: authData?.cpf || '',
           phone: authData?.phone || '',
           municipality: user.municipality || '',
+          institution_organization: user.institution_organization || '',
+          job_title: user.job_title || '',
           user_auth: authData ? [authData] : user.user_auth,
         }
       })
@@ -87,28 +91,68 @@ export default function AdminPage() {
   useEffect(() => {
     const checkAuthAndFetch = async () => {
       setIsAuthorizing(true)
-      const { data: { session } } = await supabase.auth.getSession()
 
-      if (!session) {
-        router.push('/login')
-        return
-      }
+      try {
+        // 1. Verifica o usuário autenticado
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser()
 
-      const { data: profile, error } = await supabase
-        .from('user_profile')
-        .select(`user_auth!inner(role)`)
-        .eq('id', session.user.id)
-        .single()
+        if (authError || !user) {
+          console.error('Erro ao verificar sessão:', authError)
+          router.push('/login')
+          return
+        }
 
-      if (error || extractRole(profile) !== 'staff') {
+        // 2. Busca diretamente o nível do usuário autenticado
+        const {
+          data: authProfile,
+          error: profileError,
+        } = await supabase
+          .from('user_auth')
+          .select('id, role, is_active')
+          .eq('id', user.id)
+          .maybeSingle()
+
+        if (profileError) {
+          console.error(
+            'Erro ao verificar perfil da sessão:',
+            profileError
+          )
+          router.push('/')
+          return
+        }
+
+        // 3. Usuário precisa existir, estar ativo e ser staff
+        if (
+          !authProfile ||
+          authProfile.role !== 'staff' ||
+          authProfile.is_active === false
+        ) {
+          console.warn(
+            'Acesso administrativo negado:',
+            authProfile
+          )
+          router.push('/')
+          return
+        }
+
+        // 4. Autorizado
+        setIsAuthorizing(false)
+
+        await fetchUsers()
+      } catch (error) {
+        console.error(
+          'Erro inesperado durante autorização:',
+          error
+        )
+
         router.push('/')
-        return
       }
-
-      setIsAuthorizing(false)
-      await fetchUsers()
     }
-    checkAuthAndFetch()
+
+    void checkAuthAndFetch()
   }, [router])
 
   const municipioOptions = useMemo(() => {

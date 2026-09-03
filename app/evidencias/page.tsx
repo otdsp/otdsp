@@ -214,8 +214,8 @@ export default function EvidenciasStaff() {
         
         <header className="border-b border-slate-200 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-4xl md:text-5xl font-extrabold text-[#0F172A] tracking-tight mb-2">Painel de Evidências</h1>
-            <p className="text-slate-500 text-lg font-light tracking-wide">Inteligência operacional e métricas da comunidade <span className="text-cyan-600 font-medium">OTDSP</span></p>
+            <h1 className="text-4xl md:text-5xl font-extrabold text-[#0F172A] tracking-tight mb-2">Evidências de Engajamentos</h1>
+            <p className="text-slate-500 text-lg font-light tracking-wide">Confira as evidências dos engajamentos realizados no <span className="text-cyan-600 font-medium">OTDSP</span></p>
           </div>
           
           <button 
@@ -393,10 +393,10 @@ export default function EvidenciasStaff() {
 
           {/* Cards Principais de Métricas */}
           <div className="avoid-break grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <KpiCard title="Engajamentos" value={stats.totalEngagements} icon={Target} bgColor="bg-amber-50" iconColor="text-amber-600" />
             <KpiCard title="Total de Membros" value={stats.totalUsers} icon={Users} bgColor="bg-cyan-50" iconColor="text-cyan-600" />
             <KpiCard title="Municípios Atendidos" value={stats.attendedCities} icon={Globe} bgColor="bg-emerald-50" iconColor="text-emerald-600" />
-            <KpiCard title="Engajamentos" value={stats.totalEngagements} icon={Target} bgColor="bg-amber-50" iconColor="text-amber-600" />
-            <KpiCard title="Convênios Firmados" value={stats.signedAgreements} icon={Handshake} bgColor="bg-indigo-50" iconColor="text-indigo-600" />
+            {/* <KpiCard title="Convênios Firmados" value={stats.signedAgreements} icon={Handshake} bgColor="bg-indigo-50" iconColor="text-indigo-600" /> */}
           </div>
 
           {/* 1. Crescimento de Engajamentos e Organizações / Instituições */}
@@ -450,7 +450,7 @@ export default function EvidenciasStaff() {
           <div className="avoid-break bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <BarChart3 className="text-cyan-600 w-6 h-6" />
-              <h2 className="text-lg font-bold tracking-tight text-slate-800">Duração Estimada por Dimensão</h2>
+              <h2 className="text-lg font-bold tracking-tight text-slate-800">Duração por Dimensão</h2>
             </div>
             <div className="w-full h-80">
               <DurationChart series={durationChart} />

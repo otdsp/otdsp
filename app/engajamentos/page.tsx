@@ -725,7 +725,7 @@ export default function EngajamentosPage() {
                       </div>
 
                       <div className="col-span-1 space-y-2">
-                        <label className="text-sm font-semibold text-slate-700 ml-1">Duração Estimada (Horas)</label>
+                        <label className="text-sm font-semibold text-slate-700 ml-1">Duração (Horas)</label>
                         <input type="number" name="estimated_duration" value={formData.estimated_duration} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-4 px-5 disabled:cursor-not-allowed" />
                       </div>
 

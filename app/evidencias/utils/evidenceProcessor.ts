@@ -336,10 +336,10 @@ export function processDerivedData(
   });
 
   // 7. Agrupamentos de Engajamento e Municípios
-  const iCounts: Record<string, number> = {};
+  const vCounts: Record<string, number> = {};
+  const hCounts: Record<string, number> = {};
   const tCounts: Record<string, number> = {};
-  const pCounts: Record<string, number> = {};
-  const paCounts: Record<string, number> = {};
+  const eaCounts: Record<string, number> = {};
   
   const horizDurMap: Record<string, { total: number; count: number }> = {};
   const vertDurMap: Record<string, { total: number; count: number }> = {};
@@ -387,10 +387,10 @@ export function processDerivedData(
   filteredEngagements.forEach(eng => {
     const dur = typeof eng.estimated_duration === 'number' ? eng.estimated_duration : Number(eng.estimated_duration) || 0;
     
-    if (Array.isArray(eng.horizontal)) eng.horizontal.forEach(i => { if (i) { const k = i.trim(); tCounts[k] = (tCounts[k] || 0) + 1; const cur = horizDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; horizDurMap[k] = cur; } });
-    if (Array.isArray(eng.vertical)) eng.vertical.forEach(t => { if (t) { const k = t.trim(); iCounts[k] = (iCounts[k] || 0) + 1; const cur = vertDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; vertDurMap[k] = cur; } });
-    if (Array.isArray(eng.transversal)) eng.transversal.forEach(p => { if (p) { const k = p.trim(); pCounts[k] = (pCounts[k] || 0) + 1; const cur = transDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; transDurMap[k] = cur; } });
-    if (Array.isArray(eng.planned_activities)) eng.planned_activities.forEach(activity => { if (activity) { const k = activity.trim(); paCounts[k] = (paCounts[k] || 0) + 1; } });
+    if (Array.isArray(eng.horizontal)) eng.horizontal.forEach(i => { if (i) { const k = i.trim(); hCounts[k] = (hCounts[k] || 0) + 1; const cur = horizDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; horizDurMap[k] = cur; } });
+    if (Array.isArray(eng.vertical)) eng.vertical.forEach(t => { if (t) { const k = t.trim(); vCounts[k] = (vCounts[k] || 0) + 1; const cur = vertDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; vertDurMap[k] = cur; } });
+    if (Array.isArray(eng.transversal)) eng.transversal.forEach(p => { if (p) { const k = p.trim(); tCounts[k] = (tCounts[k] || 0) + 1; const cur = transDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; transDurMap[k] = cur; } });
+    if (Array.isArray(eng.planned_activities)) eng.planned_activities.forEach(activity => { if (activity) { const k = activity.trim(); eaCounts[k] = (eaCounts[k] || 0) + 1; } });
 
     const hasHorizontal = Array.isArray(eng.horizontal) && eng.horizontal.some((value) => value?.trim());
     const hasVertical = Array.isArray(eng.vertical) && eng.vertical.some((value) => value?.trim());
@@ -459,10 +459,10 @@ export function processDerivedData(
   const formatGroup = (obj: Record<string, number>) => Object.entries(obj).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
   
   const pillarsData = [
-    { category: 'Áreas de Atuação', items: formatGroup(iCounts) },
-    { category: 'Tecnologias', items: formatGroup(tCounts) },
-    { category: 'Políticas Transversais', items: formatGroup(pCounts) },
-    { category: 'Atividades Planejadas', items: formatGroup(paCounts) }
+    { category: 'Verticais', items: formatGroup(vCounts) },
+    { category: 'Horizontais', items: formatGroup(hCounts) },
+    { category: 'Transversais', items: formatGroup(tCounts) },
+    { category: 'Atividades Engajadas', items: formatGroup(eaCounts) }
   ].filter(p => p.items.length > 0);
 
   const formatAvg = (map: Record<string, { total: number; count: number }>, enabled: boolean, allowed: string[]) => {

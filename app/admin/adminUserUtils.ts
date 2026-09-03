@@ -4,6 +4,8 @@ export interface AdminUser {
   cpf: string
   phone: string
   municipality: string
+  institution_organization: string
+  job_title: string
   user_auth: any
 }
 
@@ -18,27 +20,46 @@ export interface EditableUserFields {
 }
 
 export const extractEmail = (user: AdminUser) => {
-  if (Array.isArray(user.user_auth)) return user.user_auth[0]?.email || ''
+  if (Array.isArray(user.user_auth)) {
+    return user.user_auth[0]?.email || ''
+  }
+
   return user.user_auth?.email || ''
 }
 
 export const extractMunicipality = (user: AdminUser) => {
-  return user?.municipality?.trim() || ''
+  return user.municipality?.trim() || ''
 }
 
-export const extractRole = (user: any) => {
-  if (!user) return ''
-  if (Array.isArray(user.user_auth)) return user.user_auth[0]?.role || ''
+export const extractInstitution = (user: AdminUser) => {
+  return user.institution_organization?.trim() || ''
+}
+
+export const extractJobTitle = (user: AdminUser) => {
+  return user.job_title?.trim() || ''
+}
+
+export const extractRole = (user: AdminUser) => {
+  if (Array.isArray(user.user_auth)) {
+    return user.user_auth[0]?.role || ''
+  }
+
   return user.user_auth?.role || ''
 }
 
 export const extractDateJoined = (user: AdminUser) => {
-  if (Array.isArray(user.user_auth)) return user.user_auth[0]?.date_joined || ''
+  if (Array.isArray(user.user_auth)) {
+    return user.user_auth[0]?.date_joined || ''
+  }
+
   return user.user_auth?.date_joined || ''
 }
 
 export const extractIsActive = (user: AdminUser) => {
-  if (Array.isArray(user.user_auth)) return user.user_auth[0]?.is_active ?? true
+  if (Array.isArray(user.user_auth)) {
+    return user.user_auth[0]?.is_active ?? true
+  }
+
   return user.user_auth?.is_active ?? true
 }
 
@@ -48,9 +69,16 @@ export const getUserStatus = (user: AdminUser) => {
   const hasPhone = Boolean(user.phone)
   const hasMuni = Boolean(user.municipality)
 
-  if (hasName && hasCpf && hasPhone && hasMuni) return 'green'
-  if (hasName || hasCpf || hasPhone || hasMuni) return 'yellow'
+  if (hasName && hasCpf && hasPhone && hasMuni) {
+    return 'green'
+  }
+
+  if (hasName || hasCpf || hasPhone || hasMuni) {
+    return 'yellow'
+  }
+
   return 'red'
 }
 
-export const getUserActivity = (user: AdminUser) => (extractIsActive(user) ? 'active' : 'inactive')
+export const getUserActivity = (user: AdminUser) =>
+  extractIsActive(user) ? 'active' : 'inactive'

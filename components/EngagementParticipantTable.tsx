@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  Activity,
   AlertCircle,
   ArrowDown,
   ArrowUp,
@@ -7,6 +8,9 @@ import {
   CheckCircle2,
   Loader2,
   MapPin,
+  UserRound,
+  FlaskConical,
+  ShieldCheck,
   X,
   XCircle
 } from 'lucide-react'
@@ -14,7 +18,7 @@ import {
 import { supabase } from '@/lib/supabase'
 import { Participant } from '@/types/engagement'
 
-type SortField = 'name' | 'institution' | 'municipality' | 'status'
+type SortField = 'name' | 'contact' | 'institution' | 'municipality' | 'status'
 type SortDirection = 'asc' | 'desc'
 type VisualStatus = 'green' | 'yellow' | 'red'
 
@@ -37,6 +41,14 @@ interface UserProfileRow {
   referral_source: string | null
 }
 
+interface UserAuthDetail {
+  id: string
+  email: string | null
+  phone: string | null
+  role: string | null
+  is_active: boolean | null
+}
+
 interface ParticipantDetail {
   id: string
   full_name: string
@@ -56,11 +68,14 @@ interface ParticipantRow {
   status: VisualStatus
   displayName: string
   email: string
+  phone: string
   institution: string
   organizationType: string
   jobTitle: string
   relationship: string
   municipality: string
+  role: string
+  isActive: boolean | null
   missingFields: string[]
 }
 
@@ -141,7 +156,45 @@ function SortIcon({
   )
 }
 
-function renderStatus(row: ParticipantRow) {
+function renderRoleBadge(role: string) {
+  const normalizedRole = role.trim().toLowerCase()
+
+  if (normalizedRole === 'staff') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-300 bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-800">
+        <ShieldCheck className="h-3.5 w-3.5 text-blue-700" />
+        Staff
+      </span>
+    )
+  }
+
+  if (normalizedRole === 'pesquisa') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-700">
+        <FlaskConical className="h-3.5 w-3.5" />
+        Pesquisa
+      </span>
+    )
+  }
+
+  if (normalizedRole === 'user' || normalizedRole === 'comum') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
+        <UserRound className="h-3.5 w-3.5" />
+        Comum
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-600">
+      <UserRound className="h-3.5 w-3.5" />
+      {role}
+    </span>
+  )
+}
+
+function renderRegistrationStatus(row: ParticipantRow) {
   if (row.status === 'green') {
     return (
       <span className="inline-flex items-center justify-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
@@ -180,7 +233,9 @@ export function EngagementParticipantTable({
   filterTerm = ''
 }: EngagementParticipantTableProps) {
   const [detailsById, setDetailsById] = useState<Record<string, ParticipantDetail>>({})
+  const [authById, setAuthById] = useState<Record<string, UserAuthDetail>>({})
   const [loading, setLoading] = useState(false)
+  const [authLoading, setAuthLoading] = useState(false)
   const [sortField, setSortField] = useState<SortField>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
 
@@ -198,6 +253,8 @@ export function EngagementParticipantTable({
 
   useEffect(() => {
     if (registeredIds.length === 0) {
+      setDetailsById({})
+      setLoading(false)
       return
     }
 
@@ -245,6 +302,63 @@ export function EngagementParticipantTable({
     }
   }, [registeredIds])
 
+  useEffect(() => {
+    if (!isStaff || registeredIds.length === 0) {
+      setAuthById({})
+      setAuthLoading(false)
+      return
+    }
+
+    let cancelled = false
+
+    const fetchAuthDetails = async () => {
+      setAuthLoading(true)
+
+      try {
+        const { data, error } = await supabase
+          .from('user_auth')
+          .select(`
+            id,
+            email,
+            phone,
+            role,
+            is_active
+          `)
+          .in('id', registeredIds)
+
+        if (cancelled) return
+
+        if (error) {
+          console.error(
+            'Erro ao carregar dados administrativos dos participantes:',
+            error.message
+          )
+          setAuthById({})
+          return
+        }
+
+        const nextAuth = ((data ?? []) as UserAuthDetail[]).reduce<
+          Record<string, UserAuthDetail>
+        >((accumulator, authDetail) => {
+          accumulator[authDetail.id] = authDetail
+          return accumulator
+        }, {})
+
+        setAuthById(nextAuth)
+      } finally {
+        if (!cancelled) {
+          setAuthLoading(false)
+        }
+      }
+    }
+
+    void fetchAuthDetails()
+
+    return () => {
+      cancelled = true
+    }
+  }, [registeredIds, isStaff])
+
   const effectiveDetailsById =
     registeredIds.length === 0 ? {} : detailsById
 
@@ -253,6 +367,11 @@ export function EngagementParticipantTable({
       const detail = participant.user_id
         ? effectiveDetailsById[participant.user_id]
         : undefined
+
+      const authDetail =
+        isStaff && participant.user_id
+          ? authById[participant.user_id]
+          : undefined
 
       const status: VisualStatus = participant.user_id
         ? detail?.status ?? 'yellow'
@@ -269,16 +388,19 @@ export function EngagementParticipantTable({
         participant,
         status,
         displayName,
-        email: participant.email || '',
+        email: authDetail?.email || participant.email || '',
+        phone: authDetail?.phone || '',
         institution: detail?.institution_organization || '',
         organizationType: detail?.organization_type || '',
         jobTitle: detail?.job_title || '',
         relationship: detail?.relationship_with_otdsp || '',
         municipality: detail?.municipality || '',
+        role: authDetail?.role || '',
+        isActive: authDetail?.is_active ?? null,
         missingFields: detail?.missingFields || []
       }
     })
-  }, [participants, effectiveDetailsById])
+  }, [participants, effectiveDetailsById, authById, isStaff])
 
   const normalizeText = (value: unknown) =>
     String(value ?? '')
@@ -298,11 +420,12 @@ export function EngagementParticipantTable({
       const searchableText = [
         row.displayName,
         row.email,
+        row.phone,
         row.institution,
         row.organizationType,
         row.jobTitle,
-        row.relationship,
-        row.municipality
+        row.municipality,
+        row.role
       ]
         .map(normalizeText)
         .join(' ')
@@ -321,16 +444,20 @@ export function EngagementParticipantTable({
         const valueA =
           sortField === 'name'
             ? a.displayName
-            : sortField === 'institution'
-              ? a.institution
-              : a.municipality
+            : sortField === 'contact'
+              ? a.email
+              : sortField === 'institution'
+                ? a.institution
+                : a.municipality
 
         const valueB =
           sortField === 'name'
             ? b.displayName
-            : sortField === 'institution'
-              ? b.institution
-              : b.municipality
+            : sortField === 'contact'
+              ? b.email
+              : sortField === 'institution'
+                ? b.institution
+                : b.municipality
 
         comparison = valueA.localeCompare(valueB, 'pt-BR', {
           sensitivity: 'base'
@@ -355,7 +482,9 @@ export function EngagementParticipantTable({
 
   if (participants.length === 0) return null
 
-  const isLoading = registeredIds.length > 0 && loading
+  const isLoading =
+    registeredIds.length > 0 &&
+    (loading || (isStaff && authLoading))
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -370,18 +499,29 @@ export function EngagementParticipantTable({
             <table className="w-full table-fixed border-collapse text-left">
               <colgroup>
                 {isStaff ? (
-                  <>
-                    <col className="w-[30%]" />
-                    <col className="w-[27%]" />
-                    <col className="w-[24%]" />
-                    <col className="w-[11%]" />
-                    <col className="w-[8%]" />
-                  </>
+                  readOnly ? (
+                    <>
+                      <col className="w-[24%]" />
+                      <col className="w-[21%]" />
+                      <col className="w-[27%]" />
+                      <col className="w-[16%]" />
+                      <col className="w-[12%]" />
+                    </>
+                  ) : (
+                    <>
+                      <col className="w-[22%]" />
+                      <col className="w-[19%]" />
+                      <col className="w-[25%]" />
+                      <col className="w-[15%]" />
+                      <col className="w-[12%]" />
+                      <col className="w-[7%]" />
+                    </>
+                  )
                 ) : (
                   <>
-                    <col className="w-[36%]" />
-                    <col className="w-[34%]" />
                     <col className="w-[30%]" />
+                    <col className="w-[44%]" />
+                    <col className="w-[26%]" />
                   </>
                 )}
               </colgroup>
@@ -392,9 +532,9 @@ export function EngagementParticipantTable({
                     <button
                       type="button"
                       onClick={() => handleSort('name')}
-                      className="flex items-center gap-1 hover:text-cyan-600"
+                      className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
                     >
-                      Participante
+                      Usuário
                       <SortIcon
                         field="name"
                         sortField={sortField}
@@ -403,11 +543,28 @@ export function EngagementParticipantTable({
                     </button>
                   </th>
 
+                  {isStaff && (
+                    <th className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => handleSort('contact')}
+                        className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
+                      >
+                        Contato
+                        <SortIcon
+                          field="contact"
+                          sortField={sortField}
+                          sortDirection={sortDirection}
+                        />
+                      </button>
+                    </th>
+                  )}
+
                   <th className="px-4 py-3">
                     <button
                       type="button"
                       onClick={() => handleSort('institution')}
-                      className="flex items-center gap-1 hover:text-cyan-600"
+                      className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
                     >
                       Instituição / Atuação
                       <SortIcon
@@ -422,7 +579,7 @@ export function EngagementParticipantTable({
                     <button
                       type="button"
                       onClick={() => handleSort('municipality')}
-                      className="flex items-center gap-1 hover:text-cyan-600"
+                      className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
                     >
                       Município
                       <SortIcon
@@ -438,9 +595,9 @@ export function EngagementParticipantTable({
                       <button
                         type="button"
                         onClick={() => handleSort('status')}
-                        className="mx-auto flex items-center justify-center gap-1.5 hover:text-cyan-600"
+                        className="mx-auto flex items-center justify-center gap-1.5 transition-colors hover:text-cyan-600"
                       >
-                        Cadastro
+                        Status
                         <SortIcon
                           field="status"
                           sortField={sortField}
@@ -460,7 +617,7 @@ export function EngagementParticipantTable({
                 {sortedRows.map(row => (
                   <tr
                     key={`${row.participant.user_id || row.participant.email}-${row.originalIndex}`}
-                    className="hover:bg-cyan-50/30"
+                    className="transition-colors hover:bg-cyan-50/30"
                   >
                     <td className="px-4 py-3 align-middle">
                       <div className="min-w-0">
@@ -470,69 +627,88 @@ export function EngagementParticipantTable({
                         >
                           {row.displayName}
                         </div>
+                      </div>
+                    </td>
 
-                        {row.email && (
+                    {isStaff && (
+                      <td className="px-4 py-3 align-middle">
+                        <div className="min-w-0">
+                          {row.email && (
+                            <div
+                              className="truncate text-sm text-slate-700"
+                              title={row.email}
+                            >
+                              {row.email}
+                            </div>
+                          )}
+
+                          {row.phone && (
+                            <div
+                              className="mt-1 truncate text-xs font-medium text-slate-500"
+                              title={row.phone}
+                            >
+                              {row.phone}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    )}
+
+                    <td className="px-4 py-3 align-middle">
+                      <div className="min-w-0">
+                        {row.institution && (
                           <div
-                            className="mt-1 truncate text-xs text-slate-500"
-                            title={row.email}
+                            className="truncate text-sm font-semibold text-slate-700"
+                            title={row.institution}
                           >
-                            {row.email}
+                            {row.institution}
+                          </div>
+                        )}
+
+                        {row.jobTitle && (
+                          <div
+                            className="mt-1 truncate text-xs font-medium text-slate-500"
+                            title={row.jobTitle}
+                          >
+                            {row.jobTitle}
                           </div>
                         )}
                       </div>
                     </td>
 
                     <td className="px-4 py-3 align-middle">
-                      <div className="min-w-0">
-                        <div
-                          className="truncate text-sm font-semibold text-slate-700"
-                          title={row.institution || undefined}
-                        >
-                          {row.institution || 'Sem instituição'}
-                        </div>
-
-                        <div
-                          className="mt-1 truncate text-xs text-slate-500"
-                          title={row.jobTitle || undefined}
-                        >
-                          {row.jobTitle || 'Cargo não informado'}
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-3 align-middle">
-                      <div className="min-w-0">
-                        <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-slate-600">
+                      {row.municipality && (
+                        <div className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-slate-600">
                           <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-
                           <span
                             className="truncate"
-                            title={[
-                              row.municipality,
-                              row.organizationType
-                            ]
-                              .filter(Boolean)
-                              .join(' • ')}
+                            title={row.municipality}
                           >
-                            {row.municipality || 'Sem município'}
-                            {row.organizationType &&
-                              ` • ${row.organizationType}`}
+                            {row.municipality}
                           </span>
                         </div>
-
-                        <div
-                          className="mt-1 truncate text-xs text-slate-400"
-                          title={row.relationship || undefined}
-                        >
-                          {row.relationship || 'Relação não informada'}
-                        </div>
-                      </div>
+                      )}
                     </td>
 
                     {isStaff && (
-                      <td className="px-4 py-3 text-center align-middle">
-                        <div className="flex items-center justify-center">
-                          {renderStatus(row)}
+                      <td className="px-4 py-3 align-middle">
+                        <div className="flex flex-col items-start gap-2">
+                          {row.role && renderRoleBadge(row.role)}
+
+                          {renderRegistrationStatus(row)}
+
+                          {row.isActive !== null && (
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                                row.isActive
+                                  ? 'bg-emerald-50 text-emerald-700'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}
+                            >
+                              <Activity className="h-3.5 w-3.5" />
+                              {row.isActive ? 'Ativo' : 'Inativo'}
+                            </span>
+                          )}
                         </div>
                       </td>
                     )}
@@ -542,7 +718,7 @@ export function EngagementParticipantTable({
                         <button
                           type="button"
                           onClick={() => onRemove(row.originalIndex)}
-                          className="mx-auto rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                          className="mx-auto rounded-md p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
                           title={`Remover ${row.displayName}`}
                           aria-label={`Remover ${row.displayName}`}
                         >
@@ -556,13 +732,13 @@ export function EngagementParticipantTable({
             </table>
           </div>
 
-          <div className="grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-y-0">
+          <div className="grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-y-0 lg:hidden">
             {sortedRows.map(row => (
               <div
                 key={`compact-${row.participant.user_id || row.participant.email}-${row.originalIndex}`}
-                className="min-w-0 border-slate-100 p-4 sm:border-b sm:border-r lg:hidden"
+                className="min-w-0 border-slate-100 p-4 sm:border-b sm:border-r"
               >
-                <div className="flex min-w-0 items-start justify-between gap-2">
+                <div className="flex min-w-0 items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div
                       className="truncate text-sm font-bold text-slate-800"
@@ -571,33 +747,67 @@ export function EngagementParticipantTable({
                       {row.displayName}
                     </div>
 
-                    <div className="mt-1 truncate text-xs text-slate-500">
-                      {row.jobTitle ||
-                        row.institution ||
-                        row.email ||
-                        'Sem dados complementares'}
-                    </div>
+                    {isStaff && row.email && (
+                      <div className="mt-1 truncate text-xs font-medium text-slate-500">
+                        {row.email}
+                      </div>
+                    )}
 
-                    <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-slate-400">
-                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                    {isStaff && row.phone && (
+                      <div className="mt-1 truncate text-xs font-medium text-slate-500">
+                        {row.phone}
+                      </div>
+                    )}
 
-                      <span className="truncate">
-                        {row.municipality || 'Sem município'}
-                        {row.organizationType &&
-                          ` • ${row.organizationType}`}
-                      </span>
-                    </div>
+                    {(row.institution || row.jobTitle) && (
+                      <div className="mt-2 min-w-0">
+                        {row.institution && (
+                          <div className="truncate text-sm font-semibold text-slate-700">
+                            {row.institution}
+                          </div>
+                        )}
+                        {row.jobTitle && (
+                          <div className="mt-0.5 truncate text-xs font-medium text-slate-500">
+                            {row.jobTitle}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {row.municipality && (
+                      <div className="mt-2 flex min-w-0 items-center gap-1.5 text-xs font-medium text-slate-500">
+                        <MapPin className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">
+                          {row.municipality}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {isStaff && (
-                    <div className="flex shrink-0 items-center gap-1">
-                      {renderStatus(row)}
+                    <div className="flex shrink-0 flex-col items-end gap-2">
+                      {row.role && renderRoleBadge(row.role)}
+
+                      {renderRegistrationStatus(row)}
+
+                      {row.isActive !== null && (
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                            row.isActive
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          <Activity className="h-3.5 w-3.5" />
+                          {row.isActive ? 'Ativo' : 'Inativo'}
+                        </span>
+                      )}
 
                       {!readOnly && (
                         <button
                           type="button"
                           onClick={() => onRemove(row.originalIndex)}
-                          className="rounded-md p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                          className="rounded-md p-1 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
                           title={`Remover ${row.displayName}`}
                           aria-label={`Remover ${row.displayName}`}
                         >
