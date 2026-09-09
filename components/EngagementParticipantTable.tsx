@@ -101,6 +101,13 @@ const isEmpty = (value: unknown) =>
   value === undefined ||
   (typeof value === 'string' && value.trim() === '')
 
+const normalizeText = (value: unknown) =>
+  String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLocaleLowerCase('pt-BR')
+
 const buildParticipantDetail = (
   profile: UserProfileRow
 ): ParticipantDetail => {
@@ -253,8 +260,6 @@ export function EngagementParticipantTable({
 
   useEffect(() => {
     if (registeredIds.length === 0) {
-      setDetailsById({})
-      setLoading(false)
       return
     }
 
@@ -304,8 +309,6 @@ export function EngagementParticipantTable({
 
   useEffect(() => {
     if (!isStaff || registeredIds.length === 0) {
-      setAuthById({})
-      setAuthLoading(false)
       return
     }
 
@@ -359,13 +362,10 @@ export function EngagementParticipantTable({
     }
   }, [registeredIds, isStaff])
 
-  const effectiveDetailsById =
-    registeredIds.length === 0 ? {} : detailsById
-
   const rows = useMemo<ParticipantRow[]>(() => {
     return participants.map((participant, originalIndex) => {
       const detail = participant.user_id
-        ? effectiveDetailsById[participant.user_id]
+        ? detailsById[participant.user_id]
         : undefined
 
       const authDetail =
@@ -400,14 +400,7 @@ export function EngagementParticipantTable({
         missingFields: detail?.missingFields || []
       }
     })
-  }, [participants, effectiveDetailsById, authById, isStaff])
-
-  const normalizeText = (value: unknown) =>
-    String(value ?? '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .trim()
-      .toLocaleLowerCase('pt-BR')
+  }, [participants, detailsById, authById, isStaff])
 
   const filteredRows = useMemo(() => {
     const term = normalizeText(filterTerm)
