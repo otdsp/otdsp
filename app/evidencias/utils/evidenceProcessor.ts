@@ -336,14 +336,14 @@ export function processDerivedData(
   });
 
   // 7. Agrupamentos de Engajamento e Municípios
-  const iCounts: Record<string, number> = {};
+  const vCounts: Record<string, number> = {};
+  const hCounts: Record<string, number> = {};
   const tCounts: Record<string, number> = {};
-  const pCounts: Record<string, number> = {};
-  const paCounts: Record<string, number> = {};
+  const eaCounts: Record<string, number> = {};
   
-  const horizDurMap: Record<string, { total: number; count: number }> = {};
-  const vertDurMap: Record<string, { total: number; count: number }> = {};
-  const transDurMap: Record<string, { total: number; count: number }> = {};
+  const vertDurMap: Record<string, number> = {};
+  const horizDurMap: Record<string, number> = {};
+  const transDurMap: Record<string, number> = {};
 
   type ParticipantData = {
     email: string;
@@ -354,9 +354,10 @@ export function processDerivedData(
 
   const municipalityBuckets: Record<string, {
     engagementIds: Set<string>;
-    horizontalEngagements: Set<string>;
-    verticalEngagements: Set<string>;
-    transversalEngagements: Set<string>;
+    totalHours: number;
+    verticalHours: number;
+    horizontalHours: number;
+    transversalHours: number;
     participants: Record<string, ParticipantData>;
   }> = {};
 
@@ -364,12 +365,14 @@ export function processDerivedData(
     if (!municipalityBuckets[municipality]) {
       municipalityBuckets[municipality] = {
         engagementIds: new Set(),
-        horizontalEngagements: new Set(),
-        verticalEngagements: new Set(),
-        transversalEngagements: new Set(),
+        totalHours: 0,
+        horizontalHours: 0,
+        verticalHours: 0,
+        transversalHours: 0,
         participants: {}
       };
     }
+
     return municipalityBuckets[municipality];
   };
 
@@ -385,16 +388,103 @@ export function processDerivedData(
   };
 
   filteredEngagements.forEach(eng => {
-    const dur = typeof eng.estimated_duration === 'number' ? eng.estimated_duration : Number(eng.estimated_duration) || 0;
-    
-    if (Array.isArray(eng.horizontal)) eng.horizontal.forEach(i => { if (i) { const k = i.trim(); tCounts[k] = (tCounts[k] || 0) + 1; const cur = horizDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; horizDurMap[k] = cur; } });
-    if (Array.isArray(eng.vertical)) eng.vertical.forEach(t => { if (t) { const k = t.trim(); iCounts[k] = (iCounts[k] || 0) + 1; const cur = vertDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; vertDurMap[k] = cur; } });
-    if (Array.isArray(eng.transversal)) eng.transversal.forEach(p => { if (p) { const k = p.trim(); pCounts[k] = (pCounts[k] || 0) + 1; const cur = transDurMap[k] || { total: 0, count: 0 }; cur.total += dur; cur.count += 1; transDurMap[k] = cur; } });
-    if (Array.isArray(eng.planned_activities)) eng.planned_activities.forEach(activity => { if (activity) { const k = activity.trim(); paCounts[k] = (paCounts[k] || 0) + 1; } });
+    const dur =
+      typeof eng.estimated_duration === 'number'
+        ? eng.estimated_duration
+        : Number(eng.estimated_duration) || 0;
 
-    const hasHorizontal = Array.isArray(eng.horizontal) && eng.horizontal.some((value) => value?.trim());
-    const hasVertical = Array.isArray(eng.vertical) && eng.vertical.some((value) => value?.trim());
-    const hasTransversal = Array.isArray(eng.transversal) && eng.transversal.some((value) => value?.trim());
+    // ==========================================
+    // VERTICAL
+    // ==========================================
+    if (Array.isArray(eng.vertical)) {
+      const verticalItems = eng.vertical
+        .map(item => item?.trim())
+        .filter((item): item is string => Boolean(item));
+
+      const durationPerVertical =
+        verticalItems.length > 0
+          ? dur / verticalItems.length
+          : 0;
+
+      verticalItems.forEach(k => {
+        // Mantém a contagem usada nos outros gráficos
+        vCounts[k] = (vCounts[k] || 0) + 1;
+
+        // Soma as horas proporcionais
+        vertDurMap[k] =
+          (vertDurMap[k] || 0) + durationPerVertical;
+      });
+    }
+
+    // ==========================================
+    // HORIZONTAL
+    // ==========================================
+    if (Array.isArray(eng.horizontal)) {
+      const horizontalItems = eng.horizontal
+        .map(item => item?.trim())
+        .filter((item): item is string => Boolean(item));
+
+      const durationPerHorizontal =
+        horizontalItems.length > 0
+          ? dur / horizontalItems.length
+          : 0;
+
+      horizontalItems.forEach(k => {
+        // Mantém a contagem usada nos outros gráficos
+        hCounts[k] = (hCounts[k] || 0) + 1;
+
+        // Soma as horas proporcionais
+        horizDurMap[k] =
+          (horizDurMap[k] || 0) + durationPerHorizontal;
+      });
+    }
+
+    // ==========================================
+    // TRANSVERSAL
+    // ==========================================
+    if (Array.isArray(eng.transversal)) {
+      const transversalItems = eng.transversal
+        .map(item => item?.trim())
+        .filter((item): item is string => Boolean(item));
+
+      const durationPerTransversal =
+        transversalItems.length > 0
+          ? dur / transversalItems.length
+          : 0;
+
+      transversalItems.forEach(k => {
+        // Mantém a contagem usada nos outros gráficos
+        tCounts[k] = (tCounts[k] || 0) + 1;
+
+        // Soma as horas proporcionais
+        transDurMap[k] =
+          (transDurMap[k] || 0) + durationPerTransversal;
+      });
+    }
+
+    // ==========================================
+    // ATIVIDADES PLANEJADAS
+    // ==========================================
+    if (Array.isArray(eng.planned_activities)) {
+      eng.planned_activities.forEach(activity => {
+        if (activity) {
+          const k = activity.trim();
+          eaCounts[k] = (eaCounts[k] || 0) + 1;
+        }
+      });
+    }
+
+  const hasVertical =
+    Array.isArray(eng.vertical) &&
+    eng.vertical.some(value => value?.trim());
+
+  const hasHorizontal =
+    Array.isArray(eng.horizontal) &&
+    eng.horizontal.some(value => value?.trim());
+
+  const hasTransversal =
+    Array.isArray(eng.transversal) &&
+    eng.transversal.some(value => value?.trim());
 
     const associatedMunicipalities = new Set<string>();
 
@@ -435,52 +525,88 @@ export function processDerivedData(
 
     associatedMunicipalities.forEach((municipality) => {
       const bucket = ensureMunicipalityBucket(municipality);
-      bucket.engagementIds.add(eng.id);
-      if (hasHorizontal) bucket.horizontalEngagements.add(eng.id);
-      if (hasVertical) bucket.verticalEngagements.add(eng.id);
-      if (hasTransversal) bucket.transversalEngagements.add(eng.id);
+
+      if (!bucket.engagementIds.has(eng.id)) {
+        bucket.engagementIds.add(eng.id);
+        bucket.totalHours += dur;
+
+        if (hasVertical) {
+          bucket.verticalHours += dur;
+        }
+
+        if (hasHorizontal) {
+          bucket.horizontalHours += dur;
+        }
+
+        if (hasTransversal) {
+          bucket.transversalHours += dur;
+        }
+      }
     });
   });
 
-  const municipalityChartData = Object.entries(municipalityBuckets)
-    .map(([municipality, bucket]) => {
-      const participantsList = Object.values(bucket.participants).sort((a, b) => a.name.localeCompare(b.name));
-      return {
-        municipality,
-        count: participantsList.length,
-        horizontalCount: bucket.horizontalEngagements.size,
-        verticalCount: bucket.verticalEngagements.size,
-        transversalCount: bucket.transversalEngagements.size,
-        participants: participantsList
-      };
-    })
-    .sort((a, b) => b.count - a.count);
+  const municipalityChartData = Object.entries(municipalityBuckets).map(([municipality, bucket]) => {
+    const participantsList = Object.values(bucket.participants).sort((a, b) => a.name.localeCompare(b.name));
+
+    return {
+      municipality,
+      count: participantsList.length,
+      engagementCount: bucket.engagementIds.size,
+      totalHours: +bucket.totalHours.toFixed(2),
+      verticalHours: +bucket.verticalHours.toFixed(2),
+      horizontalHours: +bucket.horizontalHours.toFixed(2),
+      transversalHours: +bucket.transversalHours.toFixed(2),
+      participants: participantsList
+    };
+  })
+
+  // Recomendo agora ordenar pelo total de horas
+  .sort((a, b) => b.totalHours - a.totalHours);
 
   const formatGroup = (obj: Record<string, number>) => Object.entries(obj).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
   
   const pillarsData = [
-    { category: 'Áreas de Atuação', items: formatGroup(iCounts) },
-    { category: 'Tecnologias', items: formatGroup(tCounts) },
-    { category: 'Políticas Transversais', items: formatGroup(pCounts) },
-    { category: 'Atividades Planejadas', items: formatGroup(paCounts) }
+    { category: 'Verticais', items: formatGroup(vCounts) },
+    { category: 'Horizontais', items: formatGroup(hCounts) },
+    { category: 'Transversais', items: formatGroup(tCounts) },
+    { category: 'Atividades Engajadas', items: formatGroup(eaCounts) }
   ].filter(p => p.items.length > 0);
 
-  const formatAvg = (map: Record<string, { total: number; count: number }>, enabled: boolean, allowed: string[]) => {
-    const allowedSet = new Set(allowed.map(a => a.trim()));
-    const arr = Object.entries(map).map(([label, v]) => ({ label: label.trim(), value: +(v.count > 0 ? (v.total / v.count) : 0).toFixed(2) }));
-    const filtered = enabled && allowed.length > 0 ? arr.filter(x => allowedSet.has(x.label)) : arr;
-    return filtered.sort((a, b) => b.value - a.value);
+  const formatDurationTotal = (
+    map: Record<string, number>,
+    enabled: boolean,
+    allowed: string[]
+  ) => {
+    const allowedSet = new Set(
+      allowed.map(a => a.trim())
+    );
+
+    const arr = Object.entries(map).map(
+      ([label, total]) => ({
+        label: label.trim(),
+        value: +total.toFixed(2)
+      })
+    );
+
+    const filtered =
+      enabled && allowed.length > 0
+        ? arr.filter(x => allowedSet.has(x.label))
+        : arr;
+
+    return filtered.sort(
+      (a, b) => b.value - a.value
+    );
   };
 
   let durationChart = [
-    { dimension: 'Horizontal', color: '#1f77b4', data: formatAvg(horizDurMap, filters.horizontal.enabled, filters.horizontal.values) },
-    { dimension: 'Vertical', color: '#10b981', data: formatAvg(vertDurMap, filters.vertical.enabled, filters.vertical.values) },
-    { dimension: 'Transversal', color: '#ff7f0e', data: formatAvg(transDurMap, filters.transversal.enabled, filters.transversal.values) }
+    { dimension: 'Vertical', color: '#10b981', data: formatDurationTotal(vertDurMap, filters.vertical.enabled, filters.vertical.values) },
+    { dimension: 'Horizontal', color: '#1f77b4', data: formatDurationTotal(horizDurMap, filters.horizontal.enabled, filters.horizontal.values) },
+    { dimension: 'Transversal', color: '#ff7f0e', data: formatDurationTotal(transDurMap, filters.transversal.enabled, filters.transversal.values) }
   ];
 
   const selectedUnionArr: string[] = [];
-  if (filters.horizontal.enabled && filters.horizontal.values.length) selectedUnionArr.push(...filters.horizontal.values.map(v => v.trim()));
   if (filters.vertical.enabled && filters.vertical.values.length) selectedUnionArr.push(...filters.vertical.values.map(v => v.trim()));
+  if (filters.horizontal.enabled && filters.horizontal.values.length) selectedUnionArr.push(...filters.horizontal.values.map(v => v.trim()));
   if (filters.transversal.enabled && filters.transversal.values.length) selectedUnionArr.push(...filters.transversal.values.map(v => v.trim()));
   
   const selectedUnionSet = new Set(selectedUnionArr);

@@ -25,7 +25,7 @@ import { buildActiveFiltersSummary, getGeoMarkerColor } from './utils/presentati
 const PIE_COLORS = ['#0891b2', '#059669', '#d97706', '#7c3aed', '#db2777', '#475569'];
 const ORG_COLORS = ['#4f46e5', '#ea580c', '#0284c7', '#16a34a', '#9333ea', '#64748b'];
 
-const LEAFLET_TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+const LEAFLET_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 export default function EvidenciasStaff() {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -52,7 +52,8 @@ export default function EvidenciasStaff() {
   const [isExporting, setIsExporting] = useState(false);
 
   const normalizeText = (value: string = '') => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-  const normalizedEngagementSearch = normalizeText(filters.engagementSearch);
+  const [engagementSearchInput, setEngagementSearchInput] = useState('');
+  const normalizedEngagementSearch = normalizeText(engagementSearchInput);
   const engagementSuggestions =
     normalizedEngagementSearch.length >= 2
       ? filterOptions.engagements
@@ -172,14 +173,49 @@ export default function EvidenciasStaff() {
     );
   }
 
+  console.log('Stats:', stats);
+
+  if (stats.totalEngagements === 0 && !filters.engagementSearch.trim()) {
+    return (
+      <div className="min-h-screen bg-slate-50 px-6 pt-28 font-sans">
+        <div className="max-w-7xl mx-auto">
+
+          <header className="border-b border-slate-200 pb-6 mb-8">
+            <h1 className="text-4xl md:text-5xl font-extrabold text-[#0F172A] tracking-tight mb-2">
+              Painel de Evidências
+            </h1>
+
+            <p className="text-slate-500 text-lg font-light tracking-wide">
+              Inteligência operacional e métricas da comunidade{' '}
+              <span className="text-cyan-600 font-medium">OTDSP</span>
+            </p>
+          </header>
+
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-16 text-center">
+            <Target className="w-10 h-10 text-slate-300 mx-auto mb-4" />
+
+            <h3 className="text-lg font-bold text-slate-700">
+              Nenhum engajamento encontrado
+            </h3>
+
+            <p className="text-sm text-slate-500 mt-1">
+              Você ainda não está inserido em nenhum engajamento para poder visualizar métricas.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-[#0F172A] p-6 pt-28 font-sans relative">
       <div className="max-w-7xl mx-auto space-y-8">
         
         <header className="border-b border-slate-200 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-4xl md:text-5xl font-extrabold text-[#0F172A] tracking-tight mb-2">Painel de Evidências</h1>
-            <p className="text-slate-500 text-lg font-light tracking-wide">Inteligência operacional e métricas da comunidade <span className="text-cyan-600 font-medium">OTDSP</span></p>
+            <h1 className="text-4xl md:text-5xl font-extrabold text-[#0F172A] tracking-tight mb-2">Evidências de Engajamentos</h1>
+            <p className="text-slate-500 text-lg font-light tracking-wide">Confira as evidências dos engajamentos realizados no <span className="text-cyan-600 font-medium">OTDSP</span></p>
           </div>
           
           <button 
@@ -211,14 +247,11 @@ export default function EvidenciasStaff() {
 
                   <input
                     type="text"
-                    value={filters.engagementSearch}
+                    value={engagementSearchInput}
                     onFocus={() => setIsEngagementSearchOpen(true)}
                     onBlur={() => setIsEngagementSearchOpen(false)}
                     onChange={(e) => {
-                      handleFilterChange(
-                        'engagementSearch',
-                        e.target.value
-                      );
+                      setEngagementSearchInput(e.target.value);
                       setIsEngagementSearchOpen(true);
                     }}
                     placeholder="Buscar engajamento..."
@@ -226,14 +259,12 @@ export default function EvidenciasStaff() {
                     className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
                   />
 
-                  {filters.engagementSearch && (
+                  {engagementSearchInput && (
                     <button
                       type="button"
                       onClick={() => {
-                        handleFilterChange(
-                          'engagementSearch',
-                          ''
-                        );
+                        setEngagementSearchInput('');
+                        handleFilterChange('engagementSearch', '');
                         setIsEngagementSearchOpen(true);
                       }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
@@ -254,6 +285,7 @@ export default function EvidenciasStaff() {
                           type="button"
                           onMouseDown={(e) => {
                             e.preventDefault();
+                            setEngagementSearchInput(title);
                             handleFilterChange('engagementSearch', title);
                             setIsEngagementSearchOpen(false);
                           }}
@@ -361,10 +393,10 @@ export default function EvidenciasStaff() {
 
           {/* Cards Principais de Métricas */}
           <div className="avoid-break grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <KpiCard title="Engajamentos" value={stats.totalEngagements} icon={Target} bgColor="bg-amber-50" iconColor="text-amber-600" />
             <KpiCard title="Total de Membros" value={stats.totalUsers} icon={Users} bgColor="bg-cyan-50" iconColor="text-cyan-600" />
             <KpiCard title="Municípios Atendidos" value={stats.attendedCities} icon={Globe} bgColor="bg-emerald-50" iconColor="text-emerald-600" />
-            <KpiCard title="Engajamentos" value={stats.totalEngagements} icon={Target} bgColor="bg-amber-50" iconColor="text-amber-600" />
-            <KpiCard title="Convênios Firmados" value={stats.signedAgreements} icon={Handshake} bgColor="bg-indigo-50" iconColor="text-indigo-600" />
+            {/* <KpiCard title="Convênios Firmados" value={stats.signedAgreements} icon={Handshake} bgColor="bg-indigo-50" iconColor="text-indigo-600" /> */}
           </div>
 
           {/* 1. Crescimento de Engajamentos e Organizações / Instituições */}
@@ -418,7 +450,7 @@ export default function EvidenciasStaff() {
           <div className="avoid-break bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <BarChart3 className="text-cyan-600 w-6 h-6" />
-              <h2 className="text-lg font-bold tracking-tight text-slate-800">Duração Estimada por Dimensão</h2>
+              <h2 className="text-lg font-bold tracking-tight text-slate-800">Duração por Dimensão</h2>
             </div>
             <div className="w-full h-80">
               <DurationChart series={durationChart} />
@@ -429,7 +461,7 @@ export default function EvidenciasStaff() {
           <div className="avoid-break bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <Globe2 className="text-amber-600 w-6 h-6" />
-              <h2 className="text-lg font-bold tracking-tight text-slate-800">Municípios Envolvidos</h2>
+              <h2 className="text-lg font-bold tracking-tight text-slate-800">Engajamento dos Municípios</h2>
             </div>
             <div className="w-full h-[420px]">
               <MunicipalityChart data={municipalityChartData} />

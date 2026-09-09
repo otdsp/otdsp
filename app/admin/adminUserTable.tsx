@@ -13,6 +13,10 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  MapPin,
+  UserRound,
+  FlaskConical,
+  ShieldCheck,
 } from 'lucide-react'
 import {
   AdminUser,
@@ -24,8 +28,20 @@ import {
   getUserStatus,
 } from './adminUserUtils'
 
-type SortField = 'name' | 'credentials' | 'status'
+type SortField =
+  | 'name'
+  | 'contact'
+  | 'institution'
+  | 'municipality'
+  | 'status'
 type SortDirection = 'asc' | 'desc'
+
+type AdminUserDisplayFields = AdminUser & {
+  institution_organization?: string | null
+  institution?: string | null
+  job_title?: string | null
+  jobTitle?: string | null
+}
 
 interface SortIconProps {
   field: SortField
@@ -45,6 +61,60 @@ function SortIcon({
   return sortDirection === 'asc'
     ? <ArrowUp className="h-3.5 w-3.5" />
     : <ArrowDown className="h-3.5 w-3.5" />
+}
+
+function extractInstitution(user: AdminUser) {
+  const displayUser = user as AdminUserDisplayFields
+
+  return (
+    displayUser.institution_organization ||
+    displayUser.institution ||
+    ''
+  )
+}
+
+function extractJobTitle(user: AdminUser) {
+  const displayUser = user as AdminUserDisplayFields
+
+  return displayUser.job_title || displayUser.jobTitle || ''
+}
+
+function renderRoleBadge(role: string) {
+  const normalizedRole = role.trim().toLowerCase()
+
+  if (normalizedRole === 'staff') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-300 bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-800">
+        <ShieldCheck className="h-3.5 w-3.5 text-blue-700" />
+        Staff
+      </span>
+    )
+  }
+
+  if (normalizedRole === 'pesquisa') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-700">
+        <FlaskConical className="h-3.5 w-3.5" />
+        Pesquisa
+      </span>
+    )
+  }
+
+  if (normalizedRole === 'user' || normalizedRole === 'comum') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
+        <UserRound className="h-3.5 w-3.5" />
+        Comum
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-600">
+      <UserRound className="h-3.5 w-3.5" />
+      {role}
+    </span>
+  )
 }
 
 interface AdminUserTableProps {
@@ -106,14 +176,24 @@ export function AdminUserTable({
           valueB = b.full_name || ''
           break
 
-        case 'credentials':
-          valueA = extractDateJoined(a) || ''
-          valueB = extractDateJoined(b) || ''
+        case 'contact':
+          valueA = extractEmail(a) || ''
+          valueB = extractEmail(b) || ''
+          break
+
+        case 'institution':
+          valueA = extractInstitution(a)
+          valueB = extractInstitution(b)
+          break
+
+        case 'municipality':
+          valueA = a.municipality || ''
+          valueB = b.municipality || ''
           break
 
         case 'status':
-          valueA = getUserStatus(a)
-          valueB = getUserStatus(b)
+          valueA = `${getUserStatus(a)} ${extractRole(a) || ''}`
+          valueB = `${getUserStatus(b)} ${extractRole(b) || ''}`
           break
       }
 
@@ -137,10 +217,20 @@ export function AdminUserTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-left">
+      <table className="w-full table-fixed border-collapse text-left">
+        <colgroup>
+          <col className="w-[4%]" />
+          <col className="w-[18%]" />
+          <col className="w-[20%]" />
+          <col className="w-[22%]" />
+          <col className="w-[14%]" />
+          <col className="w-[16%]" />
+          <col className="w-[6%]" />
+        </colgroup>
+
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500">
-            <th className="w-12 p-4 text-center">
+            <th className="p-4 text-center">
               <button
                 type="button"
                 onClick={onToggleAll}
@@ -161,7 +251,7 @@ export function AdminUserTable({
                 onClick={() => handleSort('name')}
                 className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
               >
-                Usuário & Contato
+                Usuário
                 <SortIcon
                   field="name"
                   sortField={sortField}
@@ -173,12 +263,42 @@ export function AdminUserTable({
             <th className="p-4">
               <button
                 type="button"
-                onClick={() => handleSort('credentials')}
+                onClick={() => handleSort('contact')}
                 className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
               >
-                Credenciais & Nível
+                Contato
                 <SortIcon
-                  field="credentials"
+                  field="contact"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
+              </button>
+            </th>
+
+            <th className="p-4">
+              <button
+                type="button"
+                onClick={() => handleSort('institution')}
+                className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
+              >
+                Instituição / Atuação
+                <SortIcon
+                  field="institution"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
+              </button>
+            </th>
+
+            <th className="p-4">
+              <button
+                type="button"
+                onClick={() => handleSort('municipality')}
+                className="flex items-center gap-1.5 transition-colors hover:text-cyan-600"
+              >
+                Município
+                <SortIcon
+                  field="municipality"
                   sortField={sortField}
                   sortDirection={sortDirection}
                 />
@@ -210,7 +330,7 @@ export function AdminUserTable({
           {users.length === 0 ? (
             <tr>
               <td
-                colSpan={5}
+                colSpan={7}
                 className="p-8 text-center text-slate-500"
               >
                 Nenhum usuário encontrado com os filtros atuais.
@@ -224,6 +344,10 @@ export function AdminUserTable({
               const userRole = extractRole(user)
               const joinedDate = extractDateJoined(user)
               const isSaving = savingUserId === user.id
+              const institution = extractInstitution(user)
+              const jobTitle = extractJobTitle(user)
+              const email = extractEmail(user)
+              const isActive = extractIsActive(user)
 
               return (
                 <tr
@@ -233,7 +357,7 @@ export function AdminUserTable({
                   }`}
                 >
                   {isEditing && editDraft ? (
-                    <td colSpan={5} className="p-3">
+                    <td colSpan={7} className="p-3">
                       <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4 shadow-sm">
                         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                           <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-12">
@@ -391,7 +515,7 @@ export function AdminUserTable({
                     </td>
                   ) : (
                     <>
-                      <td className="p-4 text-center">
+                      <td className="p-4 text-center align-middle">
                         <button
                           type="button"
                           onClick={() =>
@@ -407,51 +531,88 @@ export function AdminUserTable({
                         </button>
                       </td>
 
-                      <td className="p-4">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-slate-800">
-                            {user.full_name ||
-                              'Usuário Sem Nome'}
-                          </span>
-
-                          <span className="mt-0.5 text-xs text-slate-500">
-                            {user.phone || 'Sem telefone'} •{' '}
-                            {user.municipality ||
-                              'Sem município'}
-                          </span>
+                      <td className="p-4 align-middle">
+                        <div className="min-w-0">
+                          <div
+                            className="truncate text-sm font-bold text-slate-800"
+                            title={user.full_name || undefined}
+                          >
+                            {user.full_name || 'Usuário Sem Nome'}
+                          </div>
 
                           {joinedDate && (
-                            <span className="mt-0.5 text-[10px] font-medium text-slate-400">
+                            <div className="mt-1 text-xs font-medium text-slate-500">
                               Cadastrado em:{' '}
                               {new Date(
                                 joinedDate
                               ).toLocaleDateString('pt-BR')}
-                            </span>
+                            </div>
                           )}
                         </div>
                       </td>
 
-                      <td className="p-4">
-                        <div className="flex flex-col">
-                          <span className="text-sm text-slate-700">
-                            {extractEmail(user)}
-                          </span>
+                      <td className="p-4 align-middle">
+                        <div className="min-w-0">
+                          {email && (
+                            <div
+                              className="truncate text-sm text-slate-700"
+                              title={email}
+                            >
+                              {email}
+                            </div>
+                          )}
 
-                          <span className="mt-0.5 text-xs font-medium text-slate-500">
-                            <span className="font-mono">
-                              {user.cpf
-                                ? `CPF: ${user.cpf}`
-                                : 'Sem CPF'}
-                            </span>
-
-                            {userRole &&
-                              ` • Nível: ${userRole.toUpperCase()}`}
-                          </span>
+                          {user.phone && (
+                            <div
+                              className="mt-1 truncate text-xs font-medium text-slate-500"
+                              title={user.phone}
+                            >
+                              {user.phone}
+                            </div>
+                          )}
                         </div>
                       </td>
 
-                      <td className="p-4">
-                        <div className="flex flex-col gap-2">
+                      <td className="p-4 align-middle">
+                        <div className="min-w-0">
+                          {institution && (
+                            <div
+                              className="truncate text-sm font-semibold text-slate-700"
+                              title={institution}
+                            >
+                              {institution}
+                            </div>
+                          )}
+
+                          {jobTitle && (
+                            <div
+                              className="mt-1 truncate text-xs font-medium text-slate-500"
+                              title={jobTitle}
+                            >
+                              {jobTitle}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="p-4 align-middle">
+                        {user.municipality && (
+                          <div className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-slate-600">
+                            <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                            <span
+                              className="truncate"
+                              title={user.municipality}
+                            >
+                              {user.municipality}
+                            </span>
+                          </div>
+                        )}
+                      </td>
+
+                      <td className="p-4 align-middle">
+                        <div className="flex flex-col items-start gap-2">
+                          {userRole && renderRoleBadge(userRole)}
+
                           {status === 'green' && (
                             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
                               <CheckCircle2 className="h-3.5 w-3.5" />
@@ -475,20 +636,18 @@ export function AdminUserTable({
 
                           <span
                             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                              extractIsActive(user)
+                              isActive
                                 ? 'bg-emerald-50 text-emerald-700'
                                 : 'bg-slate-100 text-slate-600'
                             }`}
                           >
                             <Activity className="h-3.5 w-3.5" />
-                            {extractIsActive(user)
-                              ? 'Ativo'
-                              : 'Inativo'}
+                            {isActive ? 'Ativo' : 'Inativo'}
                           </span>
                         </div>
                       </td>
 
-                      <td className="p-4">
+                      <td className="p-4 align-middle">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"

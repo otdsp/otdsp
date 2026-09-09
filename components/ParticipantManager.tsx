@@ -15,6 +15,7 @@ interface ParticipantManagerProps {
   participants: Participant[]
   onChange: (participants: Participant[]) => void
   isStaff?: boolean
+  canFilter?: boolean
 }
 
 interface UserProfileRow {
@@ -94,7 +95,8 @@ const buildSuggestion = (profile: UserProfileRow): UserSuggestion => {
 export function ParticipantManager({
   participants,
   onChange,
-  isStaff = false
+  isStaff = false,
+  canFilter = false
 }: ParticipantManagerProps) {
   const [inputValue, setInputValue] = useState('')
   const [suggestions, setSuggestions] = useState<UserSuggestion[]>([])
@@ -289,114 +291,110 @@ export function ParticipantManager({
 
   return (
     <div className="space-y-5">
-      {isStaff && (
-        <div className="relative flex gap-2">
-          <div className="relative flex-grow">
-            <div className="pointer-events-none absolute bottom-0 left-3 top-0 flex items-center">
-              <Search className="h-4 w-4 text-slate-400" />
-            </div>
-
-            <input
-              type="text"
-              value={inputValue}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              onFocus={() => {
-                if (
-                  inputValue.trim().length >= 3 &&
-                  suggestions.length > 0
-                ) {
-                  setShowSuggestions(true)
-                }
-              }}
-              onBlur={() => {
-                window.setTimeout(
-                  () => setShowSuggestions(false),
-                  200
-                )
-              }}
-              placeholder="Busque por nome, instituição, cargo ou município..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-10 text-sm shadow-sm outline-none transition-all focus:ring-2 focus:ring-cyan-500"
-            />
-
-            {isSearching && canSearch && (
-              <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-cyan-500" />
-            )}
-
-            {canSearch &&
-              showSuggestions &&
-              suggestions.length > 0 && (
-                <div className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
-                  {suggestions.map(suggestion => (
-                    <button
-                      key={suggestion.id}
-                      type="button"
-                      onMouseDown={event => {
-                        event.preventDefault()
-                        handleAddSuggestion(suggestion)
-                      }}
-                      className="flex w-full items-center justify-between gap-3 border-b border-slate-50 px-4 py-3 text-left transition-colors last:border-0 hover:bg-cyan-50"
-                    >
-                      <div className="flex min-w-0 flex-col">
-                        <span className="truncate text-sm font-bold text-slate-700">
-                          {suggestion.full_name}
-                        </span>
-
-                        <span className="truncate text-[11px] font-medium text-slate-500">
-                          {[
-                            suggestion.job_title,
-                            suggestion.institution_organization,
-                            suggestion.municipality
-                          ]
-                            .filter(Boolean)
-                            .join(' • ') ||
-                            'Perfil sem classificação'}
-                        </span>
-
-                        {suggestion.missingFields.length > 0 && (
-                          <span
-                            className="truncate text-[10px] text-amber-600"
-                            title={`Dados faltantes: ${suggestion.missingFields.join(
-                              ', '
-                            )}`}
-                          >
-                            {suggestion.missingFields.length}{' '}
-                            {suggestion.missingFields.length === 1
-                              ? 'dado pendente'
-                              : 'dados pendentes'}
-                          </span>
-                        )}
-                      </div>
-
-                      {suggestion.status === 'green' ? (
-                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
-                      ) : (
-                        <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-            {canSearch &&
-              !isSearching &&
-              !showSuggestions &&
-              suggestions.length === 0 &&
-              !searchError && (
-                <p className="mt-1 px-1 text-[11px] text-slate-500">
-                  Nenhum perfil encontrado. Use o botão “+” para
-                  adicionar um participante externo pelo nome ou
-                  e-mail.
-                </p>
-              )}
-
-            {searchError && (
-              <p className="mt-1 px-1 text-[11px] text-rose-600">
-                {searchError}
-              </p>
-            )}
+      <div className="relative flex gap-2">
+        <div className="relative flex-grow">
+          <div className="pointer-events-none absolute bottom-0 left-3 top-0 flex items-center">
+            <Search className="h-4 w-4 text-slate-400" />
           </div>
 
+          <input
+            type="text"
+            value={inputValue}
+            disabled={!canFilter}
+            onChange={handleInputChange}
+            onKeyDown={isStaff ? handleKeyDown : undefined}
+            onFocus={() => {
+              if (isStaff && suggestions.length > 0) {
+                setShowSuggestions(true)
+              }
+            }}
+            onBlur={() => {
+              if (isStaff) {
+                window.setTimeout(() => setShowSuggestions(false), 200)
+              }
+            }}
+            placeholder={
+              isStaff
+                ? 'Buscar e filtrar participantes...'
+                : canFilter
+                  ? 'Filtrar participantes...'
+                  : 'Filtro disponível apenas para Staff e Pesquisa'
+            }
+            className="w-full rounded-xl border border-slate-200
+              bg-slate-50 py-3 pl-10 pr-10 text-sm
+              shadow-sm outline-none transition-all
+              focus:ring-2 focus:ring-cyan-500
+              disabled:cursor-not-allowed
+              disabled:bg-slate-100
+              disabled:text-slate-400
+            "
+          />
+
+          {isStaff && isSearching && (
+            <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-cyan-500" />
+          )}
+
+          {isStaff && showSuggestions && suggestions.length > 0 && (
+            <div className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
+              {suggestions.map(suggestion => (
+                <button
+                  key={suggestion.id}
+                  type="button"
+                  onMouseDown={event => {
+                    event.preventDefault()
+                    handleAddSuggestion(suggestion)
+                  }}
+                  className="flex w-full items-center justify-between gap-3 border-b border-slate-50 px-4 py-3 text-left transition-colors last:border-0 hover:bg-cyan-50"
+                >
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate text-sm font-bold text-slate-700">
+                        {suggestion.full_name}
+                      </span>
+
+                      <span className="truncate text-[11px] font-medium text-slate-500">
+                        {[
+                          suggestion.job_title,
+                          suggestion.institution_organization,
+                          suggestion.municipality
+                        ]
+                          .filter(Boolean)
+                          .join(' • ') ||
+                          'Perfil sem classificação'}
+                      </span>
+
+                      {suggestion.missingFields.length > 0 && (
+                        <span
+                          className="truncate text-[10px] text-amber-600"
+                          title={`Dados faltantes: ${suggestion.missingFields.join(
+                            ', '
+                          )}`}
+                        >
+                          {suggestion.missingFields.length}{' '}
+                          {suggestion.missingFields.length === 1
+                            ? 'dado pendente'
+                            : 'dados pendentes'}
+                        </span>
+                      )}
+                    </div>
+
+                    {suggestion.status === 'green' ? (
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
+                    )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {isStaff && searchError && (
+            <p className="mt-1 px-1 text-[11px] text-rose-600">
+              {searchError}
+            </p>
+          )}
+        </div>
+
+        {isStaff && (
           <button
             type="button"
             onClick={handleAddManual}
@@ -405,8 +403,8 @@ export function ParticipantManager({
           >
             <Plus className="h-5 w-5 text-white" />
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {participants.length > 0 && (
         <EngagementParticipantTable
@@ -414,6 +412,7 @@ export function ParticipantManager({
           onRemove={removeParticipant}
           isStaff={isStaff}
           readOnly={!isStaff}
+          filterTerm={canFilter ? inputValue : ''}
         />
       )}
     </div>

@@ -27,8 +27,8 @@ export interface Engagement {
   title: string;
   created_by: string;
   status: string | null;
-  horizontal: string[] | null;
   vertical: string[] | null;
+  horizontal: string[] | null;
   transversal: string[] | null;
   planned_activities: string[] | null;
   estimated_duration: number | null;
@@ -46,10 +46,11 @@ export interface MunicipalityParticipant {
 
 export interface MunicipalityChartRow {
   municipality: string;
-  count: number;
-  horizontalCount: number;
-  verticalCount: number;
-  transversalCount: number;
+  engagementCount: number;
+  totalHours: number;
+  verticalHours: number;
+  horizontalHours: number;
+  transversalHours: number;
   participants: MunicipalityParticipant[];
 }
 
