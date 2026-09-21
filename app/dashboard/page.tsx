@@ -182,7 +182,7 @@ export default function EvidenciasStaff() {
 
           <header className="border-b border-slate-200 pb-6 mb-8">
             <h1 className="text-4xl md:text-5xl font-extrabold text-[#0F172A] tracking-tight mb-2">
-              Painel de Evidências
+              Dashboard
             </h1>
 
             <p className="text-slate-500 text-lg font-light tracking-wide">
@@ -214,8 +214,8 @@ export default function EvidenciasStaff() {
         
         <header className="border-b border-slate-200 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-4xl md:text-5xl font-extrabold text-[#0F172A] tracking-tight mb-2">Evidências de Engajamentos</h1>
-            <p className="text-slate-500 text-lg font-light tracking-wide">Confira as evidências dos engajamentos realizados no <span className="text-cyan-600 font-medium">OTDSP</span></p>
+            <h1 className="text-4xl md:text-5xl font-extrabold text-[#0F172A] tracking-tight mb-2">Dashboard</h1>
+            <p className="text-slate-500 text-lg font-light tracking-wide">Visão geral dos engajamentos no <span className="text-cyan-600 font-medium">OTDSP</span></p>
           </div>
           
           <button 
@@ -385,7 +385,7 @@ export default function EvidenciasStaff() {
               />
             </div>
             
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">OTDSP - Relatório de Evidências</h1>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">OTDSP - Dashboard</h1>
             <p className="text-slate-600 text-lg mt-2">Evento / Contexto: <strong className="text-cyan-700">{eventName || 'Geral'}</strong></p>
             <p className="text-slate-500 mt-1">Período consultado: {filters.startDate ? new Date(filters.startDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Início'} até {filters.endDate ? new Date(filters.endDate + 'T23:59:59').toLocaleDateString('pt-BR') : 'Hoje'}</p>
             <p className="text-slate-500 mt-1">Filtros utilizados: {activeFiltersSummary}</p>

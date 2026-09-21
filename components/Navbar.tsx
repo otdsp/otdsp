@@ -13,33 +13,33 @@ const basePath = process.env.__NEXT_ROUTER_BASEPATH || '';
 const navItems = [
   { name: 'Início', href: '/' },
   { name: 'Sobre nós', href: '/sobre-nos' },
-  {
-    name: 'Transversais',
-    href: '#',
-    dropdown: [
-      { name: 'Mulheres', href: '/em-construcao?s=Mulheres' },
-      { name: 'Inclusão de alunos com necessidades especiais', href: '/em-construcao?s=Inclusao' },
-      { name: 'Igualdade de Gênero', href: '/em-construcao?s=Igualdade' },
-      { name: 'LGBTQIA+', href: '/em-construcao?s=LGBTQIA+' },
-    ],
-  },
-  {
-    name: 'Tecnologias',
-    href: '#',
-    dropdown: [
-      { name: 'Hardware aberto - Caninos', href: '/em-construcao?s=Caninos' },
-    ],
-  },
-  {
-    name: 'Área de Atuação',
-    href: '#',
-    dropdown: [
-      { name: 'Saúde', href: '/em-construcao?s=Saude' },
-      { name: 'Segurança', href: '/em-construcao?s=Seguranca' },
-      { name: 'Educação', href: '/em-construcao?s=Educacao' },
-      { name: 'Meio Ambiente', href: '/em-construcao?s=MeioAmbiente' },
-    ],
-  },
+  // {
+  //   name: 'Transversais',
+  //   href: '#',
+  //   dropdown: [
+  //     { name: 'Mulheres', href: '/em-construcao?s=Mulheres' },
+  //     { name: 'Inclusão de alunos com necessidades especiais', href: '/em-construcao?s=Inclusao' },
+  //     { name: 'Igualdade de Gênero', href: '/em-construcao?s=Igualdade' },
+  //     { name: 'LGBTQIA+', href: '/em-construcao?s=LGBTQIA+' },
+  //   ],
+  // },
+  // {
+  //   name: 'Tecnologias',
+  //   href: '#',
+  //   dropdown: [
+  //     { name: 'Hardware aberto - Caninos', href: '/em-construcao?s=Caninos' },
+  //   ],
+  // },
+  // {
+  //   name: 'Área de Atuação',
+  //   href: '#',
+  //   dropdown: [
+  //     { name: 'Saúde', href: '/em-construcao?s=Saude' },
+  //     { name: 'Segurança', href: '/em-construcao?s=Seguranca' },
+  //     { name: 'Educação', href: '/em-construcao?s=Educacao' },
+  //     { name: 'Meio Ambiente', href: '/em-construcao?s=MeioAmbiente' },
+  //   ],
+  // },
   { name: 'Contato', href: '#footer' },
   {
     name: 'Acessos',
@@ -144,7 +144,7 @@ export default function Navbar() {
       const loggedInDropdown = [
         { name: 'Meu Perfil', href: '/perfil', icon: User },
         ...(isStaff ? [{ name: 'Administração', href: '/admin', icon: Shield }] : []),
-        { name: 'Evidências', href: '/evidencias', icon: ChartColumn },
+        { name: 'Dashboard', href: '/dashboard', icon: ChartColumn },
         { name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
         { name: 'Sair', href: '#', isLogout: true, icon: LogOut },
       ];
@@ -156,7 +156,7 @@ export default function Navbar() {
           : [
               { name: 'Entrar', href: '/login', icon: User },
               { name: 'Cadastro', href: '/cadastro', icon: UserPlus },
-              { name: 'Evidências', href: '/evidencias', icon: ChartColumn },
+              { name: 'Dashboard', href: '/dashboard', icon: ChartColumn },
               { name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
             ],
       };
