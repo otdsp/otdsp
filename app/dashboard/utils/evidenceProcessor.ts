@@ -266,7 +266,7 @@ export function processDerivedData(
   // 5. Agrupamentos (Referrals, Organizações, Cidades)
   const referralCounts: Record<string, number> = {};
   const orgGroups: Record<string, OrgGroup> = {};
-  const cityGroups: Record<string, { count: number, name: string }> = {};
+  const cityGroups: Record<string, { count: number; name: string; members: string[] }> = {};
 
   filteredProfiles.forEach(p => {
     if (p.referral_source) referralCounts[p.referral_source] = (referralCounts[p.referral_source] || 0) + 1;
@@ -295,9 +295,23 @@ export function processDerivedData(
     }
 
     if (p.municipality) {
-      const normCity = p.municipality.trim().charAt(0).toUpperCase() + p.municipality.trim().slice(1);
-      if (!cityGroups[normCity]) cityGroups[normCity] = { count: 0, name: normCity };
+      const normalizedMunicipality = p.municipality.trim().replace(/\s+/g, ' ');
+      const normCity =
+        normalizedMunicipality.charAt(0).toUpperCase() +
+        normalizedMunicipality.slice(1);
+
+      if (!cityGroups[normCity]) {
+        cityGroups[normCity] = {
+          count: 0,
+          name: normCity,
+          members: []
+        };
+      }
+
       cityGroups[normCity].count++;
+      cityGroups[normCity].members.push(
+        p.full_name?.trim() || 'Usuário sem nome'
+      );
     }
   });
 
@@ -329,10 +343,28 @@ export function processDerivedData(
   }
 
   // 6. Dados Geográficos
-  const localGeoData: { name: string; count: number; coordinates: [number, number] }[] = [];
+  // Além da quantidade e das coordenadas, o mapa recebe os nomes dos membros
+  // daquele município para montar o popup com lista e scroll.
+  const localGeoData: {
+    name: string;
+    count: number;
+    coordinates: [number, number];
+    members: string[];
+  }[] = [];
+
   Object.values(cityGroups).forEach((c) => {
     const coords = geocodeCache[c.name];
-    if (coords) localGeoData.push({ name: c.name, count: c.count, coordinates: coords });
+
+    if (coords) {
+      localGeoData.push({
+        name: c.name,
+        count: c.count,
+        coordinates: coords,
+        members: [...c.members].sort((a, b) =>
+          a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
+        )
+      });
+    }
   });
 
   // 7. Agrupamentos de Engajamento e Municípios

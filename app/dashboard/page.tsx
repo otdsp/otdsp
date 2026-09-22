@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   Users, Globe2, Globe, Target, Handshake, BarChart3, ShieldAlert, Loader2, 
   PieChart as PieIcon, Briefcase, Filter, Download, X, Layers3, Rows3, 
-  Waypoints, Search, Maximize2, Minimize2
+  Waypoints, Search
 } from 'lucide-react';
 import { 
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -20,18 +20,15 @@ import { DateRangeFilter } from '../../components/DateRangeFilter';
 import { exportToPDF } from './utils/exportPdf'; 
 import DurationChart from './components/DurationChart';
 import MunicipalityChart from './components/MunicipalityChart';
-import { buildActiveFiltersSummary, getGeoMarkerColor } from './utils/presentation';
+import MembersMap, { type MembersMapHandle } from './components/MembersMap';
+import { buildActiveFiltersSummary } from './utils/presentation';
 
 const PIE_COLORS = ['#0891b2', '#059669', '#d97706', '#7c3aed', '#db2777', '#475569'];
 const ORG_COLORS = ['#4f46e5', '#ea580c', '#0284c7', '#16a34a', '#9333ea', '#64748b'];
 
-const LEAFLET_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 export default function EvidenciasStaff() {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<any>(null);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
+  const membersMapRef = useRef<MembersMapHandle>(null);
 
   const {
     isLoading,
@@ -65,77 +62,12 @@ export default function EvidenciasStaff() {
           .slice(0, 4)
       : [];
 
-  useEffect(() => {
-    if (!isAuthorized || geoData.length === 0 || !mapRef.current) return;
-    import('leaflet').then((L) => {
-      if (!document.getElementById('leaflet-css')) {
-        const link = document.createElement('link'); link.id = 'leaflet-css'; link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(link);
-      }
-      if (!mapInstance.current) {
-        if (mapRef.current) mapInstance.current = L.map(mapRef.current, {preferCanvas: true}).setView([-15.7801, -47.9292], 4);
-        L.tileLayer(LEAFLET_TILE_URL, { maxZoom: 20, crossOrigin: true }).addTo(mapInstance.current);
-      } else {
-        mapInstance.current.eachLayer((layer: any) => { if (layer instanceof L.CircleMarker) mapInstance.current.removeLayer(layer); });
-      }
-
-      const bounds: [number, number][] = [];
-      geoData.forEach((city) => {
-        const [lng, lat] = city.coordinates; 
-        const mColor = getGeoMarkerColor(city.count);
-        const marker = L.circleMarker([lat, lng], {
-          renderer: L.canvas({padding: 0.5}),
-          radius: Math.min(6 + city.count * 1.5, 25),
-          fillColor: mColor,
-          color: '#ffffff',
-          weight: 1.5,
-          fillOpacity: 0.75,
-        }).addTo(mapInstance.current);
-        marker.bindPopup(`<div style="font-family: Inter; font-size: 13px;"><strong style="color: #0f172a;">${city.name}</strong><br/><span>${city.count} membros ativos</span></div>`);
-        bounds.push([lat, lng]);
-      });
-      if (bounds.length > 0) mapInstance.current.fitBounds(bounds, { padding: [40, 40] });
-    });
-  }, [geoData, isAuthorized]);
-
-  const toggleMapFullscreen = async () => {
-    if (!mapContainerRef.current) return;
-
-    try {
-      if (!document.fullscreenElement) {
-        await mapContainerRef.current.requestFullscreen();
-      } else {
-        await document.exitFullscreen();
-      }
-    } catch (error) {
-      console.error('Erro ao alternar tela cheia:', error);
-    }
-  };
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      const isFullscreen = document.fullscreenElement === mapContainerRef.current;
-      setIsMapFullscreen(isFullscreen);
-      requestAnimationFrame(() => {
-        mapInstance.current?.invalidateSize();
-      });
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    };
-  }, []);
-
   const handleExport = async () => {
     setIsExporting(true);
 
     try {
-      // Garante que o Leaflet recalculou dimensões e posições
-      if (mapInstance.current) {
-        mapInstance.current.invalidateSize();
-      }
+      // Pede ao componente do mapa que recalcule suas dimensões antes da captura.
+      membersMapRef.current?.prepareForExport();
 
       // Espera o navegador terminar a renderização
       await new Promise<void>((resolve) => {
@@ -522,49 +454,8 @@ export default function EvidenciasStaff() {
             </div>
           </div>
 
-          {/* 6. Distribuição de Membros (Mapa Leaflet) */}
-          <div className="avoid-break bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col">
-            <div className="flex items-center gap-3 mb-4">
-              <Globe2 className="text-amber-600 w-6 h-6" />
-              <h2 className="text-lg font-bold tracking-tight text-slate-800">Distribuição de Membros</h2>
-            </div>
-            <div
-              ref={mapContainerRef}
-              className={`
-                relative w-full overflow-hidden bg-slate-100
-                ${
-                  isMapFullscreen
-                    ? 'h-screen bg-white'
-                    : 'h-[450px] rounded-xl border border-slate-200'
-                }
-              `}
-            >
-              <div ref={mapRef} className="w-full h-full" />
-
-              <button
-                type="button"
-                onClick={toggleMapFullscreen}
-                className="
-                  absolute top-3 right-3 z-[1000]
-                  flex items-center justify-center
-                  w-10 h-10
-                  bg-white hover:bg-slate-50
-                  border border-slate-200
-                  rounded-lg shadow-md
-                  text-slate-700
-                  transition-colors
-                "
-                title={isMapFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
-                aria-label={isMapFullscreen ? 'Sair da tela cheia' : 'Abrir mapa em tela cheia'}
-              >
-                {isMapFullscreen ? (
-                  <Minimize2 className="w-5 h-5" />
-                ) : (
-                  <Maximize2 className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-          </div>
+          {/* 6. Distribuição de Membros */}
+          <MembersMap ref={membersMapRef} data={geoData} />
         </div>
       </div>
 
