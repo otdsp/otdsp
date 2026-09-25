@@ -49,7 +49,6 @@ export default function CadastroPage() {
     institution_organization: '',
     organization_type: '',
     job_title: '',
-    relationship_with_otdsp: '',
     referral_source: ''
   })
 
@@ -87,7 +86,6 @@ export default function CadastroPage() {
             institution_organization: formData.institution_organization,
             organization_type: formData.organization_type,
             job_title: formData.job_title,
-            relationship_with_otdsp: formData.relationship_with_otdsp,
             referral_source: formData.referral_source
           }
         }
@@ -344,9 +342,11 @@ export default function CadastroPage() {
                       className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3.5 px-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all appearance-none cursor-pointer"
                     >
                       <option value="">Selecione o tipo...</option>
+                      <option value="Educação">Educação</option>
                       <option value="Governamental">Governamental</option>
-                      <option value="Privada">Privada</option>
-                      <option value="Privada sem fins lucrativos">Privada sem fins lucrativos</option>
+                      <option value="Econômica">Econômica</option>
+                      <option value="Social">Social</option>
+                      <option value="Ambiental">Ambiental</option>
                     </select>
                   </div>
                 </div>
@@ -362,24 +362,6 @@ export default function CadastroPage() {
                       placeholder="Ex: Gestor de Projetos, Pesquisador"
                       className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3.5 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-400"
                     />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700 ml-1">Relação com o OTDSP</label>
-                  <div className="relative">
-                    <select 
-                      name="relationship_with_otdsp"
-                      value={formData.relationship_with_otdsp}
-                      onChange={handleChange}
-                      className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3.5 px-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="">Selecione uma opção</option>
-                      <option value="Visitante">Visitante</option>
-                      <option value="Pesquisador">Pesquisador</option>
-                      <option value="Voluntário">Voluntário</option>
-                      <option value="Aluno">Aluno</option>
-                      <option value="Staff">Staff</option>
-                    </select>
                   </div>
                 </div>
               </div>
