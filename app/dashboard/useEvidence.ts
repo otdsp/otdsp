@@ -77,7 +77,7 @@ export function useEvidence() {
             supabase
               .from('user_profile')
               .select(
-                'id, full_name, municipality, referral_source, institution_organization, organization_type, job_title, relationship_with_otdsp'
+                'id, full_name, municipality, referral_source, institution_organization, organization_type, job_title'
               ),
 
             supabase

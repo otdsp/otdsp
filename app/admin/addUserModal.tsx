@@ -38,7 +38,6 @@ const TARGET_ALIASES = [
   ['instituição', 'instituicao', 'organização', 'empresa'],
   ['tipo organização', 'tipo organizacao'],
   ['cargo', 'função', 'funcao'],
-  ['relação otdsp', 'vínculo'],
   ['indicação', 'indicacao', 'como nos conheceu']
 ]
 
@@ -82,7 +81,7 @@ export function AddUserModal({ onClose, onSuccess, onFeedback }: AddUserModalPro
   
   const [newUserForm, setNewUserForm] = useState({
     email: '', full_name: '', cpf: '', phone: '', municipality: '',
-    institution_organization: '', organization_type: '', job_title: '', relationship_with_otdsp: '', referral_source: ''
+    institution_organization: '', organization_type: '', job_title: '', referral_source: ''
   })
 
   const generateRandomPassword = () => {
@@ -114,7 +113,6 @@ export function AddUserModal({ onClose, onSuccess, onFeedback }: AddUserModalPro
             institution_organization: newUserForm.institution_organization,
             organization_type: newUserForm.organization_type,
             job_title: newUserForm.job_title,
-            relationship_with_otdsp: newUserForm.relationship_with_otdsp,
             referral_source: newUserForm.referral_source
           }
         }
@@ -650,17 +648,6 @@ export function AddUserModal({ onClose, onSuccess, onFeedback }: AddUserModalPro
                 <div>
                   <label className="block text-xs font-medium text-slate-400 mb-1">Cargo / Função</label>
                   <input type="text" name="job_title" value={newUserForm.job_title} onChange={handleNewUserChange} className="w-full h-11 rounded-xl border border-slate-700 bg-slate-800/50 px-4 text-sm text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Relação com o OTDSP</label>
-                  <select name="relationship_with_otdsp" value={newUserForm.relationship_with_otdsp} onChange={handleNewUserChange} className="w-full h-11 rounded-xl border border-slate-700 bg-slate-800/50 px-4 text-sm text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500">
-                    <option value="">Selecione...</option>
-                    <option value="Visitante">Visitante</option>
-                    <option value="Pesquisador">Pesquisador</option>
-                    <option value="Voluntário">Voluntário</option>
-                    <option value="Aluno">Aluno</option>
-                    <option value="Staff">Staff</option>
-                  </select>
                 </div>
               </div>
             </div>

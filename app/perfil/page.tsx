@@ -35,7 +35,6 @@ interface UserProfile {
   institution_organization: string
   organization_type: string
   job_title: string
-  relationship_with_otdsp: string
   referral_source: string
 }
 
@@ -131,7 +130,6 @@ export default function ProfilePage() {
           institution_organization: profile.institution_organization,
           organization_type: profile.organization_type,
           job_title: profile.job_title,
-          relationship_with_otdsp: profile.relationship_with_otdsp,
           referral_source: profile.referral_source
         })
         .eq('id', session.user.id)
@@ -538,22 +536,6 @@ export default function ProfilePage() {
                             className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
                           />
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700 ml-1">Relação OTDSP</label>
-                        <select 
-                          required
-                          name="relationship_with_otdsp"
-                          value={profile?.relationship_with_otdsp || ''}
-                          onChange={handleProfileChange}
-                          className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3.5 px-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all appearance-none cursor-pointer"
-                        >
-                          <option value="Visitante">Visitante</option>
-                          <option value="Pesquisador">Pesquisador</option>
-                          <option value="Voluntário">Voluntário</option>
-                          <option value="Aluno">Aluno</option>
-                          <option value="Staff">Staff</option>
-                        </select>
                       </div>
                     </div>
 

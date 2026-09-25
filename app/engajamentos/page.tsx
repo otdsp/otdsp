@@ -47,7 +47,6 @@ type ParticipantProfileData = {
   institution_organization: string | null
   organization_type: string | null
   job_title: string | null
-  relationship_with_otdsp: string | null
   municipality: string | null
   referral_source: string | null
 }
@@ -77,7 +76,6 @@ const REQUIRED_PROFILE_FIELDS: Array<[keyof ParticipantProfileData, string]> = [
   ['institution_organization', 'Instituição/organização'],
   ['organization_type', 'Tipo de organização'],
   ['job_title', 'Cargo'],
-  ['relationship_with_otdsp', 'Relação com o OTDSP'],
   ['municipality', 'Município'],
   ['referral_source', 'Como conheceu o projeto']
 ]
@@ -217,7 +215,6 @@ export default function EngajamentosPage() {
               institution_organization,
               organization_type,
               job_title,
-              relationship_with_otdsp,
               municipality,
               referral_source
             `)

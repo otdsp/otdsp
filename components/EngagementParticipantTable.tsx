@@ -36,7 +36,6 @@ interface UserProfileRow {
   institution_organization: string | null
   organization_type: string | null
   job_title: string | null
-  relationship_with_otdsp: string | null
   municipality: string | null
   referral_source: string | null
 }
@@ -55,7 +54,6 @@ interface ParticipantDetail {
   institution_organization: string
   organization_type: string
   job_title: string
-  relationship_with_otdsp: string
   municipality: string
   referral_source: string
   status: VisualStatus
@@ -72,7 +70,6 @@ interface ParticipantRow {
   institution: string
   organizationType: string
   jobTitle: string
-  relationship: string
   municipality: string
   role: string
   isActive: boolean | null
@@ -91,7 +88,6 @@ const PROFILE_SELECT = `
   institution_organization,
   organization_type,
   job_title,
-  relationship_with_otdsp,
   municipality,
   referral_source
 `
@@ -116,7 +112,6 @@ const buildParticipantDetail = (
     ['Instituição/organização', profile.institution_organization],
     ['Tipo de organização', profile.organization_type],
     ['Cargo', profile.job_title],
-    ['Relação com o OTDSP', profile.relationship_with_otdsp],
     ['Município', profile.municipality],
     ['Como conheceu o projeto', profile.referral_source]
   ]
@@ -132,8 +127,6 @@ const buildParticipantDetail = (
       profile.institution_organization?.trim() || '',
     organization_type: profile.organization_type?.trim() || '',
     job_title: profile.job_title?.trim() || '',
-    relationship_with_otdsp:
-      profile.relationship_with_otdsp?.trim() || '',
     municipality: profile.municipality?.trim() || '',
     referral_source: profile.referral_source?.trim() || '',
     status: missingFields.length === 0 ? 'green' : 'yellow',
@@ -393,7 +386,6 @@ export function EngagementParticipantTable({
         institution: detail?.institution_organization || '',
         organizationType: detail?.organization_type || '',
         jobTitle: detail?.job_title || '',
-        relationship: detail?.relationship_with_otdsp || '',
         municipality: detail?.municipality || '',
         role: authDetail?.role || '',
         isActive: authDetail?.is_active ?? null,
