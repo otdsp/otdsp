@@ -159,6 +159,31 @@ const formatFileSize = (size: number | null | undefined) => {
   return `${(size / (1024 * 1024)).toFixed(2)} MB`
 }
 
+const normalizeText = (value: unknown) =>
+  String(value ?? '')
+    .trim()
+    .toLocaleLowerCase('pt-BR')
+
+const matchesDimension = (
+  engagementValues: string[] | undefined,
+  filter: {
+    enabled: boolean
+    values: string[]
+  }
+) => {
+  if (!filter.enabled) return true
+
+  if (filter.values.length === 0) return false
+
+  const engagementSet = new Set(
+    (engagementValues ?? []).map(normalizeText)
+  )
+
+  return filter.values.some((value) =>
+    engagementSet.has(normalizeText(value))
+  )
+}
+
 export default function EngajamentosPage() {
   const [user, setUser] = useState<any>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
@@ -436,7 +461,7 @@ export default function EngajamentosPage() {
     }
 
     getSession()
-  }, [])
+  }, [router])
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -815,9 +840,9 @@ export default function EngajamentosPage() {
       }
 
       if (previewWindow) {
-        previewWindow.location.href = data.signedUrl
+        previewWindow.location.assign(data.signedUrl)
       } else {
-        window.location.href = data.signedUrl
+        window.location.assign(data.signedUrl)
       }
     } catch (error: any) {
       console.error('Erro ao abrir evidência:', error)
@@ -1179,33 +1204,6 @@ export default function EngajamentosPage() {
       return endTimeMs < currentTime
     }
   }, [currentTime])
-
-  const normalizeText = (value: unknown) =>
-    String(value ?? '')
-      .trim()
-      .toLocaleLowerCase('pt-BR')
-
-  const matchesDimension = (
-    engagementValues: string[] | undefined,
-    filter: {
-      enabled: boolean
-      values: string[]
-    }
-  ) => {
-    // Filtro desligado = não interfere
-    if (!filter.enabled) return true
-
-    // Filtro ligado sem nenhuma opção = nenhum resultado
-    if (filter.values.length === 0) return false
-
-    const engagementSet = new Set(
-      (engagementValues ?? []).map(normalizeText)
-    )
-
-    return filter.values.some((value) =>
-      engagementSet.has(normalizeText(value))
-    )
-  }
 
   const filteredEngagements = useMemo(() => {
     return engagements.filter((eng) => {
