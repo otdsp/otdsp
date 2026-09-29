@@ -516,9 +516,12 @@ export default function ProfilePage() {
                           onChange={handleProfileChange}
                           className="w-full bg-slate-50 border-slate-200 border rounded-xl py-3.5 px-4 focus:ring-2 focus:ring-cyan-500 outline-none transition-all appearance-none cursor-pointer"
                         >
+                          <option value="">Selecione uma opção...</option>
+                          <option value="Educação">Educação</option>
                           <option value="Governamental">Governamental</option>
-                          <option value="Privada">Privada</option>
-                          <option value="Privada sem fins lucrativos">Privada sem fins lucrativos</option>
+                          <option value="Econômica">Econômica</option>
+                          <option value="Social">Social</option>
+                          <option value="Ambiental">Ambiental</option>
                         </select>
                       </div>
                     </div>
