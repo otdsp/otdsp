@@ -28,7 +28,8 @@ import {
   Paperclip,
   UploadCloud,
   ExternalLink,
-  FileText
+  FileText,
+  RotateCcw
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { DateRangeFilter } from '@/components/DateRangeFilter'
@@ -75,8 +76,6 @@ const EVIDENCE_BUCKET = 'engagement-evidences'
 const MAX_EVIDENCE_FILE_SIZE = 3 * 1024 * 1024 // 3 MB
 const SIGNED_URL_EXPIRATION_SECONDS = 60 * 10 // 10 minutos
 
-type ParticipantVisualStatus = 'green' | 'yellow' | 'red'
-
 type ParticipantProfileData = {
   id: string
   full_name: string | null
@@ -106,27 +105,6 @@ type EngagementEvidence = {
   created_at: string | null
 }
 
-const isEmptyValue = (value: unknown) =>
-  value === null ||
-  value === undefined ||
-  (typeof value === 'string' && value.trim() === '')
-
-const REQUIRED_AUTH_FIELDS: Array<[keyof ParticipantAuthData, string]> = [
-  ['email', 'E-mail'],
-  ['cpf', 'CPF'],
-  ['phone', 'Telefone'],
-  ['role', 'Perfil de acesso']
-]
-
-const REQUIRED_PROFILE_FIELDS: Array<[keyof ParticipantProfileData, string]> = [
-  ['full_name', 'Nome completo'],
-  ['institution_organization', 'Instituição/organização'],
-  ['organization_type', 'Tipo de organização'],
-  ['job_title', 'Cargo'],
-  ['municipality', 'Município'],
-  ['referral_source', 'Como conheceu o projeto']
-]
-
 const getParticipantProfile = (
   participant: any
 ): ParticipantProfileData | null => participant?.user_profile ?? null
@@ -134,27 +112,6 @@ const getParticipantProfile = (
 const getParticipantAuth = (
   participant: any
 ): ParticipantAuthData | null => participant?.user_auth ?? null
-
-const getParticipantMissingFields = (participant: any): string[] => {
-  if (!participant?.user_id) return []
-
-  const auth = getParticipantAuth(participant)
-  const profile = getParticipantProfile(participant)
-
-  if (!auth) return []
-
-  const missingAuthFields = REQUIRED_AUTH_FIELDS
-    .filter(([field]) => isEmptyValue(auth[field]))
-    .map(([, label]) => label)
-
-  const missingProfileFields = profile
-    ? REQUIRED_PROFILE_FIELDS
-        .filter(([field]) => isEmptyValue(profile[field]))
-        .map(([, label]) => label)
-    : REQUIRED_PROFILE_FIELDS.map(([, label]) => label)
-
-  return [...missingAuthFields, ...missingProfileFields]
-}
 
 const getParticipantDisplayName = (participant: any) => {
   const profile = getParticipantProfile(participant)
@@ -166,20 +123,6 @@ const getParticipantDisplayName = (participant: any) => {
     participant?.email?.trim() ||
     'Usuário sem identificação'
   )
-}
-
-const getParticipantVisualStatus = (
-  participant: any
-): ParticipantVisualStatus => {
-  if (!participant?.user_id) return 'red'
-
-  const auth = getParticipantAuth(participant)
-
-  if (!auth) return 'red'
-
-  return getParticipantMissingFields(participant).length > 0
-    ? 'yellow'
-    : 'green'
 }
 
 const sanitizeFileName = (fileName: string) => {
@@ -241,7 +184,7 @@ export default function EngajamentosPage() {
   const [pendingEvidenceFiles, setPendingEvidenceFiles] = useState<File[]>([])
   const [isEvidenceUploading, setIsEvidenceUploading] = useState(false)
   const [openingEvidenceId, setOpeningEvidenceId] = useState<string | null>(null)
-  const [deletingEvidenceId, setDeletingEvidenceId] = useState<string | null>(null)
+  const [pendingEvidenceDeletionIds, setPendingEvidenceDeletionIds] = useState<string[]>([])
   const evidenceInputRef = useRef<HTMLInputElement | null>(null)
 
   // Impede que a definição automática por role sobrescreva
@@ -547,7 +490,7 @@ export default function EngajamentosPage() {
     setEvidences([])
     setPendingEvidenceFiles([])
     setOpeningEvidenceId(null)
-    setDeletingEvidenceId(null)
+    setPendingEvidenceDeletionIds([])
 
     if (evidenceInputRef.current) {
       evidenceInputRef.current.value = ''
@@ -598,8 +541,7 @@ export default function EngajamentosPage() {
         user_id: p.user_id,
         email: p.email || '',
         full_name: getParticipantDisplayName(p),
-        cpf: getParticipantAuth(p)?.cpf || '',
-        status: getParticipantVisualStatus(p)
+        cpf: getParticipantAuth(p)?.cpf || ''
       })) || []
 
     setFormData({
@@ -639,6 +581,7 @@ export default function EngajamentosPage() {
     )
 
     setPendingEvidenceFiles([])
+    setPendingEvidenceDeletionIds([])
 
     if (evidenceInputRef.current) {
       evidenceInputRef.current.value = ''
@@ -890,78 +833,78 @@ export default function EngajamentosPage() {
     }
   }
 
-  const handleDeleteEvidence = async (
-    evidence: EngagementEvidence
+  const toggleEvidenceDeletion = (
+    evidenceId: string
   ) => {
     if (!isStaff) return
 
-    const confirmed = window.confirm(
-      `Tem certeza que deseja excluir a evidência "${evidence.original_name}"?`
+    setPendingEvidenceDeletionIds((current) =>
+      current.includes(evidenceId)
+        ? current.filter((id) => id !== evidenceId)
+        : [...current, evidenceId]
+    )
+  }
+
+  const applyPendingEvidenceDeletions = async () => {
+    if (
+      !isStaff ||
+      pendingEvidenceDeletionIds.length === 0
+    ) {
+      return
+    }
+
+    const evidencesToDelete = evidences.filter((evidence) =>
+      pendingEvidenceDeletionIds.includes(evidence.id)
     )
 
-    if (!confirmed) return
+    if (evidencesToDelete.length === 0) {
+      setPendingEvidenceDeletionIds([])
+      return
+    }
 
-    setDeletingEvidenceId(evidence.id)
-    setMessage(null)
+    const evidenceIds = evidencesToDelete.map(
+      (evidence) => evidence.id
+    )
 
-    try {
-      /*
-       * Remove primeiro o registro da tabela.
-       * Caso a remoção física falhe depois, teremos no máximo
-       * um arquivo órfão no Storage, sem expor um registro quebrado
-       * na interface.
-       */
-      const { error: databaseError } = await supabase
-        .from('engagement_evidences')
-        .delete()
-        .eq('id', evidence.id)
+    const storagePaths = evidencesToDelete
+      .map((evidence) => evidence.storage_path)
+      .filter(Boolean)
 
-      if (databaseError) {
-        throw new Error(databaseError.message)
-      }
+    const { error: databaseError } = await supabase
+      .from('engagement_evidences')
+      .delete()
+      .in('id', evidenceIds)
 
+    if (databaseError) {
+      throw new Error(
+        'Erro ao excluir evidências: ' +
+          databaseError.message
+      )
+    }
+
+    if (storagePaths.length > 0) {
       const { error: storageError } = await supabase.storage
         .from(EVIDENCE_BUCKET)
-        .remove([evidence.storage_path])
-
-      setEvidences((current) =>
-        current.filter((item) => item.id !== evidence.id)
-      )
-
-      await fetchEngajamentos()
+        .remove(storagePaths)
 
       if (storageError) {
+        // O registro já foi removido do banco. Mantemos apenas
+        // o log para identificar eventual arquivo órfão no Storage.
         console.error(
-          'Registro removido, mas o arquivo permaneceu no Storage:',
+          'Evidências removidas da tabela, mas alguns arquivos permaneceram no Storage:',
           storageError
         )
-
-        setMessage({
-          type: 'error',
-          text:
-            'A evidência foi removida da tabela, mas houve erro ao excluir o arquivo físico do Storage: ' +
-            storageError.message
-        })
-
-        return
       }
-
-      setMessage({
-        type: 'success',
-        text: 'Evidência excluída com sucesso.'
-      })
-    } catch (error: any) {
-      console.error('Erro ao excluir evidência:', error)
-
-      setMessage({
-        type: 'error',
-        text:
-          'Erro ao excluir evidência: ' +
-          (error?.message || 'erro desconhecido')
-      })
-    } finally {
-      setDeletingEvidenceId(null)
     }
+
+    setEvidences((current) =>
+      current.filter(
+        (evidence) =>
+          !pendingEvidenceDeletionIds.includes(evidence.id)
+      )
+    )
+
+    setPendingEvidenceDeletionIds([])
   }
 
   const handleDelete = async () => {
@@ -1172,6 +1115,13 @@ export default function EngajamentosPage() {
         await uploadPendingEvidences(
           currentEngagementId
         )
+      }
+
+      // --- EXCLUSÃO DAS EVIDÊNCIAS MARCADAS ---
+      // Nenhum arquivo existente é excluído no clique da lixeira.
+      // A exclusão é efetivada apenas após o salvamento do engajamento.
+      if (pendingEvidenceDeletionIds.length > 0) {
+        await applyPendingEvidenceDeletions()
       }
 
       setMessage({
@@ -1417,14 +1367,6 @@ export default function EngajamentosPage() {
                           ? 'Detalhes do Engajamento'
                           : 'Novo Engajamento'}
                       </h2>
-
-                      {editingId &&
-                        isFormLocked && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
-                            <Lock className="w-3.5 h-3.5" />
-                            Somente visualização
-                          </span>
-                        )}
                     </div>
 
                     <p className="text-sm text-slate-500">
@@ -1436,7 +1378,7 @@ export default function EngajamentosPage() {
                     </p>
                   </div>
 
-                  {editingId && (
+                  {editingId && isStaff && (
                     <button
                       type="button"
                       onClick={handleDelete}
@@ -1758,12 +1700,23 @@ export default function EngajamentosPage() {
                       </div>
 
                       {evidences.length > 0 && (
-                        <span className="inline-flex w-fit items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                          {evidences.length}{' '}
-                          {evidences.length === 1
-                            ? 'arquivo'
-                            : 'arquivos'}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex w-fit items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                            {evidences.length}{' '}
+                            {evidences.length === 1
+                              ? 'arquivo'
+                              : 'arquivos'}
+                          </span>
+
+                          {pendingEvidenceDeletionIds.length > 0 && (
+                            <span className="inline-flex w-fit items-center rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-600">
+                              {pendingEvidenceDeletionIds.length}{' '}
+                              {pendingEvidenceDeletionIds.length === 1
+                                ? 'exclusão pendente'
+                                : 'exclusões pendentes'}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
 
@@ -1791,7 +1744,13 @@ export default function EngajamentosPage() {
                                   key={
                                     evidence.id
                                   }
-                                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 bg-white/70"
+                                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 transition-colors ${
+                                    pendingEvidenceDeletionIds.includes(
+                                      evidence.id
+                                    )
+                                      ? 'bg-red-50/70'
+                                      : 'bg-white/70'
+                                  }`}
                                 >
                                   <div className="min-w-0 flex items-start gap-3">
                                     <div className="shrink-0 w-10 h-10 rounded-xl bg-cyan-50 text-cyan-700 flex items-center justify-center">
@@ -1835,6 +1794,14 @@ export default function EngajamentosPage() {
                                           </span>
                                         )}
                                       </div>
+
+                                      {pendingEvidenceDeletionIds.includes(
+                                        evidence.id
+                                      ) && (
+                                        <p className="mt-2 text-[11px] font-bold text-red-600">
+                                          Exclusão pendente.
+                                        </p>
+                                      )}
                                     </div>
                                   </div>
 
@@ -1866,22 +1833,37 @@ export default function EngajamentosPage() {
                                       <button
                                         type="button"
                                         onClick={() =>
-                                          handleDeleteEvidence(
-                                            evidence
+                                          toggleEvidenceDeletion(
+                                            evidence.id
                                           )
                                         }
-                                        disabled={
-                                          deletingEvidenceId ===
-                                            evidence.id ||
-                                          isSubmitting
+                                        disabled={isSubmitting}
+                                        className={`inline-flex items-center justify-center rounded-xl border bg-white p-2.5 disabled:cursor-not-allowed disabled:opacity-50 ${
+                                          pendingEvidenceDeletionIds.includes(
+                                            evidence.id
+                                          )
+                                            ? 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                                            : 'border-red-200 text-red-600 hover:bg-red-50'
+                                        }`}
+                                        aria-label={
+                                          pendingEvidenceDeletionIds.includes(
+                                            evidence.id
+                                          )
+                                            ? `Desfazer exclusão de ${evidence.original_name}`
+                                            : `Marcar ${evidence.original_name} para exclusão`
                                         }
-                                        className="inline-flex items-center justify-center rounded-xl border border-red-200 bg-white p-2.5 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                                        aria-label={`Excluir ${evidence.original_name}`}
-                                        title="Excluir evidência"
+                                        title={
+                                          pendingEvidenceDeletionIds.includes(
+                                            evidence.id
+                                          )
+                                            ? 'Desfazer exclusão'
+                                            : 'Excluir ao salvar'
+                                        }
                                       >
-                                        {deletingEvidenceId ===
-                                        evidence.id ? (
-                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                        {pendingEvidenceDeletionIds.includes(
+                                          evidence.id
+                                        ) ? (
+                                          <RotateCcw className="w-4 h-4" />
                                         ) : (
                                           <Trash2 className="w-4 h-4" />
                                         )}
@@ -1910,7 +1892,9 @@ export default function EngajamentosPage() {
                               arquivos. Limite de{' '}
                               <strong>
                                 3 MB por arquivo
-                              </strong>.
+                              </strong>
+                              . Os arquivos serão enviados
+                              ao salvar o engajamento.
                             </p>
                           </div>
 
@@ -2011,32 +1995,30 @@ export default function EngajamentosPage() {
                         : 'Descartar'}
                     </button>
 
-                    <button
-                      type="submit"
-                      disabled={
-                        isSubmitting ||
-                        isEvidenceUploading ||
-                        isFormLocked
-                      }
-                      className="bg-[#0F172A] hover:bg-slate-800 text-white font-bold py-4 px-12 rounded-xl shadow-xl flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-40 transition-all"
-                    >
-                      {isSubmitting ||
-                      isEvidenceUploading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : isFormLocked ? (
-                        <Lock className="w-5 h-5" />
-                      ) : (
-                        <CheckCircle className="w-5 h-5" />
-                      )}
+                    {!isFormLocked && (
+                      <button
+                        type="submit"
+                        disabled={
+                          isSubmitting ||
+                          isEvidenceUploading ||
+                          isFormLocked
+                        }
+                        className="bg-[#0F172A] hover:bg-slate-800 text-white font-bold py-4 px-12 rounded-xl shadow-xl flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-40 transition-all"
+                      >
+                        {isSubmitting ||
+                        isEvidenceUploading ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <CheckCircle className="w-5 h-5" />
+                        )}
 
-                      {isEvidenceUploading
-                        ? 'Enviando arquivos...'
-                        : editingId
-                          ? isStaff
+                        {isEvidenceUploading
+                          ? 'Enviando arquivos...'
+                          : editingId
                             ? 'Salvar Alterações'
-                            : 'Somente visualização'
-                          : 'Confirmar Planejamento'}
-                    </button>
+                            : 'Confirmar Planejamento'}
+                      </button>
+                    )}  
                   </div>
                 </form>
               </div>
@@ -2508,27 +2490,6 @@ export default function EngajamentosPage() {
                                           p
                                         )
 
-                                      const participantStatus =
-                                        getParticipantVisualStatus(
-                                          p
-                                        )
-
-                                      const green =
-                                        'bg-slate-50 border-slate-200 text-slate-600'
-                                      const yellow =
-                                        'bg-amber-50 border-amber-200 text-amber-700'
-                                      const red =
-                                        'bg-red-50 border-red-200 text-red-700'
-
-                                      const statusClasses =
-                                        {
-                                          green,
-                                          yellow,
-                                          red
-                                        }[
-                                          participantStatus
-                                        ]
-
                                       return (
                                         <span
                                           key={
@@ -2536,7 +2497,7 @@ export default function EngajamentosPage() {
                                             p.email ||
                                             idx
                                           }
-                                          className={`text-[11px] font-semibold border px-2 py-0.5 rounded-md flex items-center gap-1 ${statusClasses}`}
+                                          className="text-[11px] font-semibold border border-slate-200 bg-slate-50 px-2 py-0.5 rounded-md flex items-center gap-1 text-slate-600"
                                         >
                                           {
                                             displayName

@@ -5,7 +5,7 @@ export interface Participant {
   full_name: string
   email: string
   cpf: string
-  status: ParticipantStatus
+  status?: ParticipantStatus
 }
 
 // Adaptação da sua interface original

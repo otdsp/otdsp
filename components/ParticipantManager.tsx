@@ -1,251 +1,496 @@
 import { useEffect, useState } from 'react'
+
 import {
+
   Plus,
+
   Search,
+
   Loader2,
+
   CheckCircle2,
+
   AlertCircle
+
 } from 'lucide-react'
 
+
+
 import { supabase } from '@/lib/supabase'
+
 import { Participant } from '@/types/engagement'
+
 import { EngagementParticipantTable } from '@/components/EngagementParticipantTable'
 
+
+
 interface ParticipantManagerProps {
+
   participants: Participant[]
+
   onChange: (participants: Participant[]) => void
+
   isStaff?: boolean
+
   canFilter?: boolean
+
 }
+
+
 
 interface UserProfileRow {
+
   id: string
+
   full_name: string | null
+
   institution_organization: string | null
+
   organization_type: string | null
+
   job_title: string | null
+
   municipality: string | null
+
   referral_source: string | null
+
 }
+
+
 
 interface UserSuggestion {
+
   id: string
+
   full_name: string
+
   institution_organization: string
+
   organization_type: string
+
   job_title: string
+
   municipality: string
+
   referral_source: string
+
   status: 'green' | 'yellow'
+
   missingFields: string[]
+
 }
 
+
+
 const PROFILE_SELECT = `
+
   id,
+
   full_name,
+
   institution_organization,
+
   organization_type,
+
   job_title,
+
   municipality,
+
   referral_source
+
 `
 
+
+
 const isEmpty = (value: unknown) =>
+
   value === null ||
+
   value === undefined ||
+
   (typeof value === 'string' && value.trim() === '')
+
+
 
 const escapeLikeValue = (value: string) =>
   value.replace(/[%_\\]/g, character => `\\${character}`)
 
+
+
 const buildSuggestion = (profile: UserProfileRow): UserSuggestion => {
+
   const requiredFields: Array<[string, unknown]> = [
+
     ['Nome completo', profile.full_name],
+
     ['Instituição/organização', profile.institution_organization],
+
     ['Tipo de organização', profile.organization_type],
+
     ['Cargo', profile.job_title],
+
     ['Município', profile.municipality],
+
     ['Como conheceu o projeto', profile.referral_source]
+
   ]
 
+
+
   const missingFields = requiredFields
+
     .filter(([, value]) => isEmpty(value))
+
     .map(([label]) => label)
 
+
+
   return {
+
     id: profile.id,
+
     full_name: profile.full_name?.trim() || 'Usuário sem nome',
+
     institution_organization:
+
       profile.institution_organization?.trim() || '',
+
     organization_type: profile.organization_type?.trim() || '',
+
     job_title: profile.job_title?.trim() || '',
+
     municipality: profile.municipality?.trim() || '',
+
     referral_source: profile.referral_source?.trim() || '',
+
     status: missingFields.length === 0 ? 'green' : 'yellow',
+
     missingFields
+
   }
+
 }
 
+
+
 export function ParticipantManager({
+
   participants,
+
   onChange,
+
   isStaff = false,
+
   canFilter = false
+
 }: ParticipantManagerProps) {
+
   const [inputValue, setInputValue] = useState('')
+
   const [suggestions, setSuggestions] = useState<UserSuggestion[]>([])
+
   const [isSearching, setIsSearching] = useState(false)
+
   const [showSuggestions, setShowSuggestions] = useState(false)
+
   const [searchError, setSearchError] = useState<string | null>(null)
 
+
+
   const term = inputValue.trim()
+
   const canSearch = isStaff && term.length >= 3
 
+
+
   useEffect(() => {
-    // O effect agora simplesmente não faz nada enquanto
-    // não houver condições para executar uma busca.
+
+// O effect agora simplesmente não faz nada enquanto
+
+// não houver condições para executar uma busca.
+
     if (!canSearch) return
+
+
 
     let cancelled = false
 
+
+
     const fetchUsers = async () => {
+
       if (cancelled) return
 
+
+
       setIsSearching(true)
+
       setSearchError(null)
 
+
+
       try {
+
         const escapedTerm = escapeLikeValue(term)
+
         const searchPattern = `%${escapedTerm}%`
 
+
+
         const { data, error } = await supabase
+
           .from('user_profile')
+
           .select(PROFILE_SELECT)
+
           .or(
+
             [
+
               `full_name.ilike.${searchPattern}`,
+
               `institution_organization.ilike.${searchPattern}`,
+
               `organization_type.ilike.${searchPattern}`,
+
               `job_title.ilike.${searchPattern}`,
+
               `municipality.ilike.${searchPattern}`
+
             ].join(',')
+
           )
+
           .limit(15)
+
+
 
         if (error) throw error
 
+
+
         if (cancelled) return
+
+
 
         const alreadyAddedIds = new Set(
+
           participants
+
             .map(participant => participant.user_id)
+
             .filter((id): id is string => Boolean(id))
+
         )
 
+
+
         const nextSuggestions = ((data ?? []) as UserProfileRow[])
+
           .filter(profile => !alreadyAddedIds.has(profile.id))
+
           .map(buildSuggestion)
+
           .sort((a, b) =>
+
             a.full_name.localeCompare(b.full_name, 'pt-BR', {
+
               sensitivity: 'base'
+
             })
+
           )
+
           .slice(0, 10)
 
+
+
         setSuggestions(nextSuggestions)
+
         setShowSuggestions(nextSuggestions.length > 0)
+
       } catch (error) {
+
         console.error('Erro ao buscar participantes:', error)
+
+
 
         if (cancelled) return
 
+
+
         setSuggestions([])
+
         setShowSuggestions(false)
+
         setSearchError(
+
           error instanceof Error
+
             ? error.message
+
             : 'Não foi possível buscar participantes.'
+
         )
+
       } finally {
+
         if (!cancelled) {
+
           setIsSearching(false)
+
         }
+
       }
+
     }
+
+
 
     const timer = window.setTimeout(() => {
+
       void fetchUsers()
+
     }, 400)
 
+
+
     return () => {
+
       cancelled = true
+
       window.clearTimeout(timer)
+
     }
+
   }, [canSearch, term, participants])
 
+
+
   const handleInputChange = (
+
     event: React.ChangeEvent<HTMLInputElement>
+
   ) => {
+
     const value = event.target.value
 
+
+
     setInputValue(value)
+
     setSearchError(null)
 
-    // A limpeza que antes acontecia dentro do useEffect
-    // passa a acontecer como resposta direta ao evento.
+
+
+// A limpeza que antes acontecia dentro do useEffect
+
+// passa a acontecer como resposta direta ao evento.
+
     if (value.trim().length < 3) {
+
       setSuggestions([])
+
       setShowSuggestions(false)
+
       setIsSearching(false)
+
     }
+
   }
+
+
 
   const resetInput = () => {
+
     setInputValue('')
+
     setSuggestions([])
+
     setShowSuggestions(false)
+
     setSearchError(null)
+
     setIsSearching(false)
+
   }
+
+
 
   const handleAddSuggestion = (user: UserSuggestion) => {
+
     const newParticipant: Participant = {
+
       user_id: user.id,
+
       full_name: user.full_name,
+
       email: '',
+
       cpf: '',
+
       status: user.status
+
     }
+
+
 
     onChange([...participants, newParticipant])
+
     resetInput()
+
   }
 
+
+
   const handleAddManual = () => {
+
     const value = inputValue.trim()
 
-    if (!value) return
 
+
+    if (!value) return
     const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 
+
+
     const alreadyExists = participants.some(participant => {
+
       if (isEmail) {
+
         return (
+
           participant.email?.trim().toLowerCase() ===
+
           value.toLowerCase()
+
         )
+
       }
 
+
+
       return (
+
         participant.full_name?.trim().toLowerCase() ===
+
         value.toLowerCase()
+
       )
+
     })
 
+
+
     if (alreadyExists) {
+
       setSearchError('Este participante já foi adicionado.')
+
       return
+
     }
+
+
 
     const newParticipant: Participant = {
       user_id: null,
@@ -255,90 +500,112 @@ export function ParticipantManager({
       status: 'red'
     }
 
+
+
     onChange([...participants, newParticipant])
+
     resetInput()
+
   }
 
+
+
   const handleKeyDown = (
+
     event: React.KeyboardEvent<HTMLInputElement>
+
   ) => {
+
     if (event.key !== 'Enter') return
+
+
 
     event.preventDefault()
 
+
+
     if (suggestions.length === 1 && showSuggestions) {
+
       handleAddSuggestion(suggestions[0])
+
       return
+
     }
 
+
+
     handleAddManual()
+
   }
 
+
+
   const removeParticipant = (index: number) => {
+
     onChange(
+
       participants.filter(
+
         (_, participantIndex) => participantIndex !== index
+
       )
+
     )
+
   }
+
+
 
   return (
     <div className="space-y-5">
-      <div className="relative flex gap-2">
-        <div className="relative flex-grow">
-          <div className="pointer-events-none absolute bottom-0 left-3 top-0 flex items-center">
-            <Search className="h-4 w-4 text-slate-400" />
-          </div>
+      {/* O campo de busca/filtro existe somente para Staff e Pesquisa.
+          Usuário comum recebe canFilter=false e não renderiza este bloco. */}
+      {canFilter && (
+        <div className="relative flex gap-2">
+          <div className="relative flex-grow">
+            <div className="pointer-events-none absolute bottom-0 left-3 top-0 flex items-center">
+              <Search className="h-4 w-4 text-slate-400" />
+            </div>
 
-          <input
-            type="text"
-            value={inputValue}
-            disabled={!canFilter}
-            onChange={handleInputChange}
-            onKeyDown={isStaff ? handleKeyDown : undefined}
-            onFocus={() => {
-              if (isStaff && suggestions.length > 0) {
-                setShowSuggestions(true)
+            <input
+              type="text"
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyDown={isStaff ? handleKeyDown : undefined}
+              onFocus={() => {
+                if (isStaff && suggestions.length > 0) {
+                  setShowSuggestions(true)
+                }
+              }}
+              onBlur={() => {
+                if (isStaff) {
+                  window.setTimeout(() => setShowSuggestions(false), 200)
+                }
+              }}
+              placeholder={
+                isStaff
+                  ? 'Buscar e filtrar participantes...'
+                  : 'Filtrar participantes...'
               }
-            }}
-            onBlur={() => {
-              if (isStaff) {
-                window.setTimeout(() => setShowSuggestions(false), 200)
-              }
-            }}
-            placeholder={
-              isStaff
-                ? 'Buscar e filtrar participantes...'
-                : canFilter
-                  ? 'Filtrar participantes...'
-                  : 'Filtro disponível apenas para Staff e Pesquisa'
-            }
-            className="w-full rounded-xl border border-slate-200
-              bg-slate-50 py-3 pl-10 pr-10 text-sm
-              shadow-sm outline-none transition-all
-              focus:ring-2 focus:ring-cyan-500
-              disabled:cursor-not-allowed
-              disabled:bg-slate-100
-              disabled:text-slate-400
-            "
-          />
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-10 text-sm shadow-sm outline-none transition-all focus:ring-2 focus:ring-cyan-500"
+            />
 
-          {isStaff && isSearching && (
-            <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-cyan-500" />
-          )}
+            {isStaff && isSearching && (
+              <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-cyan-500" />
+            )}
 
-          {isStaff && showSuggestions && suggestions.length > 0 && (
-            <div className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
-              {suggestions.map(suggestion => (
-                <button
-                  key={suggestion.id}
-                  type="button"
-                  onMouseDown={event => {
-                    event.preventDefault()
-                    handleAddSuggestion(suggestion)
-                  }}
-                  className="flex w-full items-center justify-between gap-3 border-b border-slate-50 px-4 py-3 text-left transition-colors last:border-0 hover:bg-cyan-50"
-                >
+            {isStaff && showSuggestions && suggestions.length > 0 && (
+              <div className="absolute z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
+                {suggestions.map(suggestion => (
+                  <button
+                    key={suggestion.id}
+                    type="button"
+                    onMouseDown={event => {
+                      event.preventDefault()
+                      handleAddSuggestion(suggestion)
+                    }}
+                    className="flex w-full items-center justify-between gap-3 border-b border-slate-50 px-4 py-3 text-left transition-colors last:border-0 hover:bg-cyan-50"
+                  >
                     <div className="flex min-w-0 flex-col">
                       <span className="truncate text-sm font-bold text-slate-700">
                         {suggestion.full_name}
@@ -375,38 +642,41 @@ export function ParticipantManager({
                     ) : (
                       <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
                     )}
-                </button>
-              ))}
-            </div>
-          )}
+                  </button>
+                ))}
+              </div>
+            )}
 
-          {isStaff && searchError && (
-            <p className="mt-1 px-1 text-[11px] text-rose-600">
-              {searchError}
-            </p>
+            {isStaff && searchError && (
+              <p className="mt-1 px-1 text-[11px] text-rose-600">
+                {searchError}
+              </p>
+            )}
+          </div>
+
+          {isStaff && (
+            <button
+              type="button"
+              onClick={handleAddManual}
+              className="flex shrink-0 items-center justify-center rounded-xl bg-[#0F172A] px-4 shadow-sm transition-colors hover:bg-slate-800"
+              title="Adicionar participante externo"
+            >
+              <Plus className="h-5 w-5 text-white" />
+            </button>
           )}
         </div>
-
-        {isStaff && (
-          <button
-            type="button"
-            onClick={handleAddManual}
-            className="flex shrink-0 items-center justify-center rounded-xl bg-[#0F172A] px-4 shadow-sm transition-colors hover:bg-slate-800"
-            title="Adicionar participante externo"
-          >
-            <Plus className="h-5 w-5 text-white" />
-          </button>
-        )}
-      </div>
+      )}
 
       {participants.length > 0 && (
-        <EngagementParticipantTable
-          participants={participants}
-          onRemove={removeParticipant}
-          isStaff={isStaff}
-          readOnly={!isStaff}
-          filterTerm={canFilter ? inputValue : ''}
-        />
+        <div className="max-h-[430px] overflow-y-auto rounded-xl pr-1">
+          <EngagementParticipantTable
+            participants={participants}
+            onRemove={removeParticipant}
+            isStaff={isStaff}
+            readOnly={!isStaff}
+            filterTerm={canFilter ? inputValue : ''}
+          />
+        </div>
       )}
     </div>
   )
