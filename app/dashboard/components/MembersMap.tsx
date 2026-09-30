@@ -8,16 +8,18 @@ import React, {
   useState,
 } from 'react';
 import { Globe2, Maximize2, Minimize2 } from 'lucide-react';
-import { getGeoMarkerColor } from '../utils/presentation';
+import type { GeoPoint } from '../types';
 
 const LEAFLET_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-export type GeoCityData = {
-  name: string;
-  count: number;
-  coordinates: [number, number];
-  members?: string[];
+const getGeoMarkerColor = (count: number) => {
+  if (count > 50) return '#b91c1c';
+  if (count > 20) return '#dc2626';
+  if (count > 5) return '#f97316';
+  return '#eab308';
 };
+
+export type GeoCityData = GeoPoint;
 
 export type MembersMapHandle = {
   prepareForExport: () => void;

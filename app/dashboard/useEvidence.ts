@@ -1,64 +1,178 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import {
+import type {
+  Engagement,
+  EvidenceFilterOptions,
+  EvidenceFilters,
   UserAuth,
   UserProfile,
-  Engagement,
-  EvidenceFilters,
-  EvidenceFilterOptions
 } from './types';
-import { useAdminAuth } from './useAdminAuth';
-import { fetchCityCoordinates } from './services/geocoding';
 import { processDerivedData } from './utils/evidenceProcessor';
-import { buildCityFrequency, buildFilterOptions } from './utils/dataTransforms';
 
-export function useEvidence() {
-  const { isAuthorized, isAuthLoading } = useAdminAuth();
-  const [isLoadingData, setIsLoadingData] = useState(true);
-  const [geocodeCache, setGeocodeCache] = useState<Record<string, [number, number]>>({});
+type RawEvidenceData = {
+  auth: UserAuth[];
+  profiles: UserProfile[];
+  engagements: Engagement[];
+};
 
-  const [rawData, setRawData] = useState<{
-    auth: UserAuth[];
-    profiles: UserProfile[];
-    engagements: Engagement[];
-  }>({
-    auth: [],
-    profiles: [],
-    engagements: []
-  });
+const INITIAL_FILTERS: EvidenceFilters = {
+  engagementSearch: '',
+  startDate: '2026-04-01',
+  endDate: '',
+  vertical: { enabled: false, values: [] },
+  horizontal: { enabled: false, values: [] },
+  transversal: { enabled: false, values: [] },
+};
 
-  const [filterOptions, setFilterOptions] =
-    useState<EvidenceFilterOptions>({
-      engagements: [],
-      verticals: [],
-      horizontals: [],
-      transversals: []
-    });
+const EMPTY_FILTER_OPTIONS: EvidenceFilterOptions = {
+  engagements: [],
+  verticals: [],
+  horizontals: [],
+  transversals: [],
+};
 
-  const [filters, setFilters] = useState<EvidenceFilters>({
-    engagementSearch: '',
-    startDate: '2026-04-01',
-    endDate: '',
-    vertical: {
-      enabled: false,
-      values: []
-    },
-    horizontal: {
-      enabled: false,
-      values: []
-    },
-    transversal: {
-      enabled: false,
-      values: []
-    }
-  });
+function useDashboardAuth() {
+  const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthorized) {
-      return;
-    }
+    let isMounted = true;
+
+    const authenticate = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session?.user) {
+          router.replace('/login');
+          return;
+        }
+
+        if (isMounted) {
+          setIsAuthorized(true);
+        }
+      } catch (error) {
+        console.error('Erro na autenticação:', error);
+        router.replace('/login');
+      } finally {
+        if (isMounted) {
+          setIsAuthLoading(false);
+        }
+      }
+    };
+
+    void authenticate();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
+
+  return { isAuthorized, isAuthLoading };
+}
+
+function buildFilterOptions(engagements: Engagement[]): EvidenceFilterOptions {
+  const uniqueEngagements = new Set<string>();
+  const uniqueVerticals = new Set<string>();
+  const uniqueHorizontals = new Set<string>();
+  const uniqueTransversals = new Set<string>();
+
+  engagements.forEach((engagement) => {
+    const title = engagement.title?.trim();
+    if (title) uniqueEngagements.add(title);
+
+    engagement.vertical?.forEach((value) => {
+      const normalized = value?.trim();
+      if (normalized) uniqueVerticals.add(normalized);
+    });
+
+    engagement.horizontal?.forEach((value) => {
+      const normalized = value?.trim();
+      if (normalized) uniqueHorizontals.add(normalized);
+    });
+
+    engagement.transversal?.forEach((value) => {
+      const normalized = value?.trim();
+      if (normalized) uniqueTransversals.add(normalized);
+    });
+  });
+
+  return {
+    engagements: Array.from(uniqueEngagements).sort(),
+    verticals: Array.from(uniqueVerticals).sort(),
+    horizontals: Array.from(uniqueHorizontals).sort(),
+    transversals: Array.from(uniqueTransversals).sort(),
+  };
+}
+
+function buildCityFrequency(profiles: UserProfile[]): Record<string, number> {
+  return profiles.reduce<Record<string, number>>((frequency, profile) => {
+    const municipality = profile.municipality?.trim();
+    if (!municipality) return frequency;
+
+    const city = municipality.charAt(0).toUpperCase() + municipality.slice(1);
+    frequency[city] = (frequency[city] ?? 0) + 1;
+    return frequency;
+  }, {});
+}
+
+async function fetchCityCoordinates(
+  cities: string[]
+): Promise<Record<string, [number, number]>> {
+  const entries = await Promise.all(
+    cities.map(async (city) => {
+      try {
+        const response = await fetch(
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&format=json`
+        );
+
+        if (!response.ok) return null;
+
+        const json = await response.json();
+        const firstResult = json.results?.[0];
+
+        if (!firstResult) return null;
+
+        return [
+          city,
+          [firstResult.longitude, firstResult.latitude] as [number, number],
+        ] as const;
+      } catch (error) {
+        console.error(`Erro ao buscar coordenadas de ${city}:`, error);
+        return null;
+      }
+    })
+  );
+
+  return Object.fromEntries(
+    entries.filter(
+      (entry): entry is readonly [string, [number, number]] => entry !== null
+    )
+  );
+}
+
+export function useEvidence() {
+  const { isAuthorized, isAuthLoading } = useDashboardAuth();
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [geocodeCache, setGeocodeCache] = useState<
+    Record<string, [number, number]>
+  >({});
+  const [rawData, setRawData] = useState<RawEvidenceData>({
+    auth: [],
+    profiles: [],
+    engagements: [],
+  });
+  const [filterOptions, setFilterOptions] =
+    useState<EvidenceFilterOptions>(EMPTY_FILTER_OPTIONS);
+  const [filters, setFilters] = useState<EvidenceFilters>(INITIAL_FILTERS);
+
+  useEffect(() => {
+    if (!isAuthorized) return;
 
     let isMounted = true;
 
@@ -66,82 +180,61 @@ export function useEvidence() {
       setIsLoadingData(true);
 
       try {
-        const [authRes, profileRes, engRes] =
-          await Promise.all([
-            supabase
-              .from('user_auth')
-              .select(
-                'id, email, is_active, date_joined, role, cpf, phone'
-              ),
+        const [authRes, profileRes, engagementRes] = await Promise.all([
+          supabase
+            .from('user_auth')
+            .select('id, email, is_active, date_joined, role, cpf, phone'),
+          supabase
+            .from('user_profile')
+            .select(
+              'id, full_name, municipality, referral_source, institution_organization, organization_type, job_title'
+            ),
+          supabase.from('engagements').select(`
+            id,
+            title,
+            created_by,
+            status,
+            horizontal,
+            vertical,
+            transversal,
+            planned_activities,
+            estimated_duration,
+            created_at,
+            event_date,
+            engagement_participants (
+              user_id
+            )
+          `),
+        ]);
 
-            supabase
-              .from('user_profile')
-              .select(
-                'id, full_name, municipality, referral_source, institution_organization, organization_type, job_title'
-              ),
-
-            supabase
-              .from('engagements')
-              .select(`
-                id,
-                title,
-                created_by,
-                status,
-                horizontal,
-                vertical,
-                transversal,
-                planned_activities,
-                estimated_duration,
-                created_at,
-                event_date,
-                engagement_participants (
-                  user_id
-                )
-              `)
-          ]);
-
-        if (authRes.error) {
-          throw authRes.error;
-        }
-
-        if (profileRes.error) {
-          throw profileRes.error;
-        }
-
-        if (engRes.error) {
-          throw engRes.error;
-        }
+        if (authRes.error) throw authRes.error;
+        if (profileRes.error) throw profileRes.error;
+        if (engagementRes.error) throw engagementRes.error;
 
         const safeAuth = (authRes.data ?? []) as UserAuth[];
         const safeProfiles = (profileRes.data ?? []) as UserProfile[];
-        const safeEng = (engRes.data ?? []) as Engagement[];
+        const safeEngagements = (engagementRes.data ?? []) as Engagement[];
 
-        const cityFreq = buildCityFrequency(safeProfiles);
-        const nextFilterOptions = buildFilterOptions(safeProfiles, safeEng);
-        const topCities = Object.entries(cityFreq).sort((a, b) => b[1] - a[1]).map(([city]) => city);
-        const newGeoData = await fetchCityCoordinates(topCities);
+        const cityFrequency = buildCityFrequency(safeProfiles);
+        const cities = Object.entries(cityFrequency)
+          .sort((a, b) => b[1] - a[1])
+          .map(([city]) => city);
 
-        if (!isMounted) {
-          return;
-        }
+        const [newGeoData] = await Promise.all([
+          fetchCityCoordinates(cities),
+        ]);
 
-        setFilterOptions(nextFilterOptions);
+        if (!isMounted) return;
 
-        setGeocodeCache((previous) => ({
-          ...previous,
-          ...newGeoData
-        }));
-
+        setFilterOptions(buildFilterOptions(safeEngagements));
+        setGeocodeCache((previous) => ({ ...previous, ...newGeoData }));
         setRawData({
           auth: safeAuth,
           profiles: safeProfiles,
-          engagements: safeEng
+          engagements: safeEngagements,
         });
       } catch (error) {
-        console.error(
-          'Erro ao carregar dados de evidências:',
-          error
-        );
+        console.error('Erro ao carregar dados de evidências:', error);
       } finally {
         if (isMounted) {
           setIsLoadingData(false);
@@ -156,21 +249,18 @@ export function useEvidence() {
     };
   }, [isAuthorized]);
 
-  const derivedData = useMemo(() => {
-    return processDerivedData(
-      rawData,
-      filters,
-      geocodeCache
-    );
-  }, [rawData, filters, geocodeCache]);
+  const derivedData = useMemo(
+    () => processDerivedData(rawData, filters, geocodeCache),
+    [rawData, filters, geocodeCache]
+  );
 
-  const handleFilterChange = (
-    filterKey: string,
-    newValue: unknown
+  const handleFilterChange = <K extends keyof EvidenceFilters>(
+    filterKey: K,
+    newValue: EvidenceFilters[K]
   ) => {
     setFilters((previous) => ({
       ...previous,
-      [filterKey]: newValue
+      [filterKey]: newValue,
     }));
   };
 
@@ -180,6 +270,6 @@ export function useEvidence() {
     filters,
     filterOptions,
     handleFilterChange,
-    derivedData
+    derivedData,
   };
 }

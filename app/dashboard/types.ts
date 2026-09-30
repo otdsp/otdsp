@@ -115,6 +115,7 @@ export interface GeoPoint {
   name: string;
   count: number;
   coordinates: [number, number];
+  members?: string[];
 }
 
 export interface PillarMetric {
