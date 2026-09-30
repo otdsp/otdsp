@@ -20,7 +20,7 @@ import { supabase } from '@/lib/supabase'
 
 import { Participant } from '@/types/engagement'
 
-import { EngagementParticipantTable } from '@/components/EngagementParticipantTable'
+import { EngagementParticipantTable } from '@/app/engajamentos/EngagementParticipantTable'
 
 
 

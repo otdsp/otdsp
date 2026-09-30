@@ -156,8 +156,8 @@ export default function Navbar() {
           : [
               { name: 'Entrar', href: '/login', icon: User },
               { name: 'Cadastro', href: '/cadastro', icon: UserPlus },
-              { name: 'Dashboard', href: '/dashboard', icon: ChartColumn },
-              { name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
+              //{ name: 'Dashboard', href: '/dashboard', icon: ChartColumn },
+              //{ name: 'Engajamentos', href: '/engajamentos', icon: Calendar },
             ],
       };
     }

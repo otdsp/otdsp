@@ -50,17 +50,20 @@ export default function EvidenciasStaff() {
 
   const normalizeText = (value: string = '') => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   const [engagementSearchInput, setEngagementSearchInput] = useState('');
+  
   const normalizedEngagementSearch = normalizeText(engagementSearchInput);
-  const engagementSuggestions =
-    normalizedEngagementSearch.length >= 2
-      ? filterOptions.engagements
-          .filter((title) =>
-            normalizeText(title).includes(
-              normalizedEngagementSearch
-            )
-          )
-          .slice(0, 4)
-      : [];
+  
+  const MAX_ENGAGEMENT_SUGGESTIONS = 10;
+
+  const engagementSuggestions = filterOptions.engagements
+    .filter((title) => {
+      if (!normalizedEngagementSearch) {
+        return true;
+      }
+
+      return normalizeText(title).includes(normalizedEngagementSearch);
+    })
+    .slice(0, MAX_ENGAGEMENT_SUGGESTIONS);
 
   const handleExport = async () => {
     setIsExporting(true);
