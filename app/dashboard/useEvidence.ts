@@ -53,21 +53,16 @@ function useDashboardAuth() {
           return;
         }
 
-        if (isMounted) {
-          setIsAuthorized(true);
-        }
+        if (isMounted) setIsAuthorized(true);
       } catch (error) {
         console.error('Erro na autenticação:', error);
         router.replace('/login');
       } finally {
-        if (isMounted) {
-          setIsAuthLoading(false);
-        }
+        if (isMounted) setIsAuthLoading(false);
       }
     };
 
     void authenticate();
-
     return () => {
       isMounted = false;
     };
@@ -110,15 +105,14 @@ function buildFilterOptions(engagements: Engagement[]): EvidenceFilterOptions {
   };
 }
 
-function buildCityFrequency(profiles: UserProfile[]): Record<string, number> {
-  return profiles.reduce<Record<string, number>>((frequency, profile) => {
-    const municipality = profile.municipality?.trim();
-    if (!municipality) return frequency;
-
-    const city = municipality.charAt(0).toUpperCase() + municipality.slice(1);
-    frequency[city] = (frequency[city] ?? 0) + 1;
-    return frequency;
-  }, {});
+function buildCities(profiles: UserProfile[]) {
+  return Array.from(
+    new Set(
+      profiles
+        .map((profile) => profile.municipality?.trim().replace(/\s+/g, ' '))
+        .filter((value): value is string => Boolean(value))
+    )
+  ).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
 async function fetchCityCoordinates(
@@ -128,18 +122,19 @@ async function fetchCityCoordinates(
     cities.map(async (city) => {
       try {
         const response = await fetch(
-          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&format=json`
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
+            city
+          )}&count=1&format=json&language=pt&countryCode=BR`
         );
 
         if (!response.ok) return null;
-
         const json = await response.json();
         const firstResult = json.results?.[0];
-
         if (!firstResult) return null;
 
+        const normalizedCity = city.charAt(0).toUpperCase() + city.slice(1);
         return [
-          city,
+          normalizedCity,
           [firstResult.longitude, firstResult.latitude] as [number, number],
         ] as const;
       } catch (error) {
@@ -159,9 +154,9 @@ async function fetchCityCoordinates(
 export function useEvidence() {
   const { isAuthorized, isAuthLoading } = useDashboardAuth();
   const [isLoadingData, setIsLoadingData] = useState(true);
-  const [geocodeCache, setGeocodeCache] = useState<
-    Record<string, [number, number]>
-  >({});
+  const [geocodeCache, setGeocodeCache] = useState<Record<string, [number, number]>>(
+    {}
+  );
   const [rawData, setRawData] = useState<RawEvidenceData>({
     auth: [],
     profiles: [],
@@ -181,19 +176,19 @@ export function useEvidence() {
 
       try {
         const [authRes, profileRes, engagementRes] = await Promise.all([
-          supabase
-            .from('user_auth')
-            .select('id, email, is_active, date_joined, role, cpf, phone'),
+          // O dashboard não precisa de CPF nem telefone.
+          supabase.from('user_auth').select('id, email'),
           supabase
             .from('user_profile')
             .select(
-              'id, full_name, municipality, referral_source, institution_organization, organization_type, job_title'
+              'id, full_name, municipality, institution_organization, organization_type, job_title'
             ),
           supabase.from('engagements').select(`
             id,
             title,
             created_by,
             status,
+            location,
             horizontal,
             vertical,
             transversal,
@@ -214,15 +209,8 @@ export function useEvidence() {
         const safeAuth = (authRes.data ?? []) as UserAuth[];
         const safeProfiles = (profileRes.data ?? []) as UserProfile[];
         const safeEngagements = (engagementRes.data ?? []) as Engagement[];
-
-        const cityFrequency = buildCityFrequency(safeProfiles);
-        const cities = Object.entries(cityFrequency)
-          .sort((a, b) => b[1] - a[1])
-          .map(([city]) => city);
-
-        const [newGeoData] = await Promise.all([
-          fetchCityCoordinates(cities),
-        ]);
+        const cities = buildCities(safeProfiles);
+        const newGeoData = await fetchCityCoordinates(cities);
 
         if (!isMounted) return;
 
@@ -234,16 +222,13 @@ export function useEvidence() {
           engagements: safeEngagements,
         });
       } catch (error) {
-        console.error('Erro ao carregar dados de evidências:', error);
+        console.error('Erro ao carregar dados do dashboard:', error);
       } finally {
-        if (isMounted) {
-          setIsLoadingData(false);
-        }
+        if (isMounted) setIsLoadingData(false);
       }
     };
 
     void fetchRawData();
-
     return () => {
       isMounted = false;
     };

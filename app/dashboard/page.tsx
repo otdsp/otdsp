@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { MultiSelectFilter } from '../../components/MultiSelectFilter';
 import { DateRangeFilter } from '../../components/DateRangeFilter';
-import DashboardCharts from './components/DashboardCharts';
+import { DashboardDetails, DashboardOverview } from './components/DashboardCharts';
 import MembersMap, {
   type MembersMapHandle,
 } from './components/MembersMap';
@@ -81,7 +81,7 @@ function DashboardFilters({
     .slice(0, MAX_ENGAGEMENT_SUGGESTIONS);
 
   return (
-    <div className="relative z-40 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:items-center">
+    <div className="relative z-40 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 lg:flex-row lg:items-center">
       <div className="flex items-center gap-2 pr-4 lg:border-r lg:border-slate-100">
         <Filter className="h-5 w-5 text-slate-400" />
         <span className="text-sm font-semibold uppercase tracking-wide text-slate-700">
@@ -129,7 +129,7 @@ function DashboardFilters({
             </div>
 
             {isEngagementSearchOpen && engagementSuggestions.length > 0 && (
-              <div className="absolute left-0 right-0 z-50 mt-2 max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+              <div className="absolute left-0 right-0 z-50 mt-2 max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">
                 {engagementSuggestions.map((title) => (
                   <button
                     key={title}
@@ -294,7 +294,7 @@ function ExportModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 p-6">
           <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800">
             <Download className="h-5 w-5 text-cyan-600" />
@@ -409,36 +409,6 @@ export default function EvidenciasStaff() {
     );
   }
 
-  if (
-    derivedData.stats.totalEngagements === 0 &&
-    !filters.engagementSearch.trim()
-  ) {
-    return (
-      <div className="min-h-screen bg-slate-50 px-6 pt-28 font-sans">
-        <div className="mx-auto max-w-7xl">
-          <header className="mb-8 border-b border-slate-200 pb-6">
-            <h1 className="mb-2 text-4xl font-extrabold tracking-tight text-[#0F172A] md:text-5xl">
-              Dashboard
-            </h1>
-            <p className="text-lg font-light tracking-wide text-slate-500">
-              Inteligência operacional e métricas da comunidade{' '}
-              <span className="font-medium text-cyan-600">OTDSP</span>
-            </p>
-          </header>
-
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-16 text-center">
-            <Target className="mx-auto mb-4 h-10 w-10 text-slate-300" />
-            <h3 className="text-lg font-bold text-slate-700">
-              Nenhum engajamento encontrado
-            </h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Você ainda não está inserido em nenhum engajamento para poder visualizar métricas.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="relative min-h-screen bg-slate-50 p-6 pt-28 font-sans text-[#0F172A]">
@@ -456,7 +426,7 @@ export default function EvidenciasStaff() {
 
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 rounded-xl bg-[#0F172A] px-5 py-2.5 font-medium text-white shadow-sm transition-colors hover:bg-slate-800"
+            className="flex items-center gap-2 rounded-xl bg-[#0F172A] px-5 py-2.5 font-medium text-white transition-colors hover:bg-slate-800"
           >
             <Download className="h-4 w-4" />
             Exportar PDF
@@ -471,8 +441,28 @@ export default function EvidenciasStaff() {
 
         <div id="pdf-content" className="space-y-8 bg-slate-50 p-2">
           <PdfHeader eventName={eventName} filters={filters} />
-          <DashboardCharts data={derivedData} />
-          <MembersMap ref={membersMapRef} data={derivedData.geoData} />
+
+          {derivedData.stats.totalEngagements === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
+              <Target className="mx-auto mb-4 h-10 w-10 text-slate-300" />
+              <h3 className="text-lg font-bold text-slate-700">
+                Nenhum engajamento encontrado
+              </h3>
+              <p className="mx-auto mt-1 max-w-xl text-sm text-slate-500">
+                Não há engajamentos para o recorte atual. Ajuste o período, a busca ou os filtros acima para explorar outros resultados.
+              </p>
+            </div>
+          ) : (
+            <>
+              <DashboardOverview data={derivedData} />
+              <MembersMap
+                ref={membersMapRef}
+                data={derivedData.geoData}
+                title="Rede Territorial OTDSP"
+              />
+              <DashboardDetails data={derivedData} />
+            </>
+          )}
         </div>
       </div>
 

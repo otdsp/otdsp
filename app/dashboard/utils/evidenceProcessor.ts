@@ -1,4 +1,4 @@
-import { UserAuth, UserProfile, Engagement, EvidenceFilters, OrgGroup, DerivedEvidenceData } from '../types';
+import type { Engagement, EvidenceFilters, UserAuth, UserProfile } from '../types';
 
 export type RawEvidenceData = {
   auth: UserAuth[];
@@ -6,405 +6,517 @@ export type RawEvidenceData = {
   engagements: Engagement[];
 };
 
+export type DashboardStatusName =
+  | 'Planejado'
+  | 'Pendente'
+  | 'Concluído'
+  | 'Cancelado'
+  | 'Outro';
+
+export type DashboardInsight = {
+  type: 'warning' | 'info' | 'success';
+  title: string;
+  description: string;
+  value?: number | string;
+};
+
+export type DashboardUpcomingEngagement = {
+  id: string;
+  title: string;
+  eventDate: string;
+  status: string;
+  location?: string;
+};
+
+export type DashboardTimelineRow = {
+  name: string;
+  Planejado: number;
+  Pendente: number;
+  Concluído: number;
+  Cancelado: number;
+  Outro: number;
+  total: number;
+};
+
+export type DashboardWorkloadRow = {
+  name: string;
+  horas: number;
+};
+
+export type DashboardOrganizationMetric = {
+  name: string;
+  value: number;
+  orgType: string;
+  members: string[];
+};
+
+export type DashboardPillarMetric = {
+  label: string;
+  count: number;
+};
+
+export type DashboardPillarGroup = {
+  category: 'Verticais' | 'Horizontais' | 'Transversais';
+  items: DashboardPillarMetric[];
+};
+
+export type DashboardMunicipalityParticipant = {
+  email: string;
+  name: string;
+  role: string;
+  municipality: string;
+};
+
+export type DashboardMunicipalityMetric = {
+  municipality: string;
+  count: number;
+  engagementCount: number;
+  totalHours: number;
+  verticalHours: number;
+  horizontalHours: number;
+  transversalHours: number;
+  participants: DashboardMunicipalityParticipant[];
+};
+
+export type DashboardGeoPoint = {
+  name: string;
+  count: number;
+  coordinates: [number, number];
+  members: string[];
+  engagementCount: number;
+  institutionCount: number;
+  totalHours: number;
+};
+
+export type DashboardDerivedData = {
+  stats: {
+    totalUsers: number;
+    attendedCities: number;
+    totalEngagements: number;
+    attentionCount: number;
+    totalEstimatedHours: number;
+    signedAgreements: number;
+  };
+  engagementTimelineData: DashboardTimelineRow[];
+  workloadTimelineData: DashboardWorkloadRow[];
+  statusData: Array<{ name: DashboardStatusName; value: number }>;
+  upcomingEngagements: DashboardUpcomingEngagement[];
+  insights: DashboardInsight[];
+  organizationData: DashboardOrganizationMetric[];
+  geoData: DashboardGeoPoint[];
+  pillarsData: DashboardPillarGroup[];
+  activityData: DashboardPillarMetric[];
+  municipalityChartData: DashboardMunicipalityMetric[];
+};
+
+// Se o criador do engajamento também deve contar como participante, altere para true.
+// Por padrão, a rede territorial considera apenas engagement_participants.
+const INCLUDE_CREATOR_AS_PARTICIPANT = false;
+
+const STATUS_ORDER: DashboardStatusName[] = [
+  'Concluído',
+  'Planejado',
+  'Pendente',
+  'Cancelado',
+  'Outro',
+];
+
+const normalizeText = (value?: string | null) =>
+  (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const normalizeMunicipality = (value?: string | null) => {
+  const trimmed = value?.trim().replace(/\s+/g, ' ');
+  if (!trimmed) return '';
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+};
+
+const getEngagementDate = (engagement: Engagement) => {
+  const rawDate = engagement.event_date || engagement.created_at;
+  return rawDate ? new Date(rawDate) : new Date(0);
+};
+
+const getDuration = (engagement: Engagement) => {
+  const raw = engagement.estimated_duration;
+  const value = typeof raw === 'number' ? raw : Number(raw);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+};
+
+const normalizeStatus = (status?: string | null): DashboardStatusName => {
+  const normalized = normalizeText(status);
+  if (normalized === 'planejado') return 'Planejado';
+  if (normalized === 'pendente') return 'Pendente';
+  if (normalized === 'concluido') return 'Concluído';
+  if (normalized === 'cancelado') return 'Cancelado';
+  return 'Outro';
+};
+
+const formatGroup = (obj: Record<string, number>): DashboardPillarMetric[] =>
+  Object.entries(obj)
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'pt-BR'));
+
+function buildTimelineBuckets(startCutoff: Date, endCutoff: Date) {
+  const diffTime = Math.abs(endCutoff.getTime() - startCutoff.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const isShortPeriod = diffDays <= 31;
+
+  if (isShortPeriod) {
+    const buckets: Array<{ key: string; label: string }> = [];
+    const cursor = new Date(startCutoff);
+
+    while (cursor <= endCutoff) {
+      buckets.push({
+        key: `${cursor.getFullYear()}-${cursor.getMonth()}-${cursor.getDate()}`,
+        label: `${String(cursor.getDate()).padStart(2, '0')}/${String(
+          cursor.getMonth() + 1
+        ).padStart(2, '0')}`,
+      });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return {
+      isShortPeriod,
+      buckets,
+      getKey: (date: Date) =>
+        `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
+    };
+  }
+
+  const monthNames = [
+    'Jan',
+    'Fev',
+    'Mar',
+    'Abr',
+    'Mai',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Set',
+    'Out',
+    'Nov',
+    'Dez',
+  ];
+  const buckets: Array<{ key: string; label: string }> = [];
+  const cursor = new Date(startCutoff.getFullYear(), startCutoff.getMonth(), 1);
+
+  while (cursor <= endCutoff) {
+    buckets.push({
+      key: `${cursor.getFullYear()}-${cursor.getMonth()}`,
+      label: `${monthNames[cursor.getMonth()]}/${String(cursor.getFullYear()).slice(-2)}`,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return {
+    isShortPeriod,
+    buckets,
+    getKey: (date: Date) => `${date.getFullYear()}-${date.getMonth()}`,
+  };
+}
+
 export function processDerivedData(
   rawData: RawEvidenceData,
   filters: EvidenceFilters,
   geocodeCache: Record<string, [number, number]>
-): DerivedEvidenceData {
-  const emptyResult: DerivedEvidenceData = {
-    stats: { totalUsers: 0, attendedCities: 0, totalEngagements: 0, signedAgreements: 0 },
-    timelineData: [],
+): DashboardDerivedData {
+  const emptyResult: DashboardDerivedData = {
+    stats: {
+      totalUsers: 0,
+      attendedCities: 0,
+      totalEngagements: 0,
+      attentionCount: 0,
+      totalEstimatedHours: 0,
+      signedAgreements: 0,
+    },
     engagementTimelineData: [],
-    referralData: [],
+    workloadTimelineData: [],
+    statusData: STATUS_ORDER.map((name) => ({ name, value: 0 })),
+    upcomingEngagements: [],
+    insights: [],
     organizationData: [],
     geoData: [],
     pillarsData: [],
-    durationChart: [],
-    municipalityChartData: []
+    activityData: [],
+    municipalityChartData: [],
   };
 
-  // Retorna vazio se não houver dados para processar
-  if (!rawData.auth.length && !rawData.profiles.length) return emptyResult;
+  if (!rawData.engagements.length) return emptyResult;
 
   const { auth, profiles, engagements } = rawData;
+  const now = new Date();
+  const startCutoff = filters.startDate
+    ? new Date(`${filters.startDate}T00:00:00`)
+    : new Date(2000, 0, 1);
+  const endCutoff = filters.endDate
+    ? new Date(`${filters.endDate}T23:59:59`)
+    : now;
 
-  // 1. Mapeamentos iniciais para busca rápida (O(1))
   const profileMap = new Map<string, UserProfile>(
     profiles.map((profile) => [profile.id, profile])
   );
+  const authById = new Map<string, UserAuth>(auth.map((user) => [user.id, user]));
 
-  const authById = new Map<string, UserAuth>(
-    auth.map((user) => [user.id, user])
-  );
-
-  // 2. Lógica Dinâmica de Limites de Data
-  const startCutoff = filters.startDate ? new Date(filters.startDate + 'T00:00:00') : new Date(2000, 0, 1);
-  const endCutoff = filters.endDate ? new Date(filters.endDate + 'T23:59:59') : new Date();
-
-  // Considere o filtro ativo apenas pelo booleano 'enabled'
   const activeDimensionFilters = [
     { key: 'vertical' as const, filter: filters.vertical },
     { key: 'horizontal' as const, filter: filters.horizontal },
-    { key: 'transversal' as const, filter: filters.transversal }
+    { key: 'transversal' as const, filter: filters.transversal },
   ].filter(({ filter }) => filter.enabled);
 
-  const matchesDimensionFilters = (engagement: Engagement) => {
-    return activeDimensionFilters.every(({ key, filter }) => {
-      if (filter.values.length === 0) return true;
-
-      const selectedValues = filter.values.map((value) => value.trim());
-      const engagementValues = ((engagement as unknown as Record<string, unknown>)[key] as string[] || []).map((value) => value.trim());
-      
-      return engagementValues.some((value) => selectedValues.includes(value));
+  const matchesDimensionFilters = (engagement: Engagement) =>
+    activeDimensionFilters.every(({ key, filter }) => {
+      if (!filter.values.length) return true;
+      const selected = new Set(filter.values.map((value) => value.trim()));
+      const engagementValues = ((engagement as unknown as Record<string, unknown>)[key] as
+        | string[]
+        | undefined) ?? [];
+      return engagementValues.some((value) => selected.has(value?.trim()));
     });
-  };
 
-  // Normaliza textos para permitir busca sem diferença de maiúsculas/minúsculas e acentos.
-  const normalizeText = (value?: string | null) =>
-    (value ?? '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .trim();
+  const engagementSearch = normalizeText(filters.engagementSearch);
+  const matchesEngagementSearch = (engagement: Engagement) =>
+    !engagementSearch || normalizeText(engagement.title) === engagementSearch;
 
-  const engagementSearch = normalizeText(
-    filters.engagementSearch
+  // Escopo sem filtro temporal: usado para agenda futura, preservando busca e dimensões.
+  const scopedEngagements = engagements.filter(
+    (engagement) =>
+      matchesDimensionFilters(engagement) && matchesEngagementSearch(engagement)
   );
 
-  const hasEngagementSearch =
-    engagementSearch.length > 0;
-
-  const matchesEngagementSearch = (engagement: Engagement) => {
-    if (!hasEngagementSearch) {
-      return true;
-    }
-
-    return normalizeText(engagement.title) === engagementSearch;
-  };
-
-  // 3. Filtragem de base
-  const baseAuth = auth.filter(u => {
-    const userDate = new Date(u.date_joined);
-    return userDate >= startCutoff && userDate <= endCutoff;
-  });
-
-
-  const getEngagementPeriodDate = (engagement: Engagement) => {
-    const rawDate = engagement.event_date || engagement.created_at;
-    return rawDate ? new Date(rawDate) : new Date(0);
-  };
-
-  const scopedEngagements = engagements.filter((engagement) => {
-    const dimensionOk = activeDimensionFilters.length === 0 || matchesDimensionFilters(engagement);
-    const engagementSearchOk = matchesEngagementSearch(engagement);
-    return dimensionOk && engagementSearchOk;
-  });
-
+  // Escopo principal do dashboard: respeita também o período selecionado.
   const filteredEngagements = scopedEngagements.filter((engagement) => {
-    const engagementDate = getEngagementPeriodDate(engagement);
-    return (engagementDate >= startCutoff && engagementDate <= endCutoff);
+    const engagementDate = getEngagementDate(engagement);
+    return engagementDate >= startCutoff && engagementDate <= endCutoff;
   });
 
   const relatedUserIds = new Set<string>();
-
   filteredEngagements.forEach((engagement) => {
-    if (engagement.created_by) {
+    if (INCLUDE_CREATOR_AS_PARTICIPANT && engagement.created_by) {
       relatedUserIds.add(engagement.created_by);
     }
-
     (engagement.engagement_participants ?? []).forEach((participant) => {
       const userId = participant.user_id?.trim();
-      if (!userId) return;
-
-      relatedUserIds.add(userId);
+      if (userId) relatedUserIds.add(userId);
     });
   });
 
-  const filteredAuth = baseAuth.filter((user) => relatedUserIds.has(user.id));
   const filteredProfiles = profiles.filter((profile) => relatedUserIds.has(profile.id));
+  const filteredMunicipalities = filteredProfiles
+    .map((profile) => normalizeMunicipality(profile.municipality))
+    .filter(Boolean);
 
-  const signedCount = filteredEngagements.filter(e => 
-    Array.isArray(e.planned_activities) && 
-    e.planned_activities.some(activity => activity?.trim() === "Reunião de Adesão ao Convênio")
+  const attentionEngagements = filteredEngagements.filter((engagement) => {
+    const status = normalizeStatus(engagement.status);
+    const eventDate = getEngagementDate(engagement);
+    return eventDate < now && (status === 'Planejado' || status === 'Pendente');
+  });
+
+  const signedAgreements = filteredEngagements.filter((engagement) =>
+    Array.isArray(engagement.planned_activities)
+      ? engagement.planned_activities.some(
+          (activity) => activity?.trim() === 'Reunião de Adesão ao Convênio'
+        )
+      : false
   ).length;
+
+  const totalEstimatedHours = filteredEngagements.reduce(
+    (total, engagement) => total + getDuration(engagement),
+    0
+  );
 
   const stats = {
     totalUsers: filteredProfiles.length,
-    attendedCities: new Set(filteredProfiles.map(p => p.municipality)).size,
+    attendedCities: new Set(filteredMunicipalities).size,
     totalEngagements: filteredEngagements.length,
-    signedAgreements: signedCount
+    attentionCount: attentionEngagements.length,
+    totalEstimatedHours: +totalEstimatedHours.toFixed(1),
+    signedAgreements,
   };
 
-  // 4. Lógica de Timelines (Diário vs Mensal)
-  const diffTime = Math.abs(endCutoff.getTime() - startCutoff.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  const isShortPeriod = diffDays <= 30;
-  
-  let timelineArr: { name: string; Membros: number }[] = [];
-  let engagementTimelineArr: { name: string; Engajamentos: number }[] = [];
+  // Linha do tempo por status — não acumulativa.
+  const timelineBuckets = buildTimelineBuckets(startCutoff, endCutoff);
+  const timelineMap = new Map<string, DashboardTimelineRow>();
+  const workloadMap = new Map<string, DashboardWorkloadRow>();
 
-  if (isShortPeriod) {
-    const dayList = [];
-    const loopDate = new Date(startCutoff);
-    
-    while (loopDate <= endCutoff) {
-      dayList.push({
-        key: `${loopDate.getFullYear()}-${loopDate.getMonth()}-${loopDate.getDate()}`,
-        label: `${String(loopDate.getDate()).padStart(2, '0')}/${String(loopDate.getMonth() + 1).padStart(2, '0')}`
-      });
-      loopDate.setDate(loopDate.getDate() + 1);
+  timelineBuckets.buckets.forEach(({ key, label }) => {
+    timelineMap.set(key, {
+      name: label,
+      Planejado: 0,
+      Pendente: 0,
+      Concluído: 0,
+      Cancelado: 0,
+      Outro: 0,
+      total: 0,
+    });
+    workloadMap.set(key, { name: label, horas: 0 });
+  });
+
+  const statusCounts: Record<DashboardStatusName, number> = {
+    Planejado: 0,
+    Pendente: 0,
+    Concluído: 0,
+    Cancelado: 0,
+    Outro: 0,
+  };
+
+  filteredEngagements.forEach((engagement) => {
+    const eventDate = getEngagementDate(engagement);
+    const key = timelineBuckets.getKey(eventDate);
+    const status = normalizeStatus(engagement.status);
+    const timelineRow = timelineMap.get(key);
+    const workloadRow = workloadMap.get(key);
+
+    statusCounts[status] += 1;
+    if (timelineRow) {
+      timelineRow[status] += 1;
+      timelineRow.total += 1;
     }
-
-    const authDaily: Record<string, number> = {};
-    const engDaily: Record<string, number> = {};
-    dayList.forEach(d => { authDaily[d.key] = 0; engDaily[d.key] = 0; });
-
-    let authAcc = hasEngagementSearch
-      ? auth.filter(
-          (u) =>
-            relatedUserIds.has(u.id) &&
-            new Date(u.date_joined) < startCutoff
-        ).length
-      : auth.filter(
-          (u) =>
-            new Date(u.date_joined) < startCutoff
-        ).length;
-
-    let engAcc = hasEngagementSearch
-      ? scopedEngagements.filter(
-          (e) =>
-            getEngagementPeriodDate(e) <
-            startCutoff
-        ).length
-      : engagements.filter(
-          (e) =>
-            getEngagementPeriodDate(e) <
-            startCutoff
-        ).length;
-
-    filteredAuth.forEach(u => {
-      if (u.date_joined) {
-        const dt = new Date(u.date_joined);
-        const k = `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`;
-        if (authDaily[k] !== undefined) authDaily[k]++;
-      }
-    });
-
-    filteredEngagements.forEach(e => {
-      const rawDate = e.event_date || e.created_at;
-      if (rawDate) {
-        const dt = new Date(rawDate);
-        const k = `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`;
-        if (engDaily[k] !== undefined) engDaily[k]++;
-      }
-    });
-
-    timelineArr = dayList.map(d => { authAcc += authDaily[d.key]; return { name: d.label, Membros: authAcc }; });
-    engagementTimelineArr = dayList.map(d => { engAcc += engDaily[d.key]; return { name: d.label, Engajamentos: engAcc }; });
-
-  } else {
-    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    const monthList = [];
-    const loopDate = new Date(startCutoff.getFullYear(), startCutoff.getMonth(), 1);
-
-    while (loopDate <= endCutoff) {
-      monthList.push({ 
-        key: `${loopDate.getFullYear()}-${loopDate.getMonth()}`, 
-        label: `${monthNames[loopDate.getMonth()]}/${String(loopDate.getFullYear()).slice(-2)}` 
-      });
-      loopDate.setMonth(loopDate.getMonth() + 1);
+    if (workloadRow) {
+      workloadRow.horas += getDuration(engagement);
     }
+  });
 
-    const authMonthly: Record<string, number> = {};
-    const engMonthly: Record<string, number> = {};
-    monthList.forEach(m => { authMonthly[m.key] = 0; engMonthly[m.key] = 0; });
+  const engagementTimelineData = Array.from(timelineMap.values());
+  const workloadTimelineData = Array.from(workloadMap.values()).map((row) => ({
+    ...row,
+    horas: +row.horas.toFixed(1),
+  }));
+  const statusData = STATUS_ORDER.map((name) => ({
+    name,
+    value: statusCounts[name],
+  })).filter((item) => item.value > 0 || item.name !== 'Outro');
 
-    let authAcc = hasEngagementSearch
-      ? auth.filter(
-          (u) =>
-            relatedUserIds.has(u.id) &&
-            new Date(u.date_joined) < startCutoff
-        ).length
-      : auth.filter(
-          (u) =>
-            new Date(u.date_joined) < startCutoff
-        ).length;
+  // Agenda futura independente do filtro temporal, mas respeitando busca e dimensões.
+  const upcomingLimit = new Date(now);
+  upcomingLimit.setDate(upcomingLimit.getDate() + 30);
 
-    let engAcc = hasEngagementSearch
-      ? scopedEngagements.filter(
-          (e) =>
-            getEngagementPeriodDate(e) <
-            startCutoff
-        ).length
-      : engagements.filter(
-          (e) =>
-            getEngagementPeriodDate(e) <
-            startCutoff
-        ).length;
+  const upcomingEngagements = scopedEngagements
+    .filter((engagement) => {
+      const eventDate = getEngagementDate(engagement);
+      const status = normalizeStatus(engagement.status);
+      return (
+        eventDate > now &&
+        eventDate <= upcomingLimit &&
+        status !== 'Cancelado' &&
+        status !== 'Concluído'
+      );
+    })
+    .sort((a, b) => getEngagementDate(a).getTime() - getEngagementDate(b).getTime())
+    .slice(0, 6)
+    .map((engagement) => ({
+      id: engagement.id,
+      title: engagement.title || 'Engajamento sem título',
+      eventDate: (engagement.event_date || engagement.created_at) as string,
+      status: engagement.status || 'Sem status',
+      location: (engagement as Engagement & { location?: string }).location,
+    }));
 
-    filteredAuth.forEach(u => {
-      if (u.date_joined) {
-        const dt = new Date(u.date_joined);
-        const k = `${dt.getFullYear()}-${dt.getMonth()}`;
-        if (authMonthly[k] !== undefined) authMonthly[k]++;
-      }
-    });
-
-    filteredEngagements.forEach(e => {
-      const rawDate = e.event_date || e.created_at;
-      if (rawDate) {
-        const dt = new Date(rawDate);
-        const k = `${dt.getFullYear()}-${dt.getMonth()}`;
-        if (engMonthly[k] !== undefined) engMonthly[k]++;
-      }
-    });
-
-    timelineArr = monthList.map(m => { authAcc += authMonthly[m.key]; return { name: m.label, Membros: authAcc }; });
-    engagementTimelineArr = monthList.map(m => { engAcc += engMonthly[m.key]; return { name: m.label, Engajamentos: engAcc }; });
-  }
-
-  // 5. Agrupamentos (Referrals, Organizações, Cidades)
-  const referralCounts: Record<string, number> = {};
-  const orgGroups: Record<string, OrgGroup> = {};
-  const cityGroups: Record<string, { count: number; name: string; members: string[] }> = {};
-
-  filteredProfiles.forEach(p => {
-    if (p.referral_source) referralCounts[p.referral_source] = (referralCounts[p.referral_source] || 0) + 1;
-    
-    if (p.institution_organization) {
-      const rawOrg = p.institution_organization.trim();
-      const normOrg = rawOrg.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      const currentType = p.organization_type ? p.organization_type.trim() : 'Não informado';
-      
-      if (normOrg) {
-        if (!orgGroups[normOrg]) {
-          orgGroups[normOrg] = {
-            count: 0,
-            prettyName: rawOrg.length <= 4 ? rawOrg.toUpperCase() : rawOrg.charAt(0).toUpperCase() + rawOrg.slice(1),
-            types: {},
-            members: []
-          };
-        }
-        orgGroups[normOrg].count++;
-        orgGroups[normOrg].types[currentType] = (orgGroups[normOrg].types[currentType] || 0) + 1;
-        const memberName = p.full_name?.trim() || 'Usuário sem nome';
-        if (!orgGroups[normOrg].members.includes(memberName)) {
-          orgGroups[normOrg].members.push(memberName);
-        }
-      }
+  // Agrupamentos de participantes, organizações e municípios.
+  const organizationGroups: Record<
+    string,
+    {
+      count: number;
+      prettyName: string;
+      types: Record<string, number>;
+      members: string[];
     }
+  > = {};
 
-    if (p.municipality) {
-      const normalizedMunicipality = p.municipality.trim().replace(/\s+/g, ' ');
-      const normCity =
-        normalizedMunicipality.charAt(0).toUpperCase() +
-        normalizedMunicipality.slice(1);
+  const cityGroups: Record<
+    string,
+    { count: number; name: string; members: string[]; institutions: Set<string> }
+  > = {};
 
-      if (!cityGroups[normCity]) {
-        cityGroups[normCity] = {
+  filteredProfiles.forEach((profile) => {
+    const memberName = profile.full_name?.trim() || 'Usuário sem nome';
+    const rawOrg = profile.institution_organization?.trim();
+
+    if (rawOrg) {
+      const normalizedOrg = normalizeText(rawOrg);
+      const orgType = profile.organization_type?.trim() || 'Não informado';
+      if (!organizationGroups[normalizedOrg]) {
+        organizationGroups[normalizedOrg] = {
           count: 0,
-          name: normCity,
-          members: []
+          prettyName:
+            rawOrg.length <= 4
+              ? rawOrg.toUpperCase()
+              : rawOrg.charAt(0).toUpperCase() + rawOrg.slice(1),
+          types: {},
+          members: [],
         };
       }
+      organizationGroups[normalizedOrg].count += 1;
+      organizationGroups[normalizedOrg].types[orgType] =
+        (organizationGroups[normalizedOrg].types[orgType] ?? 0) + 1;
+      if (!organizationGroups[normalizedOrg].members.includes(memberName)) {
+        organizationGroups[normalizedOrg].members.push(memberName);
+      }
+    }
 
-      cityGroups[normCity].count++;
-      cityGroups[normCity].members.push(
-        p.full_name?.trim() || 'Usuário sem nome'
-      );
+    const city = normalizeMunicipality(profile.municipality);
+    if (city) {
+      if (!cityGroups[city]) {
+        cityGroups[city] = {
+          count: 0,
+          name: city,
+          members: [],
+          institutions: new Set<string>(),
+        };
+      }
+      cityGroups[city].count += 1;
+      cityGroups[city].members.push(memberName);
+      if (rawOrg) cityGroups[city].institutions.add(rawOrg);
     }
   });
 
-  const referralData = Object.entries(referralCounts).map(([name, value]) => ({ name, value }));
+  const sortedOrganizations = Object.values(organizationGroups).sort(
+    (a, b) => b.count - a.count
+  );
+  const organizationData: DashboardOrganizationMetric[] = sortedOrganizations
+    .slice(0, 8)
+    .map((item) => ({
+      name: item.prettyName,
+      value: item.count,
+      orgType:
+        Object.entries(item.types).sort((a, b) => b[1] - a[1])[0]?.[0] ??
+        'Não informado',
+      members: [...item.members].sort((a, b) =>
+        a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
+      ),
+    }));
 
-  const sortedOrgs = Object.values(orgGroups).sort((a, b) => b.count - a.count);
-  const organizationData = sortedOrgs.slice(0, 5).map((item) => ({
-    name: item.prettyName,
-    value: item.count,
-    orgType: Object.entries(item.types).sort((a, b) => b[1] - a[1])[0][0],
-    members: item.members
-  }));
-  
-  const remainderOrgs = sortedOrgs.slice(5);
-  if (remainderOrgs.length > 0) {
-    let rCount = 0;
-    const rTypes: Record<string, number> = {};
-    remainderOrgs.forEach((item) => {
-      rCount += item.count;
-      Object.entries(item.types).forEach(([t, c]) => { rTypes[t] = (rTypes[t] || 0) + c; });
-    });
-    const topRTypes = Object.entries(rTypes).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]).join(', ');
-    organizationData.push({ 
-      name: 'Outras', 
-      value: rCount, 
-      orgType: topRTypes || 'Diversos', 
-      members: remainderOrgs.flatMap(item => item.members) 
-    });
-  }
+  const verticalCounts: Record<string, number> = {};
+  const horizontalCounts: Record<string, number> = {};
+  const transversalCounts: Record<string, number> = {};
+  const activityCounts: Record<string, number> = {};
 
-  // 6. Dados Geográficos
-  // Além da quantidade e das coordenadas, o mapa recebe os nomes dos membros
-  // daquele município para montar o popup com lista e scroll.
-  const localGeoData: {
-    name: string;
-    count: number;
-    coordinates: [number, number];
-    members: string[];
-  }[] = [];
-
-  Object.values(cityGroups).forEach((c) => {
-    const coords = geocodeCache[c.name];
-
-    if (coords) {
-      localGeoData.push({
-        name: c.name,
-        count: c.count,
-        coordinates: coords,
-        members: [...c.members].sort((a, b) =>
-          a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
-        )
-      });
+  type ParticipantData = DashboardMunicipalityParticipant;
+  const municipalityBuckets: Record<
+    string,
+    {
+      engagementIds: Set<string>;
+      totalHours: number;
+      verticalHours: number;
+      horizontalHours: number;
+      transversalHours: number;
+      participants: Record<string, ParticipantData>;
     }
-  });
-
-  // 7. Agrupamentos de Engajamento e Municípios
-  const vCounts: Record<string, number> = {};
-  const hCounts: Record<string, number> = {};
-  const tCounts: Record<string, number> = {};
-  const eaCounts: Record<string, number> = {};
-  
-  const vertDurMap: Record<string, number> = {};
-  const horizDurMap: Record<string, number> = {};
-  const transDurMap: Record<string, number> = {};
-
-  type ParticipantData = {
-    email: string;
-    name: string;
-    role: string;
-    municipality: string;
-  };
-
-  const municipalityBuckets: Record<string, {
-    engagementIds: Set<string>;
-    totalHours: number;
-    verticalHours: number;
-    horizontalHours: number;
-    transversalHours: number;
-    participants: Record<string, ParticipantData>;
-  }> = {};
+  > = {};
 
   const ensureMunicipalityBucket = (municipality: string) => {
     if (!municipalityBuckets[municipality]) {
       municipalityBuckets[municipality] = {
-        engagementIds: new Set(),
+        engagementIds: new Set<string>(),
         totalHours: 0,
-        horizontalHours: 0,
         verticalHours: 0,
+        horizontalHours: 0,
         transversalHours: 0,
-        participants: {}
+        participants: {},
       };
     }
-
     return municipalityBuckets[municipality];
   };
 
@@ -415,247 +527,215 @@ export function processDerivedData(
     name: string,
     role: string
   ) => {
+    if (!municipality) return;
     const bucket = ensureMunicipalityBucket(municipality);
-    bucket.participants[participantKey] = { email, name, role, municipality };
+    bucket.participants[participantKey] = {
+      email,
+      name,
+      role,
+      municipality,
+    };
   };
 
-  filteredEngagements.forEach(eng => {
-    const dur =
-      typeof eng.estimated_duration === 'number'
-        ? eng.estimated_duration
-        : Number(eng.estimated_duration) || 0;
+  filteredEngagements.forEach((engagement) => {
+    const duration = getDuration(engagement);
 
-    // ==========================================
-    // VERTICAL
-    // ==========================================
-    if (Array.isArray(eng.vertical)) {
-      const verticalItems = eng.vertical
-        .map(item => item?.trim())
-        .filter((item): item is string => Boolean(item));
+    const verticalItems = (engagement.vertical ?? [])
+      .map((value) => value?.trim())
+      .filter((value): value is string => Boolean(value));
+    const horizontalItems = (engagement.horizontal ?? [])
+      .map((value) => value?.trim())
+      .filter((value): value is string => Boolean(value));
+    const transversalItems = (engagement.transversal ?? [])
+      .map((value) => value?.trim())
+      .filter((value): value is string => Boolean(value));
 
-      const durationPerVertical =
-        verticalItems.length > 0
-          ? dur / verticalItems.length
-          : 0;
-
-      verticalItems.forEach(k => {
-        // Mantém a contagem usada nos outros gráficos
-        vCounts[k] = (vCounts[k] || 0) + 1;
-
-        // Soma as horas proporcionais
-        vertDurMap[k] =
-          (vertDurMap[k] || 0) + durationPerVertical;
-      });
-    }
-
-    // ==========================================
-    // HORIZONTAL
-    // ==========================================
-    if (Array.isArray(eng.horizontal)) {
-      const horizontalItems = eng.horizontal
-        .map(item => item?.trim())
-        .filter((item): item is string => Boolean(item));
-
-      const durationPerHorizontal =
-        horizontalItems.length > 0
-          ? dur / horizontalItems.length
-          : 0;
-
-      horizontalItems.forEach(k => {
-        // Mantém a contagem usada nos outros gráficos
-        hCounts[k] = (hCounts[k] || 0) + 1;
-
-        // Soma as horas proporcionais
-        horizDurMap[k] =
-          (horizDurMap[k] || 0) + durationPerHorizontal;
-      });
-    }
-
-    // ==========================================
-    // TRANSVERSAL
-    // ==========================================
-    if (Array.isArray(eng.transversal)) {
-      const transversalItems = eng.transversal
-        .map(item => item?.trim())
-        .filter((item): item is string => Boolean(item));
-
-      const durationPerTransversal =
-        transversalItems.length > 0
-          ? dur / transversalItems.length
-          : 0;
-
-      transversalItems.forEach(k => {
-        // Mantém a contagem usada nos outros gráficos
-        tCounts[k] = (tCounts[k] || 0) + 1;
-
-        // Soma as horas proporcionais
-        transDurMap[k] =
-          (transDurMap[k] || 0) + durationPerTransversal;
-      });
-    }
-
-    // ==========================================
-    // ATIVIDADES PLANEJADAS
-    // ==========================================
-    if (Array.isArray(eng.planned_activities)) {
-      eng.planned_activities.forEach(activity => {
-        if (activity) {
-          const k = activity.trim();
-          eaCounts[k] = (eaCounts[k] || 0) + 1;
-        }
-      });
-    }
-
-  const hasVertical =
-    Array.isArray(eng.vertical) &&
-    eng.vertical.some(value => value?.trim());
-
-  const hasHorizontal =
-    Array.isArray(eng.horizontal) &&
-    eng.horizontal.some(value => value?.trim());
-
-  const hasTransversal =
-    Array.isArray(eng.transversal) &&
-    eng.transversal.some(value => value?.trim());
+    verticalItems.forEach((value) => {
+      verticalCounts[value] = (verticalCounts[value] ?? 0) + 1;
+    });
+    horizontalItems.forEach((value) => {
+      horizontalCounts[value] = (horizontalCounts[value] ?? 0) + 1;
+    });
+    transversalItems.forEach((value) => {
+      transversalCounts[value] = (transversalCounts[value] ?? 0) + 1;
+    });
+    (engagement.planned_activities ?? []).forEach((activity) => {
+      const value = activity?.trim();
+      if (value) activityCounts[value] = (activityCounts[value] ?? 0) + 1;
+    });
 
     const associatedMunicipalities = new Set<string>();
 
-    if (Array.isArray(eng.engagement_participants)) {
-      eng.engagement_participants.forEach((participant) => {
-        const userId = participant.user_id?.trim();
-        if (!userId) return;
+    (engagement.engagement_participants ?? []).forEach((participant) => {
+      const userId = participant.user_id?.trim();
+      if (!userId) return;
 
-        // Correlação estritamente por UUID:
-        // engagement_participants.user_id -> user_auth.id -> user_profile.id
-        const participantAuth = authById.get(userId);
-        const profile = profileMap.get(userId);
+      const participantAuth = authById.get(userId);
+      const profile = profileMap.get(userId);
+      const municipality = normalizeMunicipality(profile?.municipality);
+      if (!municipality) return;
 
-        // Um participante sem perfil continua sendo contabilizado.
-        const municipality = profile?.municipality?.trim().replace(/\s+/g, ' ') || 'Não informado';
-        const email = participantAuth?.email?.trim().toLowerCase() || '';
-        const name = profile?.full_name?.trim() || 'Usuário sem perfil';
-        const role = profile?.job_title?.trim() || 'Sem função';
-
-        // A chave de deduplicação é o UUID, nunca o e-mail.
-        addParticipantData(municipality, userId, email, name, role);
-        associatedMunicipalities.add(municipality);
-      });
-    }
-
-    const creatorProfile = profileMap.get(eng.created_by);
-    const creatorAuth = authById.get(eng.created_by);
-
-    if (creatorProfile) {
-      const municipality = creatorProfile.municipality?.trim().replace(/\s+/g, ' ') || 'Não informado';
-      const email = creatorAuth?.email?.trim().toLowerCase() || '';
-      const name = creatorProfile.full_name?.trim() || 'Usuário sem nome';
-      const role = creatorProfile.job_title?.trim() || 'Criador do engajamento';
-
-      addParticipantData(municipality, eng.created_by, email, name, role);
+      addParticipantData(
+        municipality,
+        userId,
+        participantAuth?.email?.trim().toLowerCase() || '',
+        profile?.full_name?.trim() || 'Usuário sem perfil',
+        profile?.job_title?.trim() || 'Sem função'
+      );
       associatedMunicipalities.add(municipality);
+    });
+
+    if (INCLUDE_CREATOR_AS_PARTICIPANT && engagement.created_by) {
+      const creatorProfile = profileMap.get(engagement.created_by);
+      const creatorAuth = authById.get(engagement.created_by);
+      const municipality = normalizeMunicipality(creatorProfile?.municipality);
+
+      if (creatorProfile && municipality) {
+        addParticipantData(
+          municipality,
+          engagement.created_by,
+          creatorAuth?.email?.trim().toLowerCase() || '',
+          creatorProfile.full_name?.trim() || 'Usuário sem nome',
+          creatorProfile.job_title?.trim() || 'Criador do engajamento'
+        );
+        associatedMunicipalities.add(municipality);
+      }
     }
 
     associatedMunicipalities.forEach((municipality) => {
       const bucket = ensureMunicipalityBucket(municipality);
+      if (bucket.engagementIds.has(engagement.id)) return;
 
-      if (!bucket.engagementIds.has(eng.id)) {
-        bucket.engagementIds.add(eng.id);
-        bucket.totalHours += dur;
-
-        if (hasVertical) {
-          bucket.verticalHours += dur;
-        }
-
-        if (hasHorizontal) {
-          bucket.horizontalHours += dur;
-        }
-
-        if (hasTransversal) {
-          bucket.transversalHours += dur;
-        }
-      }
+      bucket.engagementIds.add(engagement.id);
+      bucket.totalHours += duration;
+      if (verticalItems.length) bucket.verticalHours += duration;
+      if (horizontalItems.length) bucket.horizontalHours += duration;
+      if (transversalItems.length) bucket.transversalHours += duration;
     });
   });
 
-  const municipalityChartData = Object.entries(municipalityBuckets).map(([municipality, bucket]) => {
-    const participantsList = Object.values(bucket.participants).sort((a, b) => a.name.localeCompare(b.name));
-
-    return {
+  const municipalityChartData: DashboardMunicipalityMetric[] = Object.entries(
+    municipalityBuckets
+  )
+    .map(([municipality, bucket]) => ({
       municipality,
-      count: participantsList.length,
+      count: Object.keys(bucket.participants).length,
       engagementCount: bucket.engagementIds.size,
-      totalHours: +bucket.totalHours.toFixed(2),
-      verticalHours: +bucket.verticalHours.toFixed(2),
-      horizontalHours: +bucket.horizontalHours.toFixed(2),
-      transversalHours: +bucket.transversalHours.toFixed(2),
-      participants: participantsList
-    };
-  })
+      totalHours: +bucket.totalHours.toFixed(1),
+      verticalHours: +bucket.verticalHours.toFixed(1),
+      horizontalHours: +bucket.horizontalHours.toFixed(1),
+      transversalHours: +bucket.transversalHours.toFixed(1),
+      participants: Object.values(bucket.participants).sort((a, b) =>
+        a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
+      ),
+    }))
+    .sort((a, b) => b.engagementCount - a.engagementCount || b.count - a.count);
 
-  // Recomendo agora ordenar pelo total de horas
-  .sort((a, b) => b.totalHours - a.totalHours);
+  const municipalityByName = new Map(
+    municipalityChartData.map((item) => [item.municipality, item])
+  );
 
-  const formatGroup = (obj: Record<string, number>) => Object.entries(obj).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
-  
-  const pillarsData = [
-    { category: 'Verticais', items: formatGroup(vCounts) },
-    { category: 'Horizontais', items: formatGroup(hCounts) },
-    { category: 'Transversais', items: formatGroup(tCounts) },
-    { category: 'Atividades Engajadas', items: formatGroup(eaCounts) }
-  ].filter(p => p.items.length > 0);
+  const geoData: DashboardGeoPoint[] = Object.values(cityGroups)
+    .map((city) => {
+      const coordinates = geocodeCache[city.name];
+      if (!coordinates) return null;
+      const municipalityMetric = municipalityByName.get(city.name);
+      return {
+        name: city.name,
+        count: city.count,
+        coordinates,
+        members: [...city.members].sort((a, b) =>
+          a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
+        ),
+        engagementCount: municipalityMetric?.engagementCount ?? 0,
+        institutionCount: city.institutions.size,
+        totalHours: municipalityMetric?.totalHours ?? 0,
+      };
+    })
+    .filter((item): item is DashboardGeoPoint => Boolean(item))
+    .sort((a, b) => b.count - a.count);
 
-  const formatDurationTotal = (
-    map: Record<string, number>,
-    enabled: boolean,
-    allowed: string[]
-  ) => {
-    const allowedSet = new Set(
-      allowed.map(a => a.trim())
-    );
+  const pillarsData: DashboardPillarGroup[] = [
+    { category: 'Verticais', items: formatGroup(verticalCounts) },
+    { category: 'Horizontais', items: formatGroup(horizontalCounts) },
+    { category: 'Transversais', items: formatGroup(transversalCounts) },
+  ].filter((pillar) => pillar.items.length > 0) as DashboardPillarGroup[];
 
-    const arr = Object.entries(map).map(
-      ([label, total]) => ({
-        label: label.trim(),
-        value: +total.toFixed(2)
-      })
-    );
+  const activityData = formatGroup(activityCounts);
 
-    const filtered =
-      enabled && allowed.length > 0
-        ? arr.filter(x => allowedSet.has(x.label))
-        : arr;
-
-    return filtered.sort(
-      (a, b) => b.value - a.value
-    );
-  };
-
-  let durationChart = [
-    { dimension: 'Vertical', color: '#10b981', data: formatDurationTotal(vertDurMap, filters.vertical.enabled, filters.vertical.values) },
-    { dimension: 'Horizontal', color: '#1f77b4', data: formatDurationTotal(horizDurMap, filters.horizontal.enabled, filters.horizontal.values) },
-    { dimension: 'Transversal', color: '#ff7f0e', data: formatDurationTotal(transDurMap, filters.transversal.enabled, filters.transversal.values) }
-  ];
-
-  const selectedUnionArr: string[] = [];
-  if (filters.vertical.enabled && filters.vertical.values.length) selectedUnionArr.push(...filters.vertical.values.map(v => v.trim()));
-  if (filters.horizontal.enabled && filters.horizontal.values.length) selectedUnionArr.push(...filters.horizontal.values.map(v => v.trim()));
-  if (filters.transversal.enabled && filters.transversal.values.length) selectedUnionArr.push(...filters.transversal.values.map(v => v.trim()));
-  
-  const selectedUnionSet = new Set(selectedUnionArr);
-  if (selectedUnionSet.size > 0) {
-    durationChart = durationChart.map(s => ({ ...s, data: s.data.filter(d => selectedUnionSet.has(d.label)) }));
+  const insights: DashboardInsight[] = [];
+  if (attentionEngagements.length > 0) {
+    insights.push({
+      type: 'warning',
+      title: 'Engajamentos requerem atenção',
+      value: attentionEngagements.length,
+      description: `${attentionEngagements.length} engajamento${
+        attentionEngagements.length === 1 ? '' : 's'
+      } permanece${attentionEngagements.length === 1 ? '' : 'm'} Planejado/Pendente após a data prevista.`,
+    });
   }
 
-  // 8. Retorno dos Dados Processados
-  return { 
-    stats, 
-    timelineData: timelineArr, 
-    engagementTimelineData: engagementTimelineArr, 
-    referralData, 
-    organizationData, 
-    geoData: localGeoData, 
+  const upcoming15Days = scopedEngagements.filter((engagement) => {
+    const eventDate = getEngagementDate(engagement);
+    const status = normalizeStatus(engagement.status);
+    const limit = new Date(now);
+    limit.setDate(limit.getDate() + 15);
+    return (
+      eventDate > now &&
+      eventDate <= limit &&
+      status !== 'Cancelado' &&
+      status !== 'Concluído'
+    );
+  }).length;
+
+  if (upcoming15Days > 0) {
+    insights.push({
+      type: 'info',
+      title: 'Agenda dos próximos 15 dias',
+      value: upcoming15Days,
+      description: `${upcoming15Days} engajamento${upcoming15Days === 1 ? '' : 's'} programado${
+        upcoming15Days === 1 ? '' : 's'
+      } para os próximos 15 dias.`,
+    });
+  }
+
+  if (statusCounts.Cancelado > 0) {
+    const cancellationRate = filteredEngagements.length
+      ? (statusCounts.Cancelado / filteredEngagements.length) * 100
+      : 0;
+    insights.push({
+      type: 'info',
+      title: 'Cancelamentos no período',
+      value: statusCounts.Cancelado,
+      description: `${statusCounts.Cancelado} cancelamento${
+        statusCounts.Cancelado === 1 ? '' : 's'
+      }, equivalente${statusCounts.Cancelado === 1 ? '' : 's'} a ${cancellationRate.toFixed(
+        1
+      )}% dos engajamentos selecionados.`,
+    });
+  }
+
+
+  if (!insights.length && filteredEngagements.length > 0) {
+    insights.push({
+      type: 'success',
+      title: 'Sem alertas operacionais no recorte',
+      description:
+        'Não foram identificados engajamentos vencidos ou cancelamentos no período selecionado.',
+    });
+  }
+
+  return {
+    stats,
+    engagementTimelineData,
+    workloadTimelineData,
+    statusData,
+    upcomingEngagements,
+    insights: insights.slice(0, 4),
+    organizationData,
+    geoData,
     pillarsData,
-    durationChart,
-    municipalityChartData
+    activityData,
+    municipalityChartData,
   };
 }
